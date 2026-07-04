@@ -25,4 +25,37 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// TODO: Add your tables here
+export const services = mysqlTable("services", {
+  id: int("id").autoincrement().primaryKey(),
+  nameEn: varchar("nameEn", { length: 255 }).notNull(),
+  nameRu: varchar("nameRu", { length: 255 }).notNull(),
+  descriptionEn: text("descriptionEn"),
+  descriptionRu: text("descriptionRu"),
+  durationMinutes: int("durationMinutes").notNull(),
+  priceRub: int("priceRub").notNull(),
+  noteEn: text("noteEn"),
+  noteRu: text("noteRu"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Service = typeof services.$inferSelect;
+export type InsertService = typeof services.$inferInsert;
+
+export const bookings = mysqlTable("bookings", {
+  id: int("id").autoincrement().primaryKey(),
+  referenceNumber: varchar("referenceNumber", { length: 12 }).notNull().unique(),
+  serviceId: int("serviceId").notNull(),
+  serviceName: varchar("serviceName", { length: 255 }).notNull(),
+  bookingDate: varchar("bookingDate", { length: 10 }).notNull(), // YYYY-MM-DD
+  bookingTime: varchar("bookingTime", { length: 5 }).notNull(), // HH:MM
+  clientName: varchar("clientName", { length: 255 }).notNull(),
+  clientPhone: varchar("clientPhone", { length: 20 }).notNull(),
+  clientEmail: varchar("clientEmail", { length: 320 }),
+  comment: text("comment"),
+  status: mysqlEnum("status", ["pending", "confirmed", "declined"]).default("pending").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Booking = typeof bookings.$inferSelect;
+export type InsertBooking = typeof bookings.$inferInsert;

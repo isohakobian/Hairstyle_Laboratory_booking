@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, InsertBooking, users, services, bookings } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,4 +89,65 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+// Services queries
+export async function getAllServices() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(services).orderBy(services.id);
+}
+
+export async function getServiceById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(services).where(eq(services.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+// Bookings queries
+export async function createBooking(booking: InsertBooking) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(bookings).values(booking);
+  return result;
+}
+
+export async function getBookingByReference(referenceNumber: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(bookings).where(eq(bookings.referenceNumber, referenceNumber)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getBookingsByEmail(email: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(bookings).where(eq(bookings.clientEmail, email));
+}
+
+export async function getAllBookings() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(bookings).orderBy(desc(bookings.createdAt));
+}
+
+export async function updateBookingStatus(id: number, status: "pending" | "confirmed" | "declined") {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(bookings).set({ status }).where(eq(bookings.id, id));
+}
+
+// Check for double booking on confirmed slots
+export async function isTimeSlotAvailable(date: string, time: string, excludeBookingId?: number) {
+  const db = await getDb();
+  if (!db) return true;
+  
+  const query = db.select().from(bookings)
+    .where(and(
+      eq(bookings.bookingDate, date),
+      eq(bookings.bookingTime, time),
+      eq(bookings.status, "confirmed")
+    ));
+  
+  const results = await query;
+  return results.length === 0;
+}
