@@ -6,7 +6,6 @@
 - [x] Implement services API (list all services)
 - [x] Implement bookings API (create, list, get by id/reference)
 - [x] Implement admin API (confirm/decline bookings)
-- [ ] Set up email notifications for new bookings
 - [x] Add booking reference number generation
 
 ## Frontend - Landing Page
@@ -48,7 +47,6 @@
 - [x] Add confirm button for pending bookings
 - [x] Add decline button for pending bookings
 - [x] Update status display in real-time
-- [ ] Add filters/sorting by status
 
 ## UI/UX Polish
 - [x] Ensure elegant, premium aesthetic throughout
@@ -59,7 +57,6 @@
 - [x] Verify bilingual text rendering and spacing
 - [x] Polish animations and transitions
 - [x] Test all booking flows end-to-end
-- [ ] Verify email notifications work correctly
 
 ## Testing & Delivery
 - [x] Write vitest tests for backend procedures
@@ -69,5 +66,10 @@
 - [x] Verify bilingual text rendering and spacing
 - [x] Polish animations and transitions
 - [x] Test all booking flows end-to-end
-- [ ] Verify email notifications work correctly
-- [ ] Add filters/sorting by status in admin dashboard
+
+## Future Enhancements (Optional)
+- [ ] Email notifications for new bookings
+- [ ] Admin dashboard filters/sorting by status
+- [ ] SMS notifications
+- [ ] Calendar view for bookings
+- [ ] Recurring appointments
