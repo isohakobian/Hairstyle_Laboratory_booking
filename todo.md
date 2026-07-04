@@ -56,14 +56,18 @@
 - [x] Fix React context import duplication issue
 - [x] Implement bilingual language switcher (EN/РУ)
 - [x] Create elegant CSS styling with premium feel
-- [ ] Verify bilingual text rendering and spacing
-- [ ] Polish animations and transitions
-- [ ] Test all booking flows end-to-end
+- [x] Verify bilingual text rendering and spacing
+- [x] Polish animations and transitions
+- [x] Test all booking flows end-to-end
 - [ ] Verify email notifications work correctly
 
 ## Testing & Delivery
-- [ ] Write vitest tests for backend procedures
-- [ ] Test booking creation and status updates
-- [ ] Test admin confirm/decline functionality
-- [ ] Manual testing of all user flows
-- [ ] Create checkpoint and prepare for delivery
+- [x] Write vitest tests for backend procedures
+- [x] Test booking creation and status updates
+- [x] Test admin confirm/decline functionality
+- [x] Manual testing of all user flows
+- [x] Verify bilingual text rendering and spacing
+- [x] Polish animations and transitions
+- [x] Test all booking flows end-to-end
+- [ ] Verify email notifications work correctly
+- [ ] Add filters/sorting by status in admin dashboard
