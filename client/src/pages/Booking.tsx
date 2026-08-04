@@ -129,8 +129,16 @@ export default function Booking() {
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="font-semibold text-[hsl(var(--primary))]">{service.priceRub === 0 ? (language === 'ru' ? 'Бесплатно' : 'Free') : `${service.priceRub.toLocaleString()} ₽`}</p>
-                      <p className="text-xs text-[hsl(var(--muted))]-foreground">{service.durationMinutes} {language === 'ru' ? 'мин' : 'min'}</p>
+                      <p className="font-semibold text-[hsl(var(--primary))]">
+                        {service.priceRub === 0 ? (language === 'ru' ? 'Бесплатно' : 'Free') : 
+                         service.priceMinRub && service.priceMaxRub ? 
+                         `${service.priceMinRub.toLocaleString()}–${service.priceMaxRub.toLocaleString()} ₽` :
+                         service.priceRub ? `${service.priceRub.toLocaleString()} ₽` : '-'}
+                      </p>
+                      <p className="text-xs text-[hsl(var(--muted))]-foreground">
+                        {service.durationMinutes === 240 ? (language === 'ru' ? '4 часа' : '4 hours') : 
+                         `${service.durationMinutes} ${language === 'ru' ? 'мин' : 'min'}`}
+                      </p>
                     </div>
                   </div>
                 </button>
@@ -298,12 +306,17 @@ export default function Booking() {
           <div className="card-premium text-center">
             <CheckCircle className="w-16 h-16 text-accent mx-auto mb-6" />
             <h2 className="text-2xl font-semibold mb-4 text-[hsl(var(--primary))]">
-              {language === 'ru' ? 'Бронирование подтверждено!' : 'Booking Confirmed!'}
+              {language === 'ru' ? 'Заявка отправлена' : 'Booking request sent'}
             </h2>
             <p className="text-[hsl(var(--muted))]-foreground mb-8">
               {language === 'ru'
-                ? 'Ваше бронирование успешно отправлено. Вы получите подтверждение в ближайшее время.'
-                : 'Your booking has been submitted successfully. You will receive confirmation shortly.'}
+                ? 'Ваша заявка ожидает подтверждения Isaac.'
+                : 'Your request is waiting for Isaac\'s confirmation.'}
+            </p>
+            <p className="text-sm text-[hsl(var(--muted))] mb-8">
+              {language === 'ru'
+                ? 'Статус: ожидание'
+                : 'Status: pending'}
             </p>
 
             <div className="bg-[hsl(var(--secondary))] rounded-lg p-6 mb-8">

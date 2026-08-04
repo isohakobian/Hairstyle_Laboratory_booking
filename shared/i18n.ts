@@ -3,7 +3,7 @@ export type Language = 'en' | 'ru';
 export const translations = {
   en: {
     // Navigation & Header
-    bookNow: 'Book Now',
+    bookNow: 'Book appointment',
     admin: 'Admin',
     logout: 'Logout',
     home: 'Home',
@@ -11,56 +11,60 @@ export const translations = {
     booking: 'Booking',
 
     // Landing Page
-    welcomeTitle: "Isaac's Premium Barbershop",
-    welcomeSubtitle: 'Experience refined grooming and exceptional style',
-    aboutTitle: 'About Our Barbershop',
-    aboutText: 'We specialize in premium men\'s grooming with attention to detail and a commitment to excellence. Every cut is crafted to perfection.',
-    servicesTitle: 'Our Services',
-    bookingCTA: 'Book Your Appointment',
+    welcomeTitle: 'Hairstyle Laboratory',
+    welcomeSubtitle: 'Personal booking with Isaac — hair stylist and barber',
+    aboutTitle: 'About',
+    aboutText: 'Isaac is a personal hair stylist and barber specializing in men\'s grooming, precision cuts, and individual style consultation.',
+    servicesTitle: 'Services',
+    bookingCTA: 'Book appointment',
 
     // Services
-    menHaircut: 'Men\'s Haircut',
+    menHaircut: 'Men\'s haircut',
     menHaircutDesc: 'Professional haircut with precision fading and styling',
-    beardModeling: 'Beard Modeling',
+    beardModeling: 'Beard modeling',
     beardModelingDesc: 'Expert beard shaping and grooming',
-    scalpCare: 'Scalp Care',
+    scalpCare: 'Scalp care',
     scalpCareDesc: 'Therapeutic scalp treatment and massage',
-    hairCare: 'Hair Care',
+    hairCare: 'Hair care',
     hairCareDesc: 'Deep conditioning and hair treatment',
-    chemicalBioPerm: 'Chemical Bio Perm',
+    chemicalBioPerm: 'Chemical bio perm',
     chemicalBioPermDesc: 'Professional chemical treatment for permanent waves',
+    chemicalBioPermNote: 'A 5,000 RUB prepayment is required for chemical bio perm booking. Final price: 10,000–15,000 RUB.',
     consultation: 'Consultation',
     consultationDesc: 'Free consultation for hair and style advice',
 
     // Duration & Price
     duration: 'Duration',
     minutes: 'min',
+    hours: 'hours',
     price: 'Price',
     free: 'Free',
-    rub: '₽',
+    rub: 'RUB',
+    priceRange: '10,000–15,000 RUB',
 
     // Booking Form
     selectService: 'Select Service',
     selectDate: 'Select Date',
     selectTime: 'Select Time',
     yourName: 'Your Name',
-    phoneOrEmail: 'Phone or Email',
+    phoneOrWhatsapp: 'Phone / WhatsApp',
     addComment: 'Add Comment (Optional)',
     submitBooking: 'Submit Booking',
-    bookingConfirmed: 'Booking Confirmed!',
+    bookingRequestSent: 'Booking request sent',
     bookingReference: 'Your Reference Number',
     checkStatus: 'Check Status',
 
     // Booking Status
     searchBooking: 'Search Your Booking',
     searchByReference: 'Search by Reference Number',
-    searchByEmail: 'Search by Email',
     search: 'Search',
     bookingStatus: 'Booking Status',
     pending: 'Pending',
     confirmed: 'Confirmed',
     declined: 'Declined',
     noBookingFound: 'No booking found',
+    waitingForConfirmation: 'Your request is waiting for Isaac\'s confirmation.',
+    statusPending: 'Status: pending',
 
     // Admin Dashboard
     adminDashboard: 'Admin Dashboard',
@@ -82,7 +86,8 @@ export const translations = {
     pleaseSelectService: 'Please select a service',
     pleaseSelectDate: 'Please select a date',
     pleaseSelectTime: 'Please select a time',
-    invalidEmail: 'Please enter a valid email',
+    pleaseEnterName: 'Please enter your name',
+    pleaseEnterPhone: 'Please enter your phone number',
     bookingConfirmedMessage: 'Your booking has been confirmed!',
     bookingDeclinedMessage: 'Your booking has been declined',
   },
@@ -96,12 +101,12 @@ export const translations = {
     booking: 'Бронирование',
 
     // Landing Page
-    welcomeTitle: 'Премиум барбершоп Isaac',
-    welcomeSubtitle: 'Опыт утонченного ухода и исключительного стиля',
-    aboutTitle: 'О нашем барбершопе',
-    aboutText: 'Мы специализируемся на премиум уходе за мужчинами с вниманием к деталям и стремлением к совершенству. Каждая стрижка создается идеально.',
-    servicesTitle: 'Наши услуги',
-    bookingCTA: 'Запишитесь на прием',
+    welcomeTitle: 'Hairstyle Laboratory',
+    welcomeSubtitle: 'Персональная запись к Isaac — стилисту по волосам и барберу',
+    aboutTitle: 'О мастере',
+    aboutText: 'Isaac — персональный стилист по волосам и барбер, специализирующийся на мужском уходе, точных стрижках и индивидуальной консультации по стилю.',
+    servicesTitle: 'Услуги',
+    bookingCTA: 'Записаться',
 
     // Services
     menHaircut: 'Мужская стрижка',
@@ -114,38 +119,42 @@ export const translations = {
     hairCareDesc: 'Глубокое кондиционирование и лечение волос',
     chemicalBioPerm: 'Химическая биозавивка',
     chemicalBioPermDesc: 'Профессиональное химическое лечение для перманентных волн',
+    chemicalBioPermNote: 'Для записи на химическую биозавивку требуется предоплата 5 000 ₽. Итоговая стоимость: 10 000–15 000 ₽.',
     consultation: 'Консультация',
     consultationDesc: 'Бесплатная консультация по волосам и стилю',
 
     // Duration & Price
     duration: 'Длительность',
     minutes: 'мин',
+    hours: 'часа',
     price: 'Цена',
     free: 'Бесплатно',
     rub: '₽',
+    priceRange: '10 000–15 000 ₽',
 
     // Booking Form
     selectService: 'Выберите услугу',
     selectDate: 'Выберите дату',
     selectTime: 'Выберите время',
     yourName: 'Ваше имя',
-    phoneOrEmail: 'Телефон или Email',
+    phoneOrWhatsapp: 'Телефон / WhatsApp',
     addComment: 'Добавить комментарий (опционально)',
-    submitBooking: 'Отправить бронирование',
-    bookingConfirmed: 'Бронирование подтверждено!',
+    submitBooking: 'Отправить заявку',
+    bookingRequestSent: 'Заявка отправлена',
     bookingReference: 'Ваш номер бронирования',
     checkStatus: 'Проверить статус',
 
     // Booking Status
     searchBooking: 'Найти ваше бронирование',
     searchByReference: 'Поиск по номеру бронирования',
-    searchByEmail: 'Поиск по Email',
     search: 'Поиск',
     bookingStatus: 'Статус бронирования',
     pending: 'Ожидание',
     confirmed: 'Подтверждено',
     declined: 'Отклонено',
     noBookingFound: 'Бронирование не найдено',
+    waitingForConfirmation: 'Ваша заявка ожидает подтверждения Isaac.',
+    statusPending: 'Статус: ожидание',
 
     // Admin Dashboard
     adminDashboard: 'Админ-панель',
@@ -162,12 +171,13 @@ export const translations = {
     noBookings: 'Еще нет бронирований',
 
     // Messages
-    bookingSubmitted: 'Ваше бронирование успешно отправлено!',
+    bookingSubmitted: 'Ваша заявка успешно отправлена!',
     timeSlotUnavailable: 'Этот временной слот уже занят',
     pleaseSelectService: 'Пожалуйста, выберите услугу',
     pleaseSelectDate: 'Пожалуйста, выберите дату',
     pleaseSelectTime: 'Пожалуйста, выберите время',
-    invalidEmail: 'Пожалуйста, введите корректный email',
+    pleaseEnterName: 'Пожалуйста, введите ваше имя',
+    pleaseEnterPhone: 'Пожалуйста, введите ваш номер телефона',
     bookingConfirmedMessage: 'Ваше бронирование подтверждено!',
     bookingDeclinedMessage: 'Ваше бронирование отклонено',
   },
