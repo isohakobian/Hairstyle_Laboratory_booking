@@ -3,44 +3,34 @@ export type Language = 'en' | 'ru';
 export const translations = {
   en: {
     // Navigation & Header
-    bookNow: 'Book appointment',
+    bookNow: 'Book',
     admin: 'Admin',
     logout: 'Logout',
     home: 'Home',
     services: 'Services',
     booking: 'Booking',
+    status: 'Status',
 
     // Landing Page
     welcomeTitle: 'Hairstyle Laboratory',
-    welcomeSubtitle: 'Personal booking with Isaac — hair stylist and barber',
+    welcomeSubtitle: 'Personal booking with Isaac',
     aboutTitle: 'About',
-    aboutText: 'Isaac is a personal hair stylist and barber specializing in men\'s grooming, precision cuts, and individual style consultation.',
+    aboutText: 'A personal space for booking appointments. Precision haircuts and beard styling.',
     servicesTitle: 'Services',
     bookingCTA: 'Book appointment',
 
     // Services
-    menHaircut: 'Men\'s haircut',
-    menHaircutDesc: 'Professional haircut with precision fading and styling',
+    menHaircut: 'Haircut',
+    menHaircutDesc: 'Precision cut and styling',
     beardModeling: 'Beard modeling',
-    beardModelingDesc: 'Expert beard shaping and grooming',
-    scalpCare: 'Scalp care',
-    scalpCareDesc: 'Therapeutic scalp treatment and massage',
-    hairCare: 'Hair care',
-    hairCareDesc: 'Deep conditioning and hair treatment',
-    chemicalBioPerm: 'Chemical bio perm',
-    chemicalBioPermDesc: 'Professional chemical treatment for permanent waves',
-    chemicalBioPermNote: 'A 5,000 RUB prepayment is required for chemical bio perm booking. Final price: 10,000–15,000 RUB.',
-    consultation: 'Consultation',
-    consultationDesc: 'Free consultation for hair and style advice',
+    beardModelingDesc: 'Beard shaping and grooming',
 
     // Duration & Price
     duration: 'Duration',
     minutes: 'min',
-    hours: 'hours',
     price: 'Price',
-    free: 'Free',
     rub: 'RUB',
-    priceRange: '10,000–15,000 RUB',
+    amd: 'AMD',
 
     // Booking Form
     selectService: 'Select Service',
@@ -63,7 +53,7 @@ export const translations = {
     confirmed: 'Confirmed',
     declined: 'Declined',
     noBookingFound: 'No booking found',
-    waitingForConfirmation: 'Your request is waiting for Isaac\'s confirmation.',
+    waitingForConfirmation: 'Your request is waiting for confirmation.',
     statusPending: 'Status: pending',
 
     // Admin Dashboard
@@ -99,38 +89,28 @@ export const translations = {
     home: 'Главная',
     services: 'Услуги',
     booking: 'Бронирование',
+    status: 'Статус',
 
     // Landing Page
     welcomeTitle: 'Hairstyle Laboratory',
-    welcomeSubtitle: 'Персональная запись к Isaac — стилисту по волосам и барберу',
-    aboutTitle: 'О мастере',
-    aboutText: 'Isaac — персональный стилист по волосам и барбер, специализирующийся на мужском уходе, точных стрижках и индивидуальной консультации по стилю.',
+    welcomeSubtitle: 'Персональная запись к Isaac',
+    aboutTitle: 'О сайте',
+    aboutText: 'Личное пространство для записи на приём. Точные стрижки и моделирование бороды.',
     servicesTitle: 'Услуги',
     bookingCTA: 'Записаться',
 
     // Services
-    menHaircut: 'Мужская стрижка',
-    menHaircutDesc: 'Профессиональная стрижка с точной техникой и стайлингом',
+    menHaircut: 'Стрижка',
+    menHaircutDesc: 'Точная стрижка и стайлинг',
     beardModeling: 'Моделирование бороды',
-    beardModelingDesc: 'Экспертная формовка и уход за бородой',
-    scalpCare: 'Уход за кожей головы',
-    scalpCareDesc: 'Терапевтическое лечение кожи головы и массаж',
-    hairCare: 'Уход за волосами',
-    hairCareDesc: 'Глубокое кондиционирование и лечение волос',
-    chemicalBioPerm: 'Химическая биозавивка',
-    chemicalBioPermDesc: 'Профессиональное химическое лечение для перманентных волн',
-    chemicalBioPermNote: 'Для записи на химическую биозавивку требуется предоплата 5 000 ₽. Итоговая стоимость: 10 000–15 000 ₽.',
-    consultation: 'Консультация',
-    consultationDesc: 'Бесплатная консультация по волосам и стилю',
+    beardModelingDesc: 'Формовка и уход за бородой',
 
     // Duration & Price
     duration: 'Длительность',
     minutes: 'мин',
-    hours: 'часа',
     price: 'Цена',
-    free: 'Бесплатно',
     rub: '₽',
-    priceRange: '10 000–15 000 ₽',
+    amd: '֏',
 
     // Booking Form
     selectService: 'Выберите услугу',
@@ -153,7 +133,7 @@ export const translations = {
     confirmed: 'Подтверждено',
     declined: 'Отклонено',
     noBookingFound: 'Бронирование не найдено',
-    waitingForConfirmation: 'Ваша заявка ожидает подтверждения Isaac.',
+    waitingForConfirmation: 'Ваша заявка ожидает подтверждения.',
     statusPending: 'Статус: ожидание',
 
     // Admin Dashboard

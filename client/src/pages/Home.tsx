@@ -12,51 +12,19 @@ export default function Home() {
   const services = [
     {
       id: 1,
-      titleEn: 'Men\'s Haircut',
-      titleRu: 'Мужская стрижка',
-      descEn: 'Professional haircut with precision fading and styling',
+      titleEn: 'Haircut',
+      titleRu: 'Стрижка',
+      descEn: 'Precision cut and styling',
       duration: 45,
       price: 3000,
     },
     {
       id: 2,
-      titleEn: 'Beard Modeling',
+      titleEn: 'Beard modeling',
       titleRu: 'Моделирование бороды',
-      descEn: 'Expert beard shaping and grooming',
+      descEn: 'Beard shaping and grooming',
       duration: 30,
-      price: 2500,
-    },
-    {
-      id: 3,
-      titleEn: 'Scalp Care',
-      titleRu: 'Уход за кожей головы',
-      descEn: 'Therapeutic scalp treatment and massage',
-      duration: 15,
-      price: 1200,
-    },
-    {
-      id: 4,
-      titleEn: 'Hair Care',
-      titleRu: 'Уход за волосами',
-      descEn: 'Deep conditioning and hair treatment',
-      duration: 15,
-      price: 1000,
-    },
-    {
-      id: 5,
-      titleEn: 'Chemical Bio Perm',
-      titleRu: 'Химическая биозавивка',
-      descEn: 'Professional chemical treatment for permanent waves',
-      duration: 240,
-      price: 12500,
-    },
-    {
-      id: 6,
-      titleEn: 'Consultation',
-      titleRu: 'Консультация',
-      descEn: 'Free consultation for hair and style advice',
-      duration: 10,
-      price: 0,
+      price: 500,
     },
   ];
 
@@ -70,10 +38,7 @@ export default function Home() {
       <header style={{ position: 'sticky', top: 0, zIndex: 50, backgroundColor: 'hsl(var(--card))', borderBottom: '1px solid hsl(var(--border))' }} className="backdrop-blur-sm">
         <div className="container flex items-center justify-between" style={{ height: '5rem' }}>
           <div className="flex items-center gap-3">
-            <div style={{ width: '2.5rem', height: '2.5rem', backgroundColor: 'hsl(var(--primary))', borderRadius: '0.5rem' }} className="flex items-center justify-center">
-              <span style={{ color: 'hsl(var(--primary-foreground))', fontWeight: 'bold', fontSize: '1.125rem' }}>I</span>
-            </div>
-            <h1 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'hsl(var(--primary))' }} className="hidden sm:block">Isaac</h1>
+            <h1 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'hsl(var(--primary))' }}>Hairstyle Laboratory</h1>
           </div>
 
           <nav className="flex items-center gap-8">
@@ -184,12 +149,12 @@ export default function Home() {
         <div className="container">
           <div style={{ maxWidth: '48rem', margin: '0 auto', textAlign: 'center' }}>
             <h1 style={{ marginBottom: '1.5rem', color: 'hsl(var(--primary))' }}>
-              {language === 'ru' ? 'Премиум барбершоп Isaac' : "Isaac's Premium Barbershop"}
+              {language === 'ru' ? 'Hairstyle Laboratory' : 'Hairstyle Laboratory'}
             </h1>
             <p style={{ fontSize: '1.25rem', color: 'hsl(var(--muted-foreground))', marginBottom: '2rem' }}>
               {language === 'ru'
-                ? 'Опыт утонченного ухода и исключительного стиля'
-                : 'Experience refined grooming and exceptional style'}
+                ? 'Личное пространство для записи на приём'
+                : 'Personal booking space'}
             </p>
             <Button
               onClick={() => setLocation('/booking')}
@@ -217,7 +182,7 @@ export default function Home() {
       <section style={{ paddingTop: '4rem', paddingBottom: '4rem', backgroundColor: 'hsl(var(--card))', borderTop: '1px solid hsl(var(--border))' }}>
         <div className="container">
           <h2 style={{ textAlign: 'center', marginBottom: '4rem', color: 'hsl(var(--primary))' }}>
-            {language === 'ru' ? 'Наши услуги' : 'Our Services'}
+            {language === 'ru' ? 'Услуги' : 'Services'}
           </h2>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
