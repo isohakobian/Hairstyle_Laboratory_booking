@@ -151,3 +151,56 @@ export async function isTimeSlotAvailable(date: string, time: string, excludeBoo
   const results = await query;
   return results.length === 0;
 }
+
+// ── Blocked Dates ──────────────────────────────────────────────────────────
+import { blockedDates, reviews, InsertBlockedDate, InsertReview } from "../drizzle/schema";
+
+export async function getBlockedDates() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(blockedDates).orderBy(blockedDates.date);
+}
+
+export async function blockDate(date: string, reason?: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(blockedDates).values({ date, reason }).onDuplicateKeyUpdate({ set: { reason } });
+}
+
+export async function unblockDate(date: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.delete(blockedDates).where(eq(blockedDates.date, date));
+}
+
+// ── Reviews ────────────────────────────────────────────────────────────────
+export async function createReview(review: InsertReview) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.insert(reviews).values(review);
+}
+
+export async function getReviewByBookingId(bookingId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(reviews).where(eq(reviews.bookingId, bookingId)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getPublishedReviews() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(reviews).where(eq(reviews.isPublished, "yes")).orderBy(desc(reviews.createdAt));
+}
+
+export async function getAllReviews() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(reviews).orderBy(desc(reviews.createdAt));
+}
+
+export async function updateReviewPublished(id: number, isPublished: "yes" | "no") {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(reviews).set({ isPublished }).where(eq(reviews.id, id));
+}

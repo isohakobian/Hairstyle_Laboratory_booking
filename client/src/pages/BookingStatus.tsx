@@ -17,14 +17,7 @@ const copy: Record<Language, any> = {
     placeholder: 'e.g. AB12CD', search: 'Check', back: '← Back',
     notFound: 'Booking not found. Check your reference number.', statusLabel: 'Status',
     service: 'Service', date: 'Date', time: 'Time', name: 'Name',
-    pending: 'Pending', confirmed: 'Confirmed', declined: 'Declined', bookAnother: 'Book again',
-  },
-  am: {
-    title: 'Հայտի կարգավիճակ', sub: 'Մուտքագրեք հայտի համարը', label: 'Հայտի համար',
-    placeholder: 'Օր. AB12CD', search: 'Ստուգել', back: '← Հետ',
-    notFound: 'Հայտ չի գտնվել: Ստուգեք համարը:', statusLabel: 'Կարգավիճակ',
-    service: 'Ծառայություն', date: 'Ամսաթիվ', time: 'Ժամ', name: 'Անուն',
-    pending: 'Սպասում', confirmed: 'Հաստատված', declined: 'Մերժված', bookAnother: 'Կրկին գրանցվել',
+    pending: 'Pending', confirmed: 'Confirmed', declined: 'Declined',     bookAnother: 'Book again',
   },
 };
 

@@ -4,13 +4,13 @@ import { useAuth } from '@/_core/hooks/useAuth';
 import { getLoginUrl } from '@/const';
 import { useLocation } from 'wouter';
 
-type Lang = 'ru' | 'en' | 'am';
+type Lang = 'ru' | 'en';
 
 const copy: Record<Lang, {
   nav: { booking: string; status: string; login: string; logout: string; admin: string };
   hero: { eyebrow: string; line1: string; line2: string; line3: string; sub: string; cta: string };
   about: { label: string; text: string };
-  services: { label: string; haircut: string; haircutDesc: string; beard: string; beardDesc: string; duration: string; book: string };
+  services: { label: string; haircut: string; haircutDesc: string; beard: string; beardDesc: string; bioPerm: string; bioPermDesc: string; duration: string; book: string; deposit: string };
   footer: { copy: string };
 }> = {
   ru: {
@@ -33,8 +33,11 @@ const copy: Record<Lang, {
       haircutDesc: 'Точная стрижка и стайлинг',
       beard: 'Моделирование бороды',
       beardDesc: 'Формовка и уход за бородой',
+      bioPerm: 'Биохимическая завивка',
+      bioPermDesc: 'Химическая завивка с уходом',
       duration: 'мин',
       book: 'Записаться',
+      deposit: 'Предоплата',
     },
     footer: { copy: '© Hairstyle Laboratory' },
   },
@@ -58,44 +61,25 @@ const copy: Record<Lang, {
       haircutDesc: 'Precision cut and styling',
       beard: 'Beard modeling',
       beardDesc: 'Beard shaping and grooming',
+      bioPerm: 'Bio Perm',
+      bioPermDesc: 'Chemical wave treatment',
       duration: 'min',
       book: 'Book',
+      deposit: 'Deposit',
     },
     footer: { copy: '© Hairstyle Laboratory' },
   },
-  am: {
-    nav: { booking: 'Գրանցվել', status: 'Կարգ.', login: 'Մուտք', logout: 'Ելք', admin: 'Կառ.' },
-    hero: {
-      eyebrow: 'Isaac Hakobian',
-      line1: 'Կտրվածք.',
-      line2: 'Ոճ.',
-      line3: 'Մանրամ.',
-      sub: 'Անձնական գրանցում',
-      cta: 'Գրանցվել',
-    },
-    about: {
-      label: 'Վարպետի մասին',
-      text: 'Isaac Hakobian — տղամարդու մազերի ոճաբան: Կտրվածք, ձև, մանրամասն:',
-    },
-    services: {
-      label: 'Ծառայություններ',
-      haircut: 'Կտրվածք',
-      haircutDesc: 'Ճշգրիտ կտրվածք',
-      beard: 'Մորուքի ձևավ.',
-      beardDesc: 'Ձևավորում և խնամք',
-      duration: 'ր',
-      book: 'Գրանցվել',
-    },
-    footer: { copy: '© Hairstyle Laboratory' },
-  },
+
 };
 
+
 const services = [
-  { id: 1, nameKey: 'haircut' as const, descKey: 'haircutDesc' as const, duration: 45, priceRub: 3000, priceAmd: 15000 },
-  { id: 2, nameKey: 'beard' as const, descKey: 'beardDesc' as const, duration: 30, priceRub: 500, priceAmd: 2500 },
+  { id: 1, nameKey: 'haircut' as const, descKey: 'haircutDesc' as const, duration: 45, priceAmd: 15000, deposit: null as number | null },
+  { id: 2, nameKey: 'beard' as const, descKey: 'beardDesc' as const, duration: 30, priceAmd: 12000, deposit: null as number | null },
+  { id: 3, nameKey: 'bioPerm' as const, descKey: 'bioPermDesc' as const, duration: 180, priceAmd: null as number | null, priceMinAmd: 70000, priceMaxAmd: 110000, deposit: 35000 },
 ];
 
-const langs: Lang[] = ['ru', 'en', 'am'];
+const langs: Lang[] = ['ru', 'en'];
 
 export default function Home() {
   const { language, setLanguage } = useLanguage() as { language: Lang; setLanguage: (l: Lang) => void };
@@ -113,9 +97,12 @@ export default function Home() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const formatPrice = (rub: number, amd: number) => {
-    if (language === 'am') return `${amd.toLocaleString()} ֏`;
-    return `${rub.toLocaleString()} ₽`;
+  const formatPrice = (svc: typeof services[number]) => {
+    if ('priceMinAmd' in svc && svc.priceMinAmd) {
+      return `${svc.priceMinAmd.toLocaleString()} – ${svc.priceMaxAmd!.toLocaleString()} ֏`;
+    }
+    if (svc.priceAmd) return `${svc.priceAmd.toLocaleString()} ֏`;
+    return '—';
   };
 
   const navStyle: React.CSSProperties = {
@@ -419,8 +406,13 @@ export default function Home() {
                   color: hoveredService === svc.id ? 'var(--gold-mid)' : 'hsl(var(--foreground))',
                   transition: 'color 300ms ease',
                 }}>
-                  {formatPrice(svc.priceRub, svc.priceAmd)}
+                  {formatPrice(svc)}
                 </p>
+                {svc.deposit && (
+                  <span className="label-caps" style={{ fontSize: '0.5625rem', color: 'var(--gold-mid)' }}>
+                    {c.services.deposit}: {svc.deposit.toLocaleString()} ֏
+                  </span>
+                )}
                 <span className="label-caps" style={{
                   fontSize: '0.5625rem',
                   color: hoveredService === svc.id ? 'var(--gold-mid)' : 'hsl(var(--muted-foreground))',

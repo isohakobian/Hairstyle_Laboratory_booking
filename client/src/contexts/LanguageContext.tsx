@@ -1,10 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 // Scalable language type — add new languages here only
-export type Language = 'ru' | 'en' | 'am';
-// Future: | 'ar' | 'es' | 'fr'
+export type Language = 'ru' | 'en';
+// Future: | 'am' | 'ar' | 'es' | 'fr'
 
-export const SUPPORTED_LANGUAGES: Language[] = ['ru', 'en', 'am'];
+export const SUPPORTED_LANGUAGES: Language[] = ['ru', 'en'];
 export const DEFAULT_LANGUAGE: Language = 'ru';
 
 interface LanguageContextType {

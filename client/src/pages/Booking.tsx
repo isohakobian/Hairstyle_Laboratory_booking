@@ -4,7 +4,7 @@ import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
 import { useLocation } from 'wouter';
 
-type Lang = 'ru' | 'en' | 'am';
+type Lang = 'ru' | 'en';
 
 const copy: Record<Lang, {
   title: string;
@@ -25,6 +25,8 @@ const copy: Record<Lang, {
   backHome: string;
   haircut: string;
   beard: string;
+  bioPerm: string;
+  deposit: string;
   errors: {
     service: string;
     date: string;
@@ -54,6 +56,8 @@ const copy: Record<Lang, {
     backHome: 'На главную',
     haircut: 'Стрижка',
     beard: 'Моделирование бороды',
+    bioPerm: 'Биохимическая завивка',
+    deposit: 'Предоплата',
     errors: {
       service: 'Выберите услугу',
       date: 'Выберите дату',
@@ -83,6 +87,8 @@ const copy: Record<Lang, {
     backHome: 'Back to home',
     haircut: 'Haircut',
     beard: 'Beard modeling',
+    bioPerm: 'Bio Perm',
+    deposit: 'Deposit',
     errors: {
       service: 'Select a service',
       date: 'Select a date',
@@ -93,40 +99,12 @@ const copy: Record<Lang, {
       generic: 'Error. Please try again.',
     },
   },
-  am: {
-    title: 'Գրանցում',
-    sub: 'Ընտրեք ծառայություն, ամսաթիվ և ժամ',
-    selectService: 'Ծառայություն',
-    selectDate: 'Ամսաթիվ',
-    selectTime: 'Ժամ',
-    name: 'Ձեր անունը',
-    phone: 'Հեռախոս / WhatsApp',
-    comment: 'Մեկնաբանություն (կամընտիր)',
-    submit: 'Ուղարկել հայտ',
-    back: '← Հետ',
-    sentTitle: 'Հայտն ուղարկված է',
-    sentSub: 'Սպասում է Isaac-ի հաստատմանը:',
-    statusLabel: 'Կարգավիճակ: սպասում',
-    refLabel: 'Հայտի համար',
-    checkStatus: 'Ստուգել կարգավիճակը',
-    backHome: 'Գլխավոր',
-    haircut: 'Կտրվածք',
-    beard: 'Մորուքի ձևավորում',
-    errors: {
-      service: 'Ընտրեք ծառայություն',
-      date: 'Ընտրեք ամսաթիվ',
-      time: 'Ընտրեք ժամ',
-      name: 'Մուտքագրեք ձեր անունը',
-      phone: 'Մուտքագրեք հեռախոսահամարը',
-      conflict: 'Այս ժամն արդեն զբաղված է',
-      generic: 'Սխալ: Խնդրում ենք կրկին փորձել:',
-    },
-  },
 };
 
 const servicesList = [
-  { id: 1, nameKey: 'haircut' as const, priceRub: 3000, priceAmd: 15000, duration: 45 },
-  { id: 2, nameKey: 'beard' as const, priceRub: 500, priceAmd: 2500, duration: 30 },
+  { id: 1, nameKey: 'haircut' as const, priceAmd: 15000, priceMinAmd: null as number | null, priceMaxAmd: null as number | null, duration: 45, deposit: null as number | null },
+  { id: 2, nameKey: 'beard' as const, priceAmd: 12000, priceMinAmd: null as number | null, priceMaxAmd: null as number | null, duration: 30, deposit: null as number | null },
+  { id: 3, nameKey: 'bioPerm' as const, priceAmd: null as number | null, priceMinAmd: 70000, priceMaxAmd: 110000, duration: 180, deposit: 35000 },
 ];
 
 const timeSlots = [
@@ -169,9 +147,10 @@ export default function Booking() {
 
   const selectedSvc = servicesList.find(s => s.id === selectedService);
 
-  const formatPrice = (rub: number, amd: number) => {
-    if (language === 'am') return `${amd.toLocaleString()} ֏`;
-    return `${rub.toLocaleString()} ₽`;
+  const formatPrice = (svc: typeof servicesList[number]) => {
+    if (svc.priceMinAmd) return `${svc.priceMinAmd.toLocaleString()} – ${svc.priceMaxAmd!.toLocaleString()} ֏`;
+    if (svc.priceAmd) return `${svc.priceAmd.toLocaleString()} ֏`;
+    return '—';
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -290,12 +269,12 @@ export default function Booking() {
                       {c[svc.nameKey]}
                     </p>
                     <p className="label-caps" style={{ marginTop: '0.25rem', fontSize: '0.625rem' }}>
-                      {svc.duration} {language === 'am' ? 'ր' : language === 'ru' ? 'мин' : 'min'}
+                      {svc.duration} {language === 'ru' ? 'мин' : 'min'}
                     </p>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.25rem', color: 'hsl(var(--foreground))', margin: 0 }}>
-                      {formatPrice(svc.priceRub, svc.priceAmd)}
+                      {formatPrice(svc)}
                     </p>
                     <div style={{
                       width: '1.25rem',

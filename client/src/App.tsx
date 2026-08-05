@@ -9,6 +9,7 @@ import Home from "@/pages/Home";
 import Booking from "@/pages/Booking";
 import BookingStatus from "@/pages/BookingStatus";
 import AdminDashboard from "@/pages/AdminDashboard";
+import ReviewForm from "@/pages/ReviewForm";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -18,6 +19,7 @@ function Router() {
       <Route path="/booking" component={Booking} />
       <Route path="/status" component={BookingStatus} />
       <Route path="/admin" component={AdminDashboard} />
+      <Route path="/review" component={ReviewForm} />
       <Route path="/404" component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
@@ -34,7 +36,7 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider
-        defaultTheme="light"
+        defaultTheme="dark"
         // switchable
       >
         <LanguageProvider>
