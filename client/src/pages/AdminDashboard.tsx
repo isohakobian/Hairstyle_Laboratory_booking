@@ -9,7 +9,7 @@ import { useAuth } from '@/_core/hooks/useAuth';
 import { getLoginUrl } from '@/const';
 
 export default function AdminDashboard() {
-  const { language, t } = useLanguage();
+  const { language } = useLanguage();
   const [, setLocation] = useLocation();
   const { user, isAuthenticated, logout, loading } = useAuth();
 

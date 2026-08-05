@@ -1,32 +1,38 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import type { Language } from '@shared/i18n';
-import { t } from '@shared/i18n';
+
+// Scalable language type — add new languages here only
+export type Language = 'ru' | 'en' | 'am';
+// Future: | 'ar' | 'es' | 'fr'
+
+export const SUPPORTED_LANGUAGES: Language[] = ['ru', 'en', 'am'];
+export const DEFAULT_LANGUAGE: Language = 'ru';
 
 interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
-  t: (key: keyof typeof import('@shared/i18n').translations.en) => string;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
+function isValidLanguage(lang: string | null): lang is Language {
+  return SUPPORTED_LANGUAGES.includes(lang as Language);
+}
+
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [language, setLanguageState] = useState<Language>(() => {
-    // Initialize with default value
-    if (typeof window === 'undefined') return 'en';
+    if (typeof window === 'undefined') return DEFAULT_LANGUAGE;
     try {
-      const saved = localStorage.getItem('language') as Language | null;
-      return (saved === 'ru' || saved === 'en') ? saved : 'en';
+      const saved = localStorage.getItem('hl_language');
+      return isValidLanguage(saved) ? saved : DEFAULT_LANGUAGE;
     } catch {
-      return 'en';
+      return DEFAULT_LANGUAGE;
     }
   });
 
   useEffect(() => {
-    // Sync with localStorage after mount
     try {
-      const saved = localStorage.getItem('language') as Language | null;
-      if (saved === 'ru' || saved === 'en') {
+      const saved = localStorage.getItem('hl_language');
+      if (isValidLanguage(saved)) {
         setLanguageState(saved);
       }
     } catch {
@@ -37,18 +43,14 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
     try {
-      localStorage.setItem('language', lang);
+      localStorage.setItem('hl_language', lang);
     } catch {
       // localStorage not available
     }
   };
 
-  const translate = (key: keyof typeof import('@shared/i18n').translations.en) => {
-    return t(key, language);
-  };
-
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t: translate }}>
+    <LanguageContext.Provider value={{ language, setLanguage }}>
       {children}
     </LanguageContext.Provider>
   );

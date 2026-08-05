@@ -15,6 +15,13 @@
       "when": 1783083739473,
       "tag": "0001_daffy_eternals",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1785854111435,
+      "tag": "0002_special_meteorite",
+      "breakpoints": true
     }
   ]
 }

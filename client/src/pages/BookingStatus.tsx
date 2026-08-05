@@ -1,149 +1,117 @@
 import { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Search, CheckCircle, Clock, XCircle } from 'lucide-react';
-import { toast } from 'sonner';
+import { trpc } from '@/lib/trpc';
 import { useLocation } from 'wouter';
+import type { Language } from '@/contexts/LanguageContext';
+
+const copy: Record<Language, any> = {
+  ru: {
+    title: 'Статус заявки', sub: 'Введите номер заявки', label: 'Номер заявки',
+    placeholder: 'Например: AB12CD', search: 'Проверить', back: '← Назад',
+    notFound: 'Заявка не найдена. Проверьте номер.', statusLabel: 'Статус',
+    service: 'Услуга', date: 'Дата', time: 'Время', name: 'Имя',
+    pending: 'Ожидание', confirmed: 'Подтверждено', declined: 'Отклонено', bookAnother: 'Записаться снова',
+  },
+  en: {
+    title: 'Booking Status', sub: 'Enter your reference number', label: 'Reference number',
+    placeholder: 'e.g. AB12CD', search: 'Check', back: '← Back',
+    notFound: 'Booking not found. Check your reference number.', statusLabel: 'Status',
+    service: 'Service', date: 'Date', time: 'Time', name: 'Name',
+    pending: 'Pending', confirmed: 'Confirmed', declined: 'Declined', bookAnother: 'Book again',
+  },
+  am: {
+    title: 'Հայտի կարգավիճակ', sub: 'Մուտքագրեք հայտի համարը', label: 'Հայտի համար',
+    placeholder: 'Օր. AB12CD', search: 'Ստուգել', back: '← Հետ',
+    notFound: 'Հայտ չի գտնվել: Ստուգեք համարը:', statusLabel: 'Կարգավիճակ',
+    service: 'Ծառայություն', date: 'Ամսաթիվ', time: 'Ժամ', name: 'Անուն',
+    pending: 'Սպասում', confirmed: 'Հաստատված', declined: 'Մերժված', bookAnother: 'Կրկին գրանցվել',
+  },
+};
+
+const statusColors: Record<string, string> = {
+  pending: 'hsl(35, 60%, 50%)',
+  confirmed: 'hsl(142, 50%, 40%)',
+  declined: 'hsl(0, 60%, 50%)',
+};
 
 export default function BookingStatus() {
-  const { language } = useLanguage();
+  const { language } = useLanguage() as { language: Language };
   const [, setLocation] = useLocation();
-  const [searchType, setSearchType] = useState<'reference' | 'email'>('reference');
-  const [searchValue, setSearchValue] = useState('');
-  const [booking, setBooking] = useState<any | null>(null);
+  const c = copy[language] ?? copy.ru;
+  const [referenceInput, setReferenceInput] = useState('');
+  const [searchRef, setSearchRef] = useState('');
   const [searched, setSearched] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSearch = async () => {
-    if (!searchValue.trim()) {
-      toast.error(language === 'ru' ? 'Введите значение для поиска' : 'Please enter a search value');
-      return;
-    }
+  const { data: booking, isLoading } = trpc.bookings.getByReference.useQuery(
+    { referenceNumber: searchRef.toUpperCase() },
+    { enabled: !!searchRef }
+  );
 
-    setIsLoading(true);
-    try {
-      // Simulate API call with delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // In a real app, you would call the API here
-      // For now, show a message that the booking wasn't found
-      setBooking(null);
-      setSearched(true);
-      toast.info(language === 'ru' ? 'Бронирование не найдено' : 'No booking found');
-    } catch (error: any) {
-      toast.error(error.message || (language === 'ru' ? 'Ошибка при поиске' : 'Search error'));
-      setBooking(null);
-      setSearched(true);
-    } finally {
-      setIsLoading(false);
-    }
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!referenceInput.trim()) return;
+    setSearchRef(referenceInput.trim());
+    setSearched(true);
   };
 
-  const getStatusBadge = (status: string) => {
-    const statusMap: Record<string, { color: string; icon: any; label: string }> = {
-      pending: { color: 'bg-yellow-100 text-yellow-800', icon: Clock, label: language === 'ru' ? 'Ожидание' : 'Pending' },
-      confirmed: { color: 'bg-green-100 text-green-800', icon: CheckCircle, label: language === 'ru' ? 'Подтверждено' : 'Confirmed' },
-      declined: { color: 'bg-red-100 text-red-800', icon: XCircle, label: language === 'ru' ? 'Отклонено' : 'Declined' },
-    };
-    const info = statusMap[status] || statusMap.pending;
-    const Icon = info.icon;
-    return (
-      <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full ${info.color}`}>
-        <Icon className="w-4 h-4" />
-        <span className="font-semibold">{info.label}</span>
-      </div>
-    );
+  const statusLabel = (s: string) => ({ pending: c.pending, confirmed: c.confirmed, declined: c.declined }[s] ?? s);
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '0.875rem 0', backgroundColor: 'transparent',
+    border: 'none', borderBottom: '1px solid hsl(var(--border))',
+    fontFamily: "'Inter', sans-serif", fontSize: '0.9375rem',
+    color: 'hsl(var(--foreground))', outline: 'none', letterSpacing: '0.1em',
   };
 
   return (
-    <div className="min-h-screen bg-[hsl(var(--background))] pt-24 pb-16">
-      <div className="container max-w-2xl">
-        <h1 className="text-center mb-12 text-[hsl(var(--primary))]">
-          {language === 'ru' ? 'Проверить статус бронирования' : 'Check Your Booking Status'}
-        </h1>
-
-        {/* Search Form */}
-        <div className="card-premium mb-8">
-          <div className="mb-6">
-            <label className="block text-sm font-medium mb-4 text-[hsl(var(--foreground))]">
-              {language === 'ru' ? 'Способ поиска' : 'Search by'}
-            </label>
-            <div className="flex gap-4">
-              <button
-                onClick={() => { setSearchType('reference'); setSearched(false); setBooking(null); }}
-                className={`flex-1 px-4 py-2 rounded-lg border-2 transition-all ${
-                  searchType === 'reference'
-                    ? 'border-primary bg-[hsl(var(--primary))]/5'
-                    : 'border-[hsl(var(--muted))] hover:border-[hsl(var(--muted))]-foreground'
-                }`}
-              >
-                {language === 'ru' ? 'Номер бронирования' : 'Reference Number'}
-              </button>
-              <button
-                onClick={() => { setSearchType('email'); setSearched(false); setBooking(null); }}
-                className={`flex-1 px-4 py-2 rounded-lg border-2 transition-all ${
-                  searchType === 'email'
-                    ? 'border-primary bg-[hsl(var(--primary))]/5'
-                    : 'border-[hsl(var(--muted))] hover:border-[hsl(var(--muted))]-foreground'
-                }`}
-              >
-                Email
+    <div style={{ minHeight: '100vh', backgroundColor: 'hsl(var(--background))' }}>
+      <div className="container" style={{ maxWidth: '36rem', margin: '0 auto', paddingTop: '6rem', paddingBottom: '6rem' }}>
+        <button onClick={() => setLocation('/')} style={{ fontFamily: "'Inter', sans-serif", fontSize: '0.75rem', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'hsl(var(--muted-foreground))', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: '3rem', transition: 'color 200ms ease' }}
+          onMouseEnter={e => (e.currentTarget.style.color = 'hsl(var(--foreground))')}
+          onMouseLeave={e => (e.currentTarget.style.color = 'hsl(var(--muted-foreground))')}>
+          {c.back}
+        </button>
+        <div style={{ marginBottom: '3rem' }}>
+          <p style={{ fontFamily: "'Inter', sans-serif", fontSize: '0.6875rem', fontWeight: 500, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'hsl(var(--muted-foreground))', marginBottom: '1rem' }}>Hairstyle Laboratory</p>
+          <h2 style={{ fontStyle: 'italic', marginBottom: '0.5rem' }}>{c.title}</h2>
+          <p style={{ margin: 0 }}>{c.sub}</p>
+        </div>
+        <form onSubmit={handleSearch} style={{ marginBottom: '3rem' }}>
+          <div style={{ marginBottom: '1.5rem' }}>
+            <p style={{ fontFamily: "'Inter', sans-serif", fontSize: '0.6875rem', fontWeight: 500, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'hsl(var(--muted-foreground))', marginBottom: '0.75rem' }}>{c.label}</p>
+            <input type="text" value={referenceInput} onChange={e => setReferenceInput(e.target.value.toUpperCase())} placeholder={c.placeholder} style={inputStyle} autoComplete="off" />
+          </div>
+          <button type="submit" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.875rem 2.5rem', backgroundColor: 'hsl(var(--foreground))', color: 'hsl(var(--background))', fontFamily: "'Inter', sans-serif", fontSize: '0.75rem', fontWeight: 500, letterSpacing: '0.12em', textTransform: 'uppercase', border: 'none', cursor: 'pointer', width: '100%' }}>
+            {c.search}
+          </button>
+        </form>
+        {isLoading && <p style={{ color: 'hsl(var(--muted-foreground))', textAlign: 'center' }}>...</p>}
+        {searched && !isLoading && !booking && (
+          <div style={{ borderTop: '1px solid hsl(var(--border))', paddingTop: '2rem', textAlign: 'center' }}>
+            <p style={{ color: 'hsl(var(--muted-foreground))' }}>{c.notFound}</p>
+          </div>
+        )}
+        {booking && (
+          <div style={{ borderTop: '1px solid hsl(var(--border))', paddingTop: '2rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem' }}>
+              <p style={{ fontFamily: "'Inter', sans-serif", fontSize: '0.6875rem', fontWeight: 500, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'hsl(var(--muted-foreground))', margin: 0 }}>{c.statusLabel}</p>
+              <span style={{ fontFamily: "'Inter', sans-serif", fontSize: '0.6875rem', fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: statusColors[booking.status] ?? 'hsl(var(--foreground))', padding: '0.25rem 0.75rem', border: `1px solid ${statusColors[booking.status] ?? 'hsl(var(--border))'}` }}>
+                {statusLabel(booking.status)}
+              </span>
+            </div>
+            {[{ label: c.service, value: booking.serviceName }, { label: c.date, value: booking.bookingDate }, { label: c.time, value: booking.bookingTime }, { label: c.name, value: booking.clientName }].map(row => (
+              <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '0.875rem 0', borderBottom: '1px solid hsl(var(--border))' }}>
+                <p style={{ fontFamily: "'Inter', sans-serif", fontSize: '0.6875rem', fontWeight: 500, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'hsl(var(--muted-foreground))', margin: 0 }}>{row.label}</p>
+                <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.125rem', color: 'hsl(var(--foreground))', margin: 0 }}>{row.value}</p>
+              </div>
+            ))}
+            <div style={{ marginTop: '2.5rem' }}>
+              <button onClick={() => setLocation('/booking')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.875rem 2.5rem', backgroundColor: 'transparent', color: 'hsl(var(--foreground))', fontFamily: "'Inter', sans-serif", fontSize: '0.75rem', fontWeight: 500, letterSpacing: '0.12em', textTransform: 'uppercase', border: '1px solid hsl(var(--foreground))', cursor: 'pointer', width: '100%', transition: 'background-color 200ms ease, color 200ms ease' }}
+                onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'hsl(var(--foreground))'; e.currentTarget.style.color = 'hsl(var(--background))'; }}
+                onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'hsl(var(--foreground))'; }}>
+                {c.bookAnother}
               </button>
             </div>
-          </div>
-
-          <div className="flex gap-3">
-            <Input
-              value={searchValue}
-              onChange={(e) => setSearchValue(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-              placeholder={
-                searchType === 'reference'
-                  ? language === 'ru' ? 'Введите номер бронирования' : 'Enter reference number'
-                  : 'your@email.com'
-              }
-              className="w-full"
-            />
-            <Button
-              onClick={handleSearch}
-              disabled={isLoading}
-              className="btn-primary"
-            >
-              <Search className="w-5 h-5" />
-            </Button>
-          </div>
-        </div>
-
-        {/* No Booking Found */}
-        {searched && !booking ? (
-          <div className="card-premium text-center">
-            <XCircle className="w-16 h-16 text-[hsl(var(--muted))]-foreground mx-auto mb-4" />
-            <h2 className="text-xl font-semibold mb-2 text-[hsl(var(--foreground))]">
-              {language === 'ru' ? 'Бронирование не найдено' : 'No Booking Found'}
-            </h2>
-            <p className="text-[hsl(var(--muted))]-foreground mb-6">
-              {language === 'ru'
-                ? 'Проверьте введенные данные и попробуйте еще раз.'
-                : 'Please check your information and try again.'}
-            </p>
-            <Button
-              onClick={() => { setSearched(false); setSearchValue(''); setBooking(null); }}
-              className="btn-primary w-full"
-            >
-              {language === 'ru' ? 'Новый поиск' : 'New Search'}
-            </Button>
-          </div>
-        ) : null}
-
-        {/* Help Text */}
-        {!searched && (
-          <div className="card-premium text-center text-[hsl(var(--muted))]-foreground">
-            <p>
-              {language === 'ru'
-                ? 'Введите номер бронирования или email, чтобы проверить статус вашего бронирования.'
-                : 'Enter your reference number or email to check your booking status.'}
-            </p>
           </div>
         )}
       </div>

@@ -1,340 +1,417 @@
 import { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Clock, AlertCircle, CheckCircle } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
 import { useLocation } from 'wouter';
 
+type Lang = 'ru' | 'en' | 'am';
+
+const copy: Record<Lang, {
+  title: string;
+  sub: string;
+  selectService: string;
+  selectDate: string;
+  selectTime: string;
+  name: string;
+  phone: string;
+  comment: string;
+  submit: string;
+  back: string;
+  sentTitle: string;
+  sentSub: string;
+  statusLabel: string;
+  refLabel: string;
+  checkStatus: string;
+  backHome: string;
+  haircut: string;
+  beard: string;
+  errors: {
+    service: string;
+    date: string;
+    time: string;
+    name: string;
+    phone: string;
+    conflict: string;
+    generic: string;
+  };
+}> = {
+  ru: {
+    title: 'Запись',
+    sub: 'Выберите услугу, дату и время',
+    selectService: 'Услуга',
+    selectDate: 'Дата',
+    selectTime: 'Время',
+    name: 'Ваше имя',
+    phone: 'Телефон / WhatsApp',
+    comment: 'Комментарий (необязательно)',
+    submit: 'Отправить заявку',
+    back: '← Назад',
+    sentTitle: 'Заявка отправлена',
+    sentSub: 'Ожидает подтверждения Isaac.',
+    statusLabel: 'Статус: ожидание',
+    refLabel: 'Номер заявки',
+    checkStatus: 'Проверить статус',
+    backHome: 'На главную',
+    haircut: 'Стрижка',
+    beard: 'Моделирование бороды',
+    errors: {
+      service: 'Выберите услугу',
+      date: 'Выберите дату',
+      time: 'Выберите время',
+      name: 'Введите ваше имя',
+      phone: 'Введите номер телефона',
+      conflict: 'Это время уже занято',
+      generic: 'Ошибка. Попробуйте ещё раз.',
+    },
+  },
+  en: {
+    title: 'Booking',
+    sub: 'Select service, date and time',
+    selectService: 'Service',
+    selectDate: 'Date',
+    selectTime: 'Time',
+    name: 'Your name',
+    phone: 'Phone / WhatsApp',
+    comment: 'Comment (optional)',
+    submit: 'Submit booking',
+    back: '← Back',
+    sentTitle: 'Request sent',
+    sentSub: 'Waiting for Isaac\'s confirmation.',
+    statusLabel: 'Status: pending',
+    refLabel: 'Reference number',
+    checkStatus: 'Check status',
+    backHome: 'Back to home',
+    haircut: 'Haircut',
+    beard: 'Beard modeling',
+    errors: {
+      service: 'Select a service',
+      date: 'Select a date',
+      time: 'Select a time',
+      name: 'Enter your name',
+      phone: 'Enter your phone number',
+      conflict: 'This time slot is already taken',
+      generic: 'Error. Please try again.',
+    },
+  },
+  am: {
+    title: 'Գրանցում',
+    sub: 'Ընտրեք ծառայություն, ամսաթիվ և ժամ',
+    selectService: 'Ծառայություն',
+    selectDate: 'Ամսաթիվ',
+    selectTime: 'Ժամ',
+    name: 'Ձեր անունը',
+    phone: 'Հեռախոս / WhatsApp',
+    comment: 'Մեկնաբանություն (կամընտիր)',
+    submit: 'Ուղարկել հայտ',
+    back: '← Հետ',
+    sentTitle: 'Հայտն ուղարկված է',
+    sentSub: 'Սպասում է Isaac-ի հաստատմանը:',
+    statusLabel: 'Կարգավիճակ: սպասում',
+    refLabel: 'Հայտի համար',
+    checkStatus: 'Ստուգել կարգավիճակը',
+    backHome: 'Գլխավոր',
+    haircut: 'Կտրվածք',
+    beard: 'Մորուքի ձևավորում',
+    errors: {
+      service: 'Ընտրեք ծառայություն',
+      date: 'Ընտրեք ամսաթիվ',
+      time: 'Ընտրեք ժամ',
+      name: 'Մուտքագրեք ձեր անունը',
+      phone: 'Մուտքագրեք հեռախոսահամարը',
+      conflict: 'Այս ժամն արդեն զբաղված է',
+      generic: 'Սխալ: Խնդրում ենք կրկին փորձել:',
+    },
+  },
+};
+
+const servicesList = [
+  { id: 1, nameKey: 'haircut' as const, priceRub: 3000, priceAmd: 15000, duration: 45 },
+  { id: 2, nameKey: 'beard' as const, priceRub: 500, priceAmd: 2500, duration: 30 },
+];
+
+const timeSlots = [
+  '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
+  '12:00', '12:30', '13:00', '13:30', '14:00', '14:30',
+  '15:00', '15:30', '16:00', '16:30', '17:00', '17:30',
+  '18:00', '18:30', '19:00',
+];
+
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '0.875rem 0',
+  backgroundColor: 'transparent',
+  border: 'none',
+  borderBottom: '1px solid hsl(var(--border))',
+  fontFamily: "'Inter', sans-serif",
+  fontSize: '0.9375rem',
+  color: 'hsl(var(--foreground))',
+  outline: 'none',
+  transition: 'border-color 200ms ease',
+};
+
 export default function Booking() {
-  const { language, t } = useLanguage();
+  const { language } = useLanguage() as { language: Lang };
   const [, setLocation] = useLocation();
-  const [step, setStep] = useState<'service' | 'datetime' | 'contact' | 'confirm'>('service');
+
+  const c = copy[language] ?? copy.ru;
+
   const [selectedService, setSelectedService] = useState<number | null>(null);
   const [bookingDate, setBookingDate] = useState('');
   const [bookingTime, setBookingTime] = useState('');
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
-  const [clientEmail, setClientEmail] = useState('');
   const [comment, setComment] = useState('');
   const [referenceNumber, setReferenceNumber] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
 
-  const { data: services } = trpc.services.list.useQuery();
   const createBookingMutation = trpc.bookings.create.useMutation();
 
-  const selectedServiceData = services?.find(s => s.id === selectedService);
+  const selectedSvc = servicesList.find(s => s.id === selectedService);
 
-  const timeSlots = [
-    '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
-    '12:00', '12:30', '13:00', '13:30', '14:00', '14:30',
-    '15:00', '15:30', '16:00', '16:30', '17:00', '17:30',
-    '18:00', '18:30', '19:00'
-  ];
-
-  const getServiceName = (service: any) => {
-    return language === 'ru' ? service.nameRu : service.nameEn;
+  const formatPrice = (rub: number, amd: number) => {
+    if (language === 'am') return `${amd.toLocaleString()} ֏`;
+    return `${rub.toLocaleString()} ₽`;
   };
 
-  const handleServiceSelect = () => {
-    if (!selectedService) {
-      toast.error(language === 'ru' ? 'Выберите услугу' : 'Please select a service');
-      return;
-    }
-    setStep('datetime');
-  };
-
-  const handleDateTimeSelect = () => {
-    if (!bookingDate || !bookingTime) {
-      toast.error(language === 'ru' ? 'Выберите дату и время' : 'Please select date and time');
-      return;
-    }
-    setStep('contact');
-  };
-
-  const handleSubmit = async () => {
-    if (!clientName || !clientPhone) {
-      toast.error(language === 'ru' ? 'Заполните обязательные поля' : 'Please fill required fields');
-      return;
-    }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedService) { toast.error(c.errors.service); return; }
+    if (!bookingDate) { toast.error(c.errors.date); return; }
+    if (!bookingTime) { toast.error(c.errors.time); return; }
+    if (!clientName.trim()) { toast.error(c.errors.name); return; }
+    if (!clientPhone.trim()) { toast.error(c.errors.phone); return; }
 
     try {
       const result = await createBookingMutation.mutateAsync({
-        serviceId: selectedService!,
-        serviceName: getServiceName(selectedServiceData!),
+        serviceId: selectedService,
+        serviceName: c[selectedSvc!.nameKey],
         bookingDate,
         bookingTime,
-        clientName,
-        clientPhone,
-        clientEmail: clientEmail || undefined,
-        comment: comment || undefined,
+        clientName: clientName.trim(),
+        clientPhone: clientPhone.trim(),
+        comment: comment.trim() || undefined,
       });
-
       if (result) {
         setReferenceNumber(result.referenceNumber);
-        setStep('confirm');
+        setSubmitted(true);
       }
     } catch (error: any) {
-      toast.error(error.message || (language === 'ru' ? 'Ошибка при бронировании' : 'Booking error'));
+      const msg = error?.message?.includes('already booked') ? c.errors.conflict : c.errors.generic;
+      toast.error(msg);
     }
   };
 
   const minDate = new Date().toISOString().split('T')[0];
   const maxDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-  return (
-    <div className="min-h-screen bg-[hsl(var(--background))] pt-24 pb-16">
-      <div className="container max-w-2xl">
-        <h1 className="text-center mb-12 text-[hsl(var(--primary))]">
-          {language === 'ru' ? 'Запишитесь на прием' : 'Book Your Appointment'}
-        </h1>
+  if (submitted) {
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: 'hsl(var(--background))', display: 'flex', alignItems: 'center' }}>
+        <div className="container" style={{ maxWidth: '32rem', margin: '0 auto', textAlign: 'center', padding: '4rem 1.5rem' }}>
+          <div className="fade-up">
+            {/* Check icon */}
+            <div style={{ width: '3rem', height: '3rem', border: '1px solid hsl(var(--foreground))', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2.5rem' }}>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <polyline points="3,8 7,12 13,4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
 
-        {/* Progress Indicator */}
-        <div className="flex gap-2 mb-12 justify-center">
-          {['service', 'datetime', 'contact', 'confirm'].map((s, i) => (
-            <div
-              key={s}
-              className={`w-3 h-3 rounded-full transition-all ${
-                step === s ? 'bg-[hsl(var(--primary))] w-8' : 
-                ['service', 'datetime', 'contact', 'confirm'].indexOf(step) > i ? 'bg-accent' : 'bg-[hsl(var(--muted))]'
-              }`}
-            />
-          ))}
+            <h2 style={{ marginBottom: '1rem', fontStyle: 'italic' }}>{c.sentTitle}</h2>
+            <p style={{ marginBottom: '0.5rem' }}>{c.sentSub}</p>
+            <p className="label-caps" style={{ marginBottom: '3rem' }}>{c.statusLabel}</p>
+
+            <div style={{ borderTop: '1px solid hsl(var(--border))', borderBottom: '1px solid hsl(var(--border))', padding: '1.5rem 0', marginBottom: '3rem' }}>
+              <p className="label-caps" style={{ marginBottom: '0.5rem' }}>{c.refLabel}</p>
+              <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '2rem', fontWeight: 400, color: 'hsl(var(--foreground))', letterSpacing: '0.1em', margin: 0 }}>
+                {referenceNumber}
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <button className="btn-primary" onClick={() => setLocation('/status')}>
+                {c.checkStatus}
+              </button>
+              <button className="btn-ghost" onClick={() => setLocation('/')}>
+                {c.backHome}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ minHeight: '100vh', backgroundColor: 'hsl(var(--background))' }}>
+      <div className="container" style={{ maxWidth: '40rem', margin: '0 auto', paddingTop: '6rem', paddingBottom: '6rem' }}>
+
+        {/* Back */}
+        <button
+          className="btn-ghost"
+          onClick={() => setLocation('/')}
+          style={{ marginBottom: '3rem', padding: '0' }}
+        >
+          {c.back}
+        </button>
+
+        {/* Title */}
+        <div style={{ marginBottom: '3rem' }}>
+          <p className="label-caps" style={{ marginBottom: '1rem' }}>Hairstyle Laboratory</p>
+          <h2 style={{ fontStyle: 'italic', marginBottom: '0.5rem' }}>{c.title}</h2>
+          <p style={{ margin: 0 }}>{c.sub}</p>
         </div>
 
-        {/* Step 1: Service Selection */}
-        {step === 'service' && (
-          <div className="card-premium">
-            <h2 className="text-2xl font-semibold mb-6 text-[hsl(var(--primary))]">
-              {language === 'ru' ? 'Выберите услугу' : 'Select Service'}
-            </h2>
-            <div className="space-y-3 mb-8">
-              {services?.map((service) => (
+        <form onSubmit={handleSubmit}>
+          {/* Service selection */}
+          <div style={{ marginBottom: '2.5rem' }}>
+            <p className="label-caps" style={{ marginBottom: '1rem' }}>{c.selectService}</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+              {servicesList.map((svc, i) => (
                 <button
-                  key={service.id}
-                  onClick={() => setSelectedService(service.id)}
-                  className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
-                    selectedService === service.id
-                      ? 'border-primary bg-[hsl(var(--primary))]/5'
-                      : 'border-[hsl(var(--muted))] hover:border-[hsl(var(--muted))]-foreground'
-                  }`}
+                  key={svc.id}
+                  type="button"
+                  onClick={() => setSelectedService(svc.id)}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '1.25rem 0',
+                    borderTop: i === 0 ? '1px solid hsl(var(--border))' : 'none',
+                    borderBottom: '1px solid hsl(var(--border))',
+                    background: 'none',
+                    cursor: 'pointer',
+                    transition: 'opacity 200ms ease',
+                    opacity: selectedService && selectedService !== svc.id ? 0.4 : 1,
+                  }}
                 >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-semibold text-[hsl(var(--foreground))]">{getServiceName(service)}</h3>
-                      <p className="text-sm text-[hsl(var(--muted))]-foreground mt-1">
-                        {language === 'ru' ? service.descriptionRu : service.descriptionEn}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-[hsl(var(--primary))]">{service.priceRub === 0 ? (language === 'ru' ? 'Бесплатно' : 'Free') : `${service.priceRub.toLocaleString()} ₽`}</p>
-                      <p className="text-xs text-[hsl(var(--muted))]-foreground">{service.durationMinutes} {language === 'ru' ? 'мин' : 'min'}</p>
-                    </div>
+                  <div style={{ textAlign: 'left' }}>
+                    <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.25rem', fontWeight: 400, color: 'hsl(var(--foreground))', margin: 0 }}>
+                      {c[svc.nameKey]}
+                    </p>
+                    <p className="label-caps" style={{ marginTop: '0.25rem', fontSize: '0.625rem' }}>
+                      {svc.duration} {language === 'am' ? 'ր' : language === 'ru' ? 'мин' : 'min'}
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.25rem', color: 'hsl(var(--foreground))', margin: 0 }}>
+                      {formatPrice(svc.priceRub, svc.priceAmd)}
+                    </p>
+                    <div style={{
+                      width: '1.25rem',
+                      height: '1.25rem',
+                      borderRadius: '50%',
+                      border: '1px solid hsl(var(--border))',
+                      backgroundColor: selectedService === svc.id ? 'hsl(var(--foreground))' : 'transparent',
+                      transition: 'background-color 200ms ease',
+                      flexShrink: 0,
+                    }} />
                   </div>
                 </button>
               ))}
             </div>
-
-            {selectedServiceData?.noteRu && (
-              <div className="mb-6 p-4 bg-accent/10 border border-accent/30 rounded-lg flex gap-3">
-                <AlertCircle className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-[hsl(var(--foreground))]">
-                  {language === 'ru' ? selectedServiceData.noteRu : selectedServiceData.noteEn}
-                </p>
-              </div>
-            )}
-
-            <Button onClick={handleServiceSelect} className="btn-primary w-full">
-              {language === 'ru' ? 'Далее' : 'Next'}
-            </Button>
           </div>
-        )}
 
-        {/* Step 2: Date & Time Selection */}
-        {step === 'datetime' && (
-          <div className="card-premium">
-            <h2 className="text-2xl font-semibold mb-6 text-[hsl(var(--primary))]">
-              {language === 'ru' ? 'Выберите дату и время' : 'Select Date & Time'}
-            </h2>
-
-            <div className="space-y-6 mb-8">
-              <div>
-                <label className="block text-sm font-medium mb-3 text-[hsl(var(--foreground))]">
-                  {language === 'ru' ? 'Дата' : 'Date'}
-                </label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-3 w-5 h-5 text-[hsl(var(--muted))]-foreground pointer-events-none" />
-                  <input
-                    type="date"
-                    min={minDate}
-                    max={maxDate}
-                    value={bookingDate}
-                    onChange={(e) => setBookingDate(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-[hsl(var(--muted))] rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-3 text-[hsl(var(--foreground))]">
-                  {language === 'ru' ? 'Время' : 'Time'}
-                </label>
-                <div className="grid grid-cols-4 gap-2">
-                  {timeSlots.map((time) => (
-                    <button
-                      key={time}
-                      onClick={() => setBookingTime(time)}
-                      className={`p-2 rounded-lg border transition-all text-sm font-medium ${
-                        bookingTime === time
-                          ? 'border-primary bg-[hsl(var(--primary))] text-[hsl(var(--primary))]-foreground'
-                          : 'border-[hsl(var(--muted))] hover:border-primary'
-                      }`}
-                    >
-                      {time}
-                    </button>
-                  ))}
-                </div>
-              </div>
+          {/* Date + Time */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2.5rem' }}>
+            <div>
+              <p className="label-caps" style={{ marginBottom: '0.75rem' }}>{c.selectDate}</p>
+              <input
+                type="date"
+                value={bookingDate}
+                min={minDate}
+                max={maxDate}
+                onChange={e => setBookingDate(e.target.value)}
+                onFocus={() => setFocusedField('date')}
+                onBlur={() => setFocusedField(null)}
+                style={{
+                  ...inputStyle,
+                  borderBottomColor: focusedField === 'date' ? 'hsl(var(--foreground))' : 'hsl(var(--border))',
+                }}
+              />
             </div>
-
-            <div className="flex gap-3">
-              <Button
-                onClick={() => setStep('service')}
-                className="btn-secondary flex-1"
+            <div>
+              <p className="label-caps" style={{ marginBottom: '0.75rem' }}>{c.selectTime}</p>
+              <select
+                value={bookingTime}
+                onChange={e => setBookingTime(e.target.value)}
+                onFocus={() => setFocusedField('time')}
+                onBlur={() => setFocusedField(null)}
+                style={{
+                  ...inputStyle,
+                  borderBottomColor: focusedField === 'time' ? 'hsl(var(--foreground))' : 'hsl(var(--border))',
+                  cursor: 'pointer',
+                  appearance: 'none',
+                  WebkitAppearance: 'none',
+                }}
               >
-                {language === 'ru' ? 'Назад' : 'Back'}
-              </Button>
-              <Button
-                onClick={handleDateTimeSelect}
-                className="btn-primary flex-1"
-              >
-                {language === 'ru' ? 'Далее' : 'Next'}
-              </Button>
+                <option value="">—</option>
+                {timeSlots.map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
             </div>
           </div>
-        )}
 
-        {/* Step 3: Contact Information */}
-        {step === 'contact' && (
-          <div className="card-premium">
-            <h2 className="text-2xl font-semibold mb-6 text-[hsl(var(--primary))]">
-              {language === 'ru' ? 'Ваши контакты' : 'Your Contact Information'}
-            </h2>
-
-            <div className="space-y-4 mb-8">
-              <div>
-                <label className="block text-sm font-medium mb-2 text-[hsl(var(--foreground))]">
-                  {language === 'ru' ? 'Имя' : 'Name'} *
-                </label>
-                <Input
-                  value={clientName}
-                  onChange={(e) => setClientName(e.target.value)}
-                  placeholder={language === 'ru' ? 'Ваше имя' : 'Your name'}
-                  className="w-full"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2 text-[hsl(var(--foreground))]">
-                  {language === 'ru' ? 'Телефон' : 'Phone'} *
-                </label>
-                <Input
-                  value={clientPhone}
-                  onChange={(e) => setClientPhone(e.target.value)}
-                  placeholder="+7 (999) 123-45-67"
-                  className="w-full"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2 text-[hsl(var(--foreground))]">
-                  {language === 'ru' ? 'Email' : 'Email'}
-                </label>
-                <Input
-                  type="email"
-                  value={clientEmail}
-                  onChange={(e) => setClientEmail(e.target.value)}
-                  placeholder="your@email.com"
-                  className="w-full"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2 text-[hsl(var(--foreground))]">
-                  {language === 'ru' ? 'Комментарий' : 'Comment'}
-                </label>
-                <Textarea
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  placeholder={language === 'ru' ? 'Дополнительная информация...' : 'Additional information...'}
-                  className="w-full"
-                  rows={4}
-                />
-              </div>
+          {/* Contact */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <p className="label-caps" style={{ marginBottom: '0.75rem' }}>{c.name}</p>
+              <input
+                type="text"
+                value={clientName}
+                onChange={e => setClientName(e.target.value)}
+                placeholder={c.name}
+                onFocus={() => setFocusedField('name')}
+                onBlur={() => setFocusedField(null)}
+                style={{
+                  ...inputStyle,
+                  borderBottomColor: focusedField === 'name' ? 'hsl(var(--foreground))' : 'hsl(var(--border))',
+                }}
+              />
             </div>
-
-            <div className="flex gap-3">
-              <Button
-                onClick={() => setStep('datetime')}
-                className="btn-secondary flex-1"
-              >
-                {language === 'ru' ? 'Назад' : 'Back'}
-              </Button>
-              <Button
-                onClick={handleSubmit}
-                disabled={createBookingMutation.isPending}
-                className="btn-primary flex-1"
-              >
-                {createBookingMutation.isPending ? (language === 'ru' ? 'Отправка...' : 'Submitting...') : (language === 'ru' ? 'Отправить' : 'Submit')}
-              </Button>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <p className="label-caps" style={{ marginBottom: '0.75rem' }}>{c.phone}</p>
+              <input
+                type="tel"
+                value={clientPhone}
+                onChange={e => setClientPhone(e.target.value)}
+                placeholder="+7 / +374"
+                onFocus={() => setFocusedField('phone')}
+                onBlur={() => setFocusedField(null)}
+                style={{
+                  ...inputStyle,
+                  borderBottomColor: focusedField === 'phone' ? 'hsl(var(--foreground))' : 'hsl(var(--border))',
+                }}
+              />
+            </div>
+            <div style={{ marginBottom: '3rem' }}>
+              <p className="label-caps" style={{ marginBottom: '0.75rem' }}>{c.comment}</p>
+              <textarea
+                value={comment}
+                onChange={e => setComment(e.target.value)}
+                placeholder="..."
+                rows={2}
+                onFocus={() => setFocusedField('comment')}
+                onBlur={() => setFocusedField(null)}
+                style={{
+                  ...inputStyle,
+                  resize: 'none',
+                  borderBottomColor: focusedField === 'comment' ? 'hsl(var(--foreground))' : 'hsl(var(--border))',
+                }}
+              />
             </div>
           </div>
-        )}
 
-        {/* Step 4: Confirmation */}
-        {step === 'confirm' && (
-          <div className="card-premium text-center">
-            <CheckCircle className="w-16 h-16 text-accent mx-auto mb-6" />
-            <h2 className="text-2xl font-semibold mb-4 text-[hsl(var(--primary))]">
-              {language === 'ru' ? 'Бронирование подтверждено!' : 'Booking Confirmed!'}
-            </h2>
-            <p className="text-[hsl(var(--muted))]-foreground mb-8">
-              {language === 'ru'
-                ? 'Ваше бронирование успешно отправлено. Вы получите подтверждение в ближайшее время.'
-                : 'Your booking has been submitted successfully. You will receive confirmation shortly.'}
-            </p>
-
-            <div className="bg-[hsl(var(--secondary))] rounded-lg p-6 mb-8">
-              <p className="text-sm text-[hsl(var(--muted))]-foreground mb-2">
-                {language === 'ru' ? 'Номер бронирования' : 'Reference Number'}
-              </p>
-              <p className="text-3xl font-bold text-[hsl(var(--primary))] font-mono">{referenceNumber}</p>
-            </div>
-
-            <div className="space-y-2 mb-8 text-left bg-accent/5 p-4 rounded-lg">
-              <p className="text-sm"><span className="font-semibold">{language === 'ru' ? 'Услуга:' : 'Service:'}</span> {getServiceName(selectedServiceData!)}</p>
-              <p className="text-sm"><span className="font-semibold">{language === 'ru' ? 'Дата:' : 'Date:'}</span> {bookingDate}</p>
-              <p className="text-sm"><span className="font-semibold">{language === 'ru' ? 'Время:' : 'Time:'}</span> {bookingTime}</p>
-            </div>
-
-            <div className="flex gap-3">
-              <Button
-                onClick={() => setLocation('/status')}
-                className="btn-primary flex-1"
-              >
-                {language === 'ru' ? 'Проверить статус' : 'Check Status'}
-              </Button>
-              <Button
-                onClick={() => setLocation('/')}
-                className="btn-secondary flex-1"
-              >
-                {language === 'ru' ? 'На главную' : 'Home'}
-              </Button>
-            </div>
-          </div>
-        )}
+          <button
+            type="submit"
+            className="btn-primary"
+            style={{ width: '100%' }}
+            disabled={createBookingMutation.isPending}
+          >
+            {createBookingMutation.isPending ? '...' : c.submit}
+          </button>
+        </form>
       </div>
     </div>
   );
