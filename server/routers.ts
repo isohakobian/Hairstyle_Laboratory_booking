@@ -10,6 +10,7 @@ import {
   getPublishedReviews, getAllReviews, updateReviewPublished,
 } from "./db";
 import { TRPCError } from "@trpc/server";
+import { notifyOwner } from "./_core/notification";
 
 // Admin middleware
 const adminMiddleware = protectedProcedure.use(async ({ ctx, next }) => {
@@ -77,6 +78,27 @@ export const appRouter = router({
         });
 
         const booking = await getBookingByReference(referenceNumber);
+
+        // Send email notification to owner
+        try {
+          await notifyOwner({
+            title: `📋 Новая заявка — ${input.serviceName}`,
+            content: [
+              `Клиент: ${input.clientName}`,
+              `Телефон: ${input.clientPhone}`,
+              `Услуга: ${input.serviceName}`,
+              `Дата: ${input.bookingDate}`,
+              `Время: ${input.bookingTime}`,
+              input.clientEmail ? `Email: ${input.clientEmail}` : null,
+              input.comment ? `Комментарий: ${input.comment}` : null,
+              `Номер заявки: ${referenceNumber}`,
+            ].filter(Boolean).join('\n'),
+          });
+        } catch (e) {
+          // Notification failure should not block booking creation
+          console.warn('[Booking] Failed to send owner notification:', e);
+        }
+
         return booking;
       }),
 
