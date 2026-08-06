@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { getLoginUrl } from '@/const';
+import ScheduleCalendar from '@/components/ScheduleCalendar';
 
 type Tab = 'bookings' | 'schedule' | 'reviews';
 
@@ -35,13 +36,7 @@ export default function AdminDashboard() {
   const [, setLocation] = useLocation();
   const { user, isAuthenticated, logout, loading } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('bookings');
-  const [blockDateInput, setBlockDateInput] = useState('');
-  const [blockReason, setBlockReason] = useState('');
-
   const { data: bookings, isLoading: bookingsLoading, refetch: refetchBookings } = trpc.admin.bookings.useQuery(undefined, {
-    enabled: isAuthenticated && user?.role === 'admin',
-  });
-  const { data: blockedDates, refetch: refetchBlocked } = trpc.admin.blockedDates.useQuery(undefined, {
     enabled: isAuthenticated && user?.role === 'admin',
   });
   const { data: allReviews, refetch: refetchReviews } = trpc.admin.reviews.useQuery(undefined, {
@@ -54,14 +49,6 @@ export default function AdminDashboard() {
   });
   const declineMutation = trpc.admin.declineBooking.useMutation({
     onSuccess: () => { toast.success(language === 'ru' ? 'Отклонено' : 'Declined'); refetchBookings(); },
-    onError: (e) => toast.error(e.message),
-  });
-  const blockMutation = trpc.admin.blockDate.useMutation({
-    onSuccess: () => { toast.success(language === 'ru' ? 'Дата заблокирована' : 'Date blocked'); refetchBlocked(); setBlockDateInput(''); setBlockReason(''); },
-    onError: (e) => toast.error(e.message),
-  });
-  const unblockMutation = trpc.admin.unblockDate.useMutation({
-    onSuccess: () => { toast.success(language === 'ru' ? 'Дата разблокирована' : 'Date unblocked'); refetchBlocked(); },
     onError: (e) => toast.error(e.message),
   });
   const publishReviewMutation = trpc.admin.publishReview.useMutation({
@@ -96,7 +83,7 @@ export default function AdminDashboard() {
 
   const tabs: { id: Tab; label: string }[] = [
     { id: 'bookings', label: language === 'ru' ? `Заявки (${bookings?.length ?? 0})` : `Bookings (${bookings?.length ?? 0})` },
-    { id: 'schedule', label: language === 'ru' ? `Расписание (${blockedDates?.length ?? 0})` : `Schedule (${blockedDates?.length ?? 0})` },
+    { id: 'schedule', label: language === 'ru' ? 'Расписание' : 'Schedule' },
     { id: 'reviews', label: language === 'ru' ? `Отзывы (${allReviews?.length ?? 0})` : `Reviews (${allReviews?.length ?? 0})` },
   ];
 
@@ -201,39 +188,11 @@ export default function AdminDashboard() {
         {activeTab === 'schedule' && (
           <div>
             <p style={{ color: 'hsl(var(--muted-foreground))', marginBottom: '2rem', fontSize: '0.875rem' }}>
-              {language === 'ru' ? 'Заблокированные даты недоступны для записи клиентов.' : 'Blocked dates are unavailable for client bookings.'}
+              {language === 'ru'
+                ? 'Нажми на день чтобы закрыть или открыть его для записи.'
+                : 'Click a day to block or unblock it for bookings.'}
             </p>
-            <div style={{ ...cardStyle, marginBottom: '2rem' }}>
-              <p style={{ ...labelStyle, marginBottom: '1.5rem' }}>{language === 'ru' ? 'Заблокировать дату' : 'Block a date'}</p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
-                <div>
-                  <p style={{ ...labelStyle, marginBottom: '0.5rem', fontSize: '0.5625rem' }}>{language === 'ru' ? 'Дата' : 'Date'}</p>
-                  <input type="date" value={blockDateInput} onChange={e => setBlockDateInput(e.target.value)} min={new Date().toISOString().split('T')[0]} style={inputStyle} />
-                </div>
-                <div>
-                  <p style={{ ...labelStyle, marginBottom: '0.5rem', fontSize: '0.5625rem' }}>{language === 'ru' ? 'Причина (необязательно)' : 'Reason (optional)'}</p>
-                  <input type="text" value={blockReason} onChange={e => setBlockReason(e.target.value)} placeholder={language === 'ru' ? 'Выходной, отпуск...' : 'Day off, vacation...'} style={inputStyle} />
-                </div>
-              </div>
-              <button className="btn-primary" style={{ fontSize: '0.625rem', padding: '0.625rem 1.5rem' }} onClick={() => { if (!blockDateInput) { toast.error(language === 'ru' ? 'Выберите дату' : 'Select a date'); return; } blockMutation.mutate({ date: blockDateInput, reason: blockReason || undefined }); }} disabled={blockMutation.isPending}>
-                {language === 'ru' ? 'Заблокировать' : 'Block date'}
-              </button>
-            </div>
-            {!blockedDates?.length ? <p style={labelStyle}>{language === 'ru' ? 'Нет заблокированных дат' : 'No blocked dates'}</p> : (
-              <div>
-                {blockedDates.map(bd => (
-                  <div key={bd.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 0', borderBottom: '1px solid hsl(var(--border))' }}>
-                    <div>
-                      <p style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.125rem', fontWeight: 700, color: 'hsl(var(--foreground))', margin: '0 0 0.125rem' }}>{bd.date}</p>
-                      {bd.reason && <p style={{ ...labelStyle, margin: 0, fontSize: '0.5625rem' }}>{bd.reason}</p>}
-                    </div>
-                    <button className="btn-ghost" style={{ fontSize: '0.5625rem', color: statusColors.declined }} onClick={() => unblockMutation.mutate({ date: bd.date })} disabled={unblockMutation.isPending}>
-                      {language === 'ru' ? 'Разблокировать' : 'Unblock'}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
+            <ScheduleCalendar language={language as 'ru' | 'en'} />
           </div>
         )}
 
