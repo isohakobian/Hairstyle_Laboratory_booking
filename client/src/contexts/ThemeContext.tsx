@@ -1,9 +1,9 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 
-type Theme = "light" | "dark";
+type Theme = "light" | "dark" | "system";
 
 interface ThemeContextType {
-  theme: Theme;
+  theme: "light" | "dark";
   toggleTheme?: () => void;
   switchable: boolean;
 }
@@ -16,18 +16,37 @@ interface ThemeProviderProps {
   switchable?: boolean;
 }
 
+function getSystemTheme(): "light" | "dark" {
+  if (typeof window !== "undefined" && window.matchMedia) {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+  return "light";
+}
+
 export function ThemeProvider({
   children,
   defaultTheme = "light",
   switchable = false,
 }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(() => {
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
     if (switchable) {
       const stored = localStorage.getItem("theme");
-      return (stored as Theme) || defaultTheme;
+      return (stored as "light" | "dark") || (defaultTheme === "system" ? getSystemTheme() : defaultTheme);
     }
-    return defaultTheme;
+    return defaultTheme === "system" ? getSystemTheme() : defaultTheme;
   });
+
+  useEffect(() => {
+    // Listen for OS theme changes when using system theme
+    if (defaultTheme === "system" && !switchable) {
+      const mq = window.matchMedia("(prefers-color-scheme: dark)");
+      const handler = (e: MediaQueryListEvent) => {
+        setTheme(e.matches ? "dark" : "light");
+      };
+      mq.addEventListener("change", handler);
+      return () => mq.removeEventListener("change", handler);
+    }
+  }, [defaultTheme, switchable]);
 
   useEffect(() => {
     const root = document.documentElement;

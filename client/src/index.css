@@ -28,27 +28,85 @@
 
 @layer base {
   :root {
-    /* Dark masculine metallic palette */
-    --background: 220 12% 8%;          /* #111318 near-black steel */
-    --foreground: 40 15% 92%;          /* #EDE8DF warm off-white */
-    --card: 220 10% 11%;               /* #181B20 dark card */
+    /* ── Light theme (default / white mode) ── */
+    --background: 40 20% 97%;          /* #F9F7F4 warm white */
+    --foreground: 220 15% 12%;         /* #181B22 near-black */
+    --card: 40 15% 94%;                /* #F0EDE7 light card */
+    --card-foreground: 220 15% 12%;
+    --primary: 220 15% 12%;            /* dark for primary buttons */
+    --primary-foreground: 40 20% 97%;
+    --secondary: 40 12% 90%;           /* #E8E3DA light secondary */
+    --secondary-foreground: 220 15% 12%;
+    --muted: 40 10% 88%;
+    --muted-foreground: 220 8% 45%;    /* #6B7080 warm gray */
+    --accent: 42 55% 40%;              /* gold — slightly darker for light bg */
+    --accent-foreground: 40 20% 97%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 40 20% 97%;
+    --border: 40 10% 84%;              /* #D8D2C8 warm border */
+    --input: 40 15% 94%;
+    --ring: 42 55% 40%;
+    --radius: 0.125rem;
+
+    /* Metallic gradient stops — adjusted for light bg */
+    --metal-light: #888888;
+    --metal-mid: #555555;
+    --metal-dark: #222222;
+    --gold-light: #C9922A;
+    --gold-mid: #A87820;
+    --gold-dark: #7A5A10;
+  }
+
+  /* ── Dark theme — auto when system is in dark mode ── */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --background: 220 12% 8%;
+      --foreground: 40 15% 92%;
+      --card: 220 10% 11%;
+      --card-foreground: 40 15% 92%;
+      --primary: 40 15% 92%;
+      --primary-foreground: 220 12% 8%;
+      --secondary: 220 8% 16%;
+      --secondary-foreground: 40 15% 92%;
+      --muted: 220 8% 20%;
+      --muted-foreground: 40 8% 55%;
+      --accent: 42 60% 58%;
+      --accent-foreground: 220 12% 8%;
+      --destructive: 0 72% 51%;
+      --destructive-foreground: 40 15% 92%;
+      --border: 220 8% 18%;
+      --input: 220 10% 11%;
+      --ring: 42 60% 58%;
+
+      --metal-light: #C8C8C8;
+      --metal-mid: #8A8A8A;
+      --metal-dark: #3A3A3A;
+      --gold-light: #E8C97A;
+      --gold-mid: #C9A84C;
+      --gold-dark: #8A6E2A;
+    }
+  }
+
+  /* ── .dark class — for manual override if needed ── */
+  .dark {
+    --background: 220 12% 8%;
+    --foreground: 40 15% 92%;
+    --card: 220 10% 11%;
     --card-foreground: 40 15% 92%;
-    --primary: 40 15% 92%;             /* off-white for primary text/buttons */
+    --primary: 40 15% 92%;
     --primary-foreground: 220 12% 8%;
-    --secondary: 220 8% 16%;           /* #22252C dark secondary */
+    --secondary: 220 8% 16%;
     --secondary-foreground: 40 15% 92%;
-    --muted: 220 8% 20%;               /* subtle muted */
-    --muted-foreground: 40 8% 55%;     /* #9A9490 warm gray */
-    --accent: 42 60% 58%;              /* #C9A84C gold accent */
+    --muted: 220 8% 20%;
+    --muted-foreground: 40 8% 55%;
+    --accent: 42 60% 58%;
     --accent-foreground: 220 12% 8%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 40 15% 92%;
-    --border: 220 8% 18%;              /* #272B32 subtle border */
+    --border: 220 8% 18%;
     --input: 220 10% 11%;
     --ring: 42 60% 58%;
-    --radius: 0.125rem;
 
-    /* Metallic gradient stops */
     --metal-light: #C8C8C8;
     --metal-mid: #8A8A8A;
     --metal-dark: #3A3A3A;
