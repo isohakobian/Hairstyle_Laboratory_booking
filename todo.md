@@ -70,10 +70,12 @@
 ## Future Enhancements (Optional)
 - [x] Owner push notifications for new bookings
 - [ ] Implement real Gmail email notifications for new bookings
-- [ ] Admin dashboard filters/sorting by status
+- [x] Admin dashboard filters/sorting by status
 - [ ] SMS notifications
 - [x] Schedule calendar for opening and closing booking dates
-- [ ] Add a booking calendar that displays appointment entries
+- [x] Add a booking calendar that displays appointment entries
+- [x] Add loading and error states to the booking calendar tab
+- [x] Verify published public-site accessibility and resolve admin render error
 - [ ] Recurring appointments
 - [x] Fix and verify RU/EN language switcher visibility on mobile header
 - [x] Stabilize booking tests when dates are blocked in the live calendar

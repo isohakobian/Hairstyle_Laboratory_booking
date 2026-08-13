@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
@@ -6,8 +6,11 @@ import { useLocation } from 'wouter';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { getLoginUrl } from '@/const';
 import ScheduleCalendar from '@/components/ScheduleCalendar';
+import BookingCalendar from '@/components/BookingCalendar';
 
-type Tab = 'bookings' | 'schedule' | 'reviews';
+type Tab = 'bookings' | 'calendar' | 'schedule' | 'reviews';
+type BookingStatusFilter = 'all' | 'pending' | 'confirmed' | 'declined';
+type BookingSort = 'appointmentAsc' | 'appointmentDesc' | 'newest' | 'statusAsc';
 
 const labelStyle: React.CSSProperties = {
   fontFamily: "'Inter', sans-serif",
@@ -36,7 +39,9 @@ export default function AdminDashboard() {
   const [, setLocation] = useLocation();
   const { user, isAuthenticated, logout, loading } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('bookings');
-  const { data: bookings, isLoading: bookingsLoading, refetch: refetchBookings } = trpc.admin.bookings.useQuery(undefined, {
+  const [bookingStatusFilter, setBookingStatusFilter] = useState<BookingStatusFilter>('all');
+  const [bookingSort, setBookingSort] = useState<BookingSort>('appointmentAsc');
+  const { data: bookings, isLoading: bookingsLoading, isError: bookingsError, refetch: refetchBookings } = trpc.admin.bookings.useQuery(undefined, {
     enabled: isAuthenticated && user?.role === 'admin',
   });
   const { data: allReviews, refetch: refetchReviews } = trpc.admin.reviews.useQuery(undefined, {
@@ -59,6 +64,27 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (!loading && (!isAuthenticated || user?.role !== 'admin')) setLocation('/');
   }, [isAuthenticated, user, loading, setLocation]);
+
+  const visibleBookings = useMemo(() => {
+    const filtered = (bookings ?? []).filter(booking => (
+      bookingStatusFilter === 'all' || booking.status === bookingStatusFilter
+    ));
+
+    return [...filtered].sort((a, b) => {
+      if (bookingSort === 'newest') {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+
+      if (bookingSort === 'statusAsc') {
+        const statusOrder = { pending: 0, confirmed: 1, declined: 2 } as const;
+        const statusComparison = statusOrder[a.status] - statusOrder[b.status];
+        if (statusComparison !== 0) return statusComparison;
+      }
+
+      const comparison = `${a.bookingDate}T${a.bookingTime}`.localeCompare(`${b.bookingDate}T${b.bookingTime}`);
+      return bookingSort === 'appointmentAsc' ? comparison : -comparison;
+    });
+  }, [bookings, bookingSort, bookingStatusFilter]);
 
   if (loading) return (
     <div style={{ minHeight: '100vh', backgroundColor: 'hsl(var(--background))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -83,6 +109,7 @@ export default function AdminDashboard() {
 
   const tabs: { id: Tab; label: string }[] = [
     { id: 'bookings', label: language === 'ru' ? `Заявки (${bookings?.length ?? 0})` : `Bookings (${bookings?.length ?? 0})` },
+    { id: 'calendar', label: language === 'ru' ? 'Календарь заявок' : 'Booking calendar' },
     { id: 'schedule', label: language === 'ru' ? 'Расписание' : 'Schedule' },
     { id: 'reviews', label: language === 'ru' ? `Отзывы (${allReviews?.length ?? 0})` : `Reviews (${allReviews?.length ?? 0})` },
   ];
@@ -139,8 +166,55 @@ export default function AdminDashboard() {
             {bookingsLoading ? <p style={labelStyle}>{language === 'ru' ? 'Загрузка...' : 'Loading...'}</p>
             : !bookings?.length ? <p style={labelStyle}>{language === 'ru' ? 'Нет заявок' : 'No bookings yet'}</p>
             : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {bookings.map(booking => (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid hsl(var(--border))' }}>
+                  <div>
+                    <p style={{ ...labelStyle, margin: '0 0 0.625rem', fontSize: '0.5625rem' }}>{language === 'ru' ? 'Статус' : 'Status'}</p>
+                    <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap' }}>
+                      {([
+                        { id: 'all', label: language === 'ru' ? 'Все' : 'All' },
+                        { id: 'pending', label: language === 'ru' ? 'Ожидают' : 'Pending' },
+                        { id: 'confirmed', label: language === 'ru' ? 'Подтверждены' : 'Confirmed' },
+                        { id: 'declined', label: language === 'ru' ? 'Отклонены' : 'Declined' },
+                      ] as { id: BookingStatusFilter; label: string }[]).map(filter => (
+                        <button
+                          key={filter.id}
+                          onClick={() => setBookingStatusFilter(filter.id)}
+                          aria-pressed={bookingStatusFilter === filter.id}
+                          style={{
+                            ...labelStyle,
+                            fontSize: '0.5625rem',
+                            padding: '0.5rem 0.625rem',
+                            color: bookingStatusFilter === filter.id ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))',
+                            background: bookingStatusFilter === filter.id ? 'hsl(var(--secondary))' : 'transparent',
+                            border: '1px solid hsl(var(--border))',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {filter.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem', minWidth: '11rem' }}>
+                    <span style={{ ...labelStyle, fontSize: '0.5625rem' }}>{language === 'ru' ? 'Сортировка' : 'Sort'}</span>
+                    <select
+                      value={bookingSort}
+                      onChange={event => setBookingSort(event.target.value as BookingSort)}
+                      style={{ color: 'hsl(var(--foreground))', backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 0, padding: '0.625rem 0.75rem', fontFamily: "'Inter', sans-serif", fontSize: '0.75rem' }}
+                    >
+                      <option value="appointmentAsc">{language === 'ru' ? 'Ближайшие сначала' : 'Nearest first'}</option>
+                      <option value="appointmentDesc">{language === 'ru' ? 'Поздние сначала' : 'Latest first'}</option>
+                      <option value="newest">{language === 'ru' ? 'Новые заявки' : 'Newest requests'}</option>
+                      <option value="statusAsc">{language === 'ru' ? 'По статусу' : 'By status'}</option>
+                    </select>
+                  </label>
+                </div>
+                {visibleBookings.length === 0 ? (
+                  <p style={labelStyle}>{language === 'ru' ? 'Заявок с таким статусом нет' : 'No bookings match this status'}</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    {visibleBookings.map(booking => (
                   <div key={booking.id} style={{ ...cardStyle }}>
                     <div style={{ position: 'absolute', top: 0, left: 0, width: '3px', height: '100%', backgroundColor: statusColors[booking.status] }} />
                     <div style={{ paddingLeft: '0.75rem' }}>
@@ -179,8 +253,10 @@ export default function AdminDashboard() {
                       )}
                     </div>
                   </div>
-                ))}
-              </div>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
@@ -193,6 +269,23 @@ export default function AdminDashboard() {
                 : 'Click a day to block or unblock it for bookings.'}
             </p>
             <ScheduleCalendar language={language as 'ru' | 'en'} />
+          </div>
+        )}
+
+        {activeTab === 'calendar' && (
+          <div>
+            <p style={{ color: 'hsl(var(--muted-foreground))', marginBottom: '2rem', fontSize: '0.875rem' }}>
+              {language === 'ru'
+                ? 'Выберите дату, чтобы увидеть записи клиентов и их текущий статус.'
+                : 'Select a date to see client bookings and their current status.'}
+            </p>
+            {bookingsLoading ? (
+              <p style={labelStyle}>{language === 'ru' ? 'Загрузка заявок...' : 'Loading bookings...'}</p>
+            ) : bookingsError ? (
+              <p style={{ ...labelStyle, color: 'hsl(0, 60%, 50%)' }}>{language === 'ru' ? 'Не удалось загрузить заявки. Обновите страницу.' : 'Bookings could not be loaded. Refresh the page.'}</p>
+            ) : (
+              <BookingCalendar language={language as 'ru' | 'en'} bookings={bookings ?? []} />
+            )}
           </div>
         )}
 
