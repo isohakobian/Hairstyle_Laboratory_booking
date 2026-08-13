@@ -11,7 +11,6 @@ import {
   getPublishedReviews, getAllReviews, updateReviewPublished,
 } from "./db";
 import { TRPCError } from "@trpc/server";
-import { notifyOwner } from "./_core/notification";
 import { sendBookingEmails, sendConfirmedBookingEmail, sendReviewRequestEmail } from "./bookingEmail";
 import { createReviewTokenValue, getReviewTokenExpiry, hashReviewToken } from "./reviewToken";
 
@@ -117,28 +116,6 @@ export const appRouter = router({
         })));
 
         const booking = await getBookingByReference(referenceNumber);
-
-        // Send email notification to owner
-        try {
-          await notifyOwner({
-            title: `📋 Новая заявка — ${serviceSummary}`,
-            content: [
-              `Клиент: ${input.clientName}`,
-              `Телефон: ${input.clientPhone}`,
-              `Услуги: ${serviceSummary}`,
-              `Длительность: ${totalDurationMinutes} мин`,
-              `Стоимость: ${totalPriceSummary}`,
-              `Дата: ${input.bookingDate}`,
-              `Время: ${input.bookingTime}`,
-              input.clientEmail ? `Email: ${input.clientEmail}` : null,
-              input.comment ? `Комментарий: ${input.comment}` : null,
-              `Номер заявки: ${referenceNumber}`,
-            ].filter(Boolean).join('\n'),
-          });
-        } catch (e) {
-          // Notification failure should not block booking creation
-          console.warn('[Booking] Failed to send owner notification:', e);
-        }
 
         try {
           await sendBookingEmails({

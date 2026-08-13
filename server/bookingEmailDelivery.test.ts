@@ -2,12 +2,13 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TrpcContext } from "./_core/context";
 import { clearExampleTestBookings } from "./testCleanup";
 
-const { sendBookingEmails } = vi.hoisted(() => ({
+const { sendBookingEmails, notifyOwner } = vi.hoisted(() => ({
   sendBookingEmails: vi.fn().mockResolvedValue({ skipped: false }),
+  notifyOwner: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("./bookingEmail", () => ({ sendBookingEmails }));
-vi.mock("./_core/notification", () => ({ notifyOwner: vi.fn().mockResolvedValue(undefined) }));
+vi.mock("./_core/notification", () => ({ notifyOwner }));
 
 import { appRouter } from "./routers";
 
@@ -22,6 +23,7 @@ function createPublicContext(): TrpcContext {
 describe("booking email delivery contract", () => {
   beforeEach(() => {
     sendBookingEmails.mockClear();
+    notifyOwner.mockClear();
   });
 
   afterAll(async () => {
@@ -50,5 +52,6 @@ describe("booking email delivery contract", () => {
       bookingDate: "2099-12-29",
       bookingTime: "09:00",
     }));
+    expect(notifyOwner).not.toHaveBeenCalled();
   });
 });

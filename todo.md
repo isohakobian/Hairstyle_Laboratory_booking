@@ -98,3 +98,4 @@
 - [x] Test the visible Booking form payload and backend email-delivery contract with clientEmail
 - [x] Add loading, error, and empty states to the service selector
 - [x] Verify the complete multi-service booking flow in the client interface
+- [x] Remove duplicate Manus new-booking notification while keeping direct Gmail delivery
