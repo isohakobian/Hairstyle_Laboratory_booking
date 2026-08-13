@@ -163,7 +163,7 @@ export default function AdminDashboard() {
     { id: 'schedule', label: language === 'ru' ? 'Доступность' : 'Availability', description: language === 'ru' ? 'Открытые дни для записи' : 'Open days for booking' },
     { id: 'reviews', label: language === 'ru' ? 'Отзывы' : 'Reviews', description: language === 'ru' ? 'Модерация обратной связи' : 'Feedback moderation', count: allReviews?.length ?? 0 },
     { id: 'clients', label: language === 'ru' ? 'Клиенты' : 'Clients', description: language === 'ru' ? 'Память о клиенте' : 'Client memory' },
-    { id: 'news', label: language === 'ru' ? 'Афиша' : 'Notices', description: language === 'ru' ? 'Новости и отпуск' : 'News and vacation' },
+    { id: 'news', label: language === 'ru' ? 'Новости' : 'Notices', description: language === 'ru' ? 'Новости и отпуск' : 'News and vacation' },
   ];
 
   const inputStyle: React.CSSProperties = {
@@ -449,7 +449,7 @@ export default function AdminDashboard() {
         {activeTab === 'news' && (
           <div>
             <div style={{ marginBottom: '1.25rem' }}>
-              <p style={{ ...labelStyle, margin: '0 0 0.4rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Редакционная афиша' : 'Editorial notice'}</p>
+              <p style={{ ...labelStyle, margin: '0 0 0.4rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Личные новости' : 'Personal notice'}</p>
               <h3 style={{ margin: 0, fontStyle: 'italic' }}>{language === 'ru' ? 'Новости и отпуск' : 'News and vacation'}</h3>
             </div>
             <p style={{ color: 'hsl(var(--muted-foreground))', marginBottom: '1.5rem', fontSize: '0.875rem', lineHeight: 1.6 }}>

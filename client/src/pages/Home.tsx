@@ -349,7 +349,7 @@ export default function Home() {
           {activeAnnouncement && (
             <aside className="fade-up fade-up-delay-3" style={{ position: 'relative', padding: '1.5rem', border: '1px solid hsl(var(--border))', background: 'linear-gradient(145deg, hsl(var(--card)), hsl(var(--secondary)))', boxShadow: '0 18px 45px rgba(0, 0, 0, 0.08)' }}>
               <div style={{ position: 'absolute', top: 0, left: '1.5rem', right: '1.5rem', height: '2px', background: 'linear-gradient(90deg, transparent, var(--gold-mid), transparent)' }} />
-              <p className="label-caps" style={{ margin: '0 0 1rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Афиша лаборатории' : 'Laboratory notice'}</p>
+              <p className="label-caps" style={{ margin: '0 0 1rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Новости' : 'Notice'}</p>
               <h3 style={{ margin: '0 0 0.75rem', fontStyle: 'italic', fontSize: '1.65rem', lineHeight: 1.08 }}>
                 {language === 'ru' ? activeAnnouncement.titleRu : activeAnnouncement.titleEn}
               </h3>

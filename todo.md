@@ -117,3 +117,4 @@
 - [x] Show per-visit stylist comments and completion notes in the client memory timeline
 - [x] Render dated manual review-request history in each client profile
 - [x] Render repeat-booking follow-up status for each client visit
+- [x] Rewrite the active vacation announcement as a personal notice from Isaac without laboratory or barbershop framing
