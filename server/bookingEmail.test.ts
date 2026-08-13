@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildClientBookingEmail, buildOwnerBookingEmail } from "./bookingEmail";
+import { buildClientBookingEmail, buildOwnerBookingEmail, buildReviewRequestEmail } from "./bookingEmail";
 
 const booking = {
   referenceNumber: "ABC123",
@@ -29,5 +29,16 @@ describe("booking email templates", () => {
     expect(email.text).toContain("Спасибо за вашу запись");
     expect(email.html).toContain("Isaac &lt;Client&gt;");
     expect(email.html).not.toContain("Isaac <Client>");
+  });
+
+  it("creates a warm first-person review request from Isaac", () => {
+    const email = buildReviewRequestEmail(booking, "https://example.com/review?token=secure-token");
+
+    expect(email.subject).toBe("Thank you for your visit — Isaac");
+    expect(email.text).toContain("Thank you for trusting me with your appointment.");
+    expect(email.text).toContain("I'd love your honest feedback.");
+    expect(email.text).toContain("Thank you again,\nIsaac");
+    expect(email.html).toContain("ISAAC HAKOBIAN");
+    expect(email.html).toContain("https://example.com/review?token=secure-token");
   });
 });

@@ -1,6 +1,6 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, InsertBooking, users, services, bookings } from "../drizzle/schema";
+import { InsertUser, InsertBooking, InsertBookingService, users, services, bookings, bookingServices, reviewTokens } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -111,10 +111,37 @@ export async function createBooking(booking: InsertBooking) {
   return result;
 }
 
+export type BookingServiceSelection = Omit<InsertBookingService, "id" | "bookingId" | "createdAt">;
+
+export async function createBookingWithServices(booking: InsertBooking, selectedServices: BookingServiceSelection[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (selectedServices.length === 0) throw new Error("At least one service is required");
+
+  return db.transaction(async (tx) => {
+    const result = await tx.insert(bookings).values(booking);
+    const bookingId = Number(result[0].insertId);
+
+    await tx.insert(bookingServices).values(selectedServices.map((service) => ({
+      ...service,
+      bookingId,
+    })));
+
+    return bookingId;
+  });
+}
+
 export async function getBookingByReference(referenceNumber: string) {
   const db = await getDb();
   if (!db) return undefined;
   const result = await db.select().from(bookings).where(eq(bookings.referenceNumber, referenceNumber)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getBookingById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(bookings).where(eq(bookings.id, id)).limit(1);
   return result.length > 0 ? result[0] : undefined;
 }
 
@@ -130,6 +157,12 @@ export async function getAllBookings() {
   return db.select().from(bookings).orderBy(desc(bookings.createdAt));
 }
 
+export async function getBookingServices(bookingId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(bookingServices).where(eq(bookingServices.bookingId, bookingId));
+}
+
 export async function updateBookingStatus(id: number, status: "pending" | "confirmed" | "declined") {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -137,7 +170,12 @@ export async function updateBookingStatus(id: number, status: "pending" | "confi
 }
 
 // Check for double booking on confirmed slots
-export async function isTimeSlotAvailable(date: string, time: string, excludeBookingId?: number) {
+function toMinutes(time: string) {
+  const [hours, minutes] = time.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+export async function isTimeSlotAvailable(date: string, time: string, durationMinutes = 30, excludeBookingId?: number) {
   const db = await getDb();
   if (!db) return true;
   
@@ -149,7 +187,17 @@ export async function isTimeSlotAvailable(date: string, time: string, excludeBoo
     ));
   
   const results = await query;
-  return results.length === 0;
+  const newStart = toMinutes(time);
+  const newEnd = newStart + durationMinutes;
+
+  return results
+    .filter((booking) => booking.id !== excludeBookingId)
+    .every((booking) => {
+      const existingStart = toMinutes(booking.bookingTime);
+      // Historical bookings predate totalDurationMinutes. Treat them as one 30-minute slot.
+      const existingEnd = existingStart + (booking.totalDurationMinutes || 30);
+      return newEnd <= existingStart || newStart >= existingEnd;
+    });
 }
 
 // ── Blocked Dates ──────────────────────────────────────────────────────────
@@ -203,4 +251,27 @@ export async function updateReviewPublished(id: number, isPublished: "yes" | "no
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   return db.update(reviews).set({ isPublished }).where(eq(reviews.id, id));
+}
+
+// ── Secure review tokens ────────────────────────────────────────────────────
+export async function createReviewToken(bookingId: number, tokenHash: string, expiresAt: Date) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // A newly issued email invalidates an older review link for the same visit.
+  await db.delete(reviewTokens).where(eq(reviewTokens.bookingId, bookingId));
+  await db.insert(reviewTokens).values({ bookingId, tokenHash, expiresAt });
+}
+
+export async function getReviewTokenByHash(tokenHash: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(reviewTokens).where(eq(reviewTokens.tokenHash, tokenHash)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function markReviewTokenUsed(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(reviewTokens).set({ usedAt: new Date() }).where(and(eq(reviewTokens.id, id), isNull(reviewTokens.usedAt)));
 }

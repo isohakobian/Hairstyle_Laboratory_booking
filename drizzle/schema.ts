@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { index, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -35,6 +35,10 @@ export const services = mysqlTable("services", {
   priceRub: int("priceRub"),
   priceMinRub: int("priceMinRub"),
   priceMaxRub: int("priceMaxRub"),
+  priceAmd: int("priceAmd"),
+  priceMinAmd: int("priceMinAmd"),
+  priceMaxAmd: int("priceMaxAmd"),
+  depositAmd: int("depositAmd"),
   noteEn: text("noteEn"),
   noteRu: text("noteRu"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -48,6 +52,9 @@ export const bookings = mysqlTable("bookings", {
   referenceNumber: varchar("referenceNumber", { length: 12 }).notNull().unique(),
   serviceId: int("serviceId").notNull(),
   serviceName: varchar("serviceName", { length: 255 }).notNull(),
+  serviceSummary: varchar("serviceSummary", { length: 1000 }).notNull().default(""),
+  totalDurationMinutes: int("totalDurationMinutes").notNull().default(0),
+  totalPriceSummary: varchar("totalPriceSummary", { length: 255 }).notNull().default(""),
   bookingDate: varchar("bookingDate", { length: 10 }).notNull(), // YYYY-MM-DD
   bookingTime: varchar("bookingTime", { length: 5 }).notNull(), // HH:MM
   clientName: varchar("clientName", { length: 255 }).notNull(),
@@ -61,6 +68,38 @@ export const bookings = mysqlTable("bookings", {
 
 export type Booking = typeof bookings.$inferSelect;
 export type InsertBooking = typeof bookings.$inferInsert;
+
+// Each row represents a distinct service selected for one booking. A unique
+// index prevents clients from adding the same service twice to one visit.
+export const bookingServices = mysqlTable("bookingServices", {
+  id: int("id").autoincrement().primaryKey(),
+  bookingId: int("bookingId").notNull(),
+  serviceId: int("serviceId").notNull(),
+  serviceName: varchar("serviceName", { length: 255 }).notNull(),
+  durationMinutes: int("durationMinutes").notNull(),
+  priceSummary: varchar("priceSummary", { length: 255 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [
+  index("bookingServices_bookingId_idx").on(table.bookingId),
+  uniqueIndex("bookingServices_bookingId_serviceId_idx").on(table.bookingId, table.serviceId),
+]);
+
+export type BookingService = typeof bookingServices.$inferSelect;
+export type InsertBookingService = typeof bookingServices.$inferInsert;
+
+export const reviewTokens = mysqlTable("reviewTokens", {
+  id: int("id").autoincrement().primaryKey(),
+  bookingId: int("bookingId").notNull(),
+  tokenHash: varchar("tokenHash", { length: 64 }).notNull().unique(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  usedAt: timestamp("usedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [
+  index("reviewTokens_bookingId_idx").on(table.bookingId),
+]);
+
+export type ReviewToken = typeof reviewTokens.$inferSelect;
+export type InsertReviewToken = typeof reviewTokens.$inferInsert;
 
 // Schedule management: admin can block specific dates
 export const blockedDates = mysqlTable("blockedDates", {

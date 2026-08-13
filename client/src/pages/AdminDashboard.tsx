@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
@@ -11,6 +11,12 @@ import BookingCalendar from '@/components/BookingCalendar';
 type Tab = 'bookings' | 'calendar' | 'schedule' | 'reviews';
 type BookingStatusFilter = 'all' | 'pending' | 'confirmed' | 'declined';
 type BookingSort = 'appointmentAsc' | 'appointmentDesc' | 'newest' | 'statusAsc';
+
+function getInitialTab(): Tab {
+  if (typeof window === 'undefined') return 'bookings';
+  const tab = new URLSearchParams(window.location.search).get('section');
+  return tab === 'calendar' || tab === 'schedule' || tab === 'reviews' ? tab : 'bookings';
+}
 
 const labelStyle: React.CSSProperties = {
   fontFamily: "'Inter', sans-serif",
@@ -38,7 +44,7 @@ export default function AdminDashboard() {
   const { language } = useLanguage();
   const [, setLocation] = useLocation();
   const { user, isAuthenticated, logout, loading } = useAuth();
-  const [activeTab, setActiveTab] = useState<Tab>('bookings');
+  const [activeTab, setActiveTab] = useState<Tab>(getInitialTab);
   const [bookingStatusFilter, setBookingStatusFilter] = useState<BookingStatusFilter>('all');
   const [bookingSort, setBookingSort] = useState<BookingSort>('appointmentAsc');
   const { data: bookings, isLoading: bookingsLoading, isError: bookingsError, refetch: refetchBookings } = trpc.admin.bookings.useQuery(undefined, {
@@ -56,10 +62,21 @@ export default function AdminDashboard() {
     onSuccess: () => { toast.success(language === 'ru' ? 'Отклонено' : 'Declined'); refetchBookings(); },
     onError: (e) => toast.error(e.message),
   });
+  const requestReviewMutation = trpc.admin.requestReview.useMutation({
+    onSuccess: () => toast.success(language === 'ru' ? 'Письмо с просьбой оставить отзыв отправлено' : 'Review request email sent'),
+    onError: (e) => toast.error(e.message),
+  });
   const publishReviewMutation = trpc.admin.publishReview.useMutation({
     onSuccess: () => { toast.success(language === 'ru' ? 'Обновлено' : 'Updated'); refetchReviews(); },
     onError: (e) => toast.error(e.message),
   });
+
+  const selectTab = (tab: Tab) => {
+    setActiveTab(tab);
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', tab === 'bookings' ? '/admin' : `/admin?section=${tab}`);
+    }
+  };
 
   useEffect(() => {
     if (!loading && (!isAuthenticated || user?.role !== 'admin')) setLocation('/');
@@ -107,11 +124,11 @@ export default function AdminDashboard() {
   const confirmed = bookings?.filter(b => b.status === 'confirmed') ?? [];
   const declined = bookings?.filter(b => b.status === 'declined') ?? [];
 
-  const tabs: { id: Tab; label: string }[] = [
-    { id: 'bookings', label: language === 'ru' ? `Заявки (${bookings?.length ?? 0})` : `Bookings (${bookings?.length ?? 0})` },
-    { id: 'calendar', label: language === 'ru' ? 'Календарь заявок' : 'Booking calendar' },
-    { id: 'schedule', label: language === 'ru' ? 'Расписание' : 'Schedule' },
-    { id: 'reviews', label: language === 'ru' ? `Отзывы (${allReviews?.length ?? 0})` : `Reviews (${allReviews?.length ?? 0})` },
+  const tabs: { id: Tab; label: string; description: string; count?: number }[] = [
+    { id: 'bookings', label: language === 'ru' ? 'Заявки' : 'Bookings', description: language === 'ru' ? 'Новые и подтверждённые визиты' : 'New and confirmed visits', count: bookings?.length ?? 0 },
+    { id: 'calendar', label: language === 'ru' ? 'Календарь' : 'Calendar', description: language === 'ru' ? 'Визиты по дням' : 'Visits by date', count: confirmed.length },
+    { id: 'schedule', label: language === 'ru' ? 'Доступность' : 'Availability', description: language === 'ru' ? 'Открытые дни для записи' : 'Open days for booking' },
+    { id: 'reviews', label: language === 'ru' ? 'Отзывы' : 'Reviews', description: language === 'ru' ? 'Модерация обратной связи' : 'Feedback moderation', count: allReviews?.length ?? 0 },
   ];
 
   const inputStyle: React.CSSProperties = {
@@ -135,8 +152,11 @@ export default function AdminDashboard() {
 
       <div className="container" style={{ paddingTop: '6rem', paddingBottom: '4rem' }}>
         <div style={{ marginBottom: '2.5rem' }}>
-          <p style={{ ...labelStyle, marginBottom: '0.75rem', color: 'var(--gold-mid)' }}>Admin</p>
+          <p style={{ ...labelStyle, marginBottom: '0.75rem', color: 'var(--gold-mid)' }}>Isaac / Admin</p>
           <h2 style={{ fontStyle: 'italic', marginBottom: 0 }}>{language === 'ru' ? 'Панель управления' : 'Dashboard'}</h2>
+          <p style={{ margin: '0.75rem 0 0', maxWidth: '40rem', color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem', lineHeight: 1.6 }}>
+            {language === 'ru' ? 'Управляйте заявками, расписанием и отзывами в одном понятном рабочем пространстве.' : 'Manage bookings, availability, and feedback from one clear workspace.'}
+          </p>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2.5rem' }}>
@@ -153,20 +173,33 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        <div style={{ display: 'flex', borderBottom: '1px solid hsl(var(--border))', marginBottom: '2rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(9rem, 1fr))', gap: '0.75rem', marginBottom: '2rem' }}>
           {tabs.map(tab => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{ ...labelStyle, background: 'none', border: 'none', borderBottom: activeTab === tab.id ? '2px solid var(--gold-mid)' : '2px solid transparent', cursor: 'pointer', padding: '0.875rem 1.25rem', color: activeTab === tab.id ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))', transition: 'all 200ms ease', marginBottom: '-1px' }}>
-              {tab.label}
+            <button key={tab.id} onClick={() => selectTab(tab.id)} aria-pressed={activeTab === tab.id} style={{ textAlign: 'left', background: activeTab === tab.id ? 'hsl(var(--secondary))' : 'hsl(var(--card))', border: activeTab === tab.id ? '1px solid var(--gold-mid)' : '1px solid hsl(var(--border))', cursor: 'pointer', padding: '1rem', color: 'hsl(var(--foreground))', transition: 'background-color 180ms ease, border-color 180ms ease' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', alignItems: 'center' }}>
+                <span style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: '1rem' }}>{tab.label}</span>
+                {typeof tab.count === 'number' && <span style={{ ...labelStyle, color: activeTab === tab.id ? 'var(--gold-mid)' : 'hsl(var(--muted-foreground))', fontSize: '0.625rem' }}>{tab.count}</span>}
+              </div>
+              <span style={{ display: 'block', ...labelStyle, marginTop: '0.35rem', fontSize: '0.5625rem', lineHeight: 1.35 }}>{tab.description}</span>
             </button>
           ))}
         </div>
 
         {activeTab === 'bookings' && (
           <div>
+            <div style={{ marginBottom: '1.25rem' }}>
+              <p style={{ ...labelStyle, margin: '0 0 0.4rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Рабочая очередь' : 'Work queue'}</p>
+              <h3 style={{ margin: 0, fontStyle: 'italic' }}>{language === 'ru' ? 'Заявки клиентов' : 'Client bookings'}</h3>
+            </div>
             {bookingsLoading ? <p style={labelStyle}>{language === 'ru' ? 'Загрузка...' : 'Loading...'}</p>
             : !bookings?.length ? <p style={labelStyle}>{language === 'ru' ? 'Нет заявок' : 'No bookings yet'}</p>
             : (
               <>
+                <p style={{ margin: '0 0 1.5rem', padding: '0.875rem 1rem', borderLeft: '2px solid var(--gold-mid)', backgroundColor: 'hsl(var(--secondary))', color: 'hsl(var(--muted-foreground))', fontSize: '0.8125rem', lineHeight: 1.5 }}>
+                  {language === 'ru'
+                    ? 'Сначала обработайте новые заявки. После визита откройте подтверждённую запись и отправьте клиенту личную просьбу оставить отзыв.'
+                    : 'Handle new requests first. After a completed visit, open the confirmed booking and send the client a personal review request.'}
+                </p>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid hsl(var(--border))' }}>
                   <div>
                     <p style={{ ...labelStyle, margin: '0 0 0.625rem', fontSize: '0.5625rem' }}>{language === 'ru' ? 'Статус' : 'Status'}</p>
@@ -227,12 +260,15 @@ export default function AdminDashboard() {
                           {booking.status === 'pending' ? (language === 'ru' ? 'Ожидание' : 'Pending') : booking.status === 'confirmed' ? (language === 'ru' ? 'Подтверждено' : 'Confirmed') : (language === 'ru' ? 'Отклонено' : 'Declined')}
                         </span>
                       </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem 2rem', marginBottom: '1rem' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(8rem, 1fr))', gap: '0.75rem 1.25rem', marginBottom: '1rem' }}>
                         {[
-                          { label: language === 'ru' ? 'Услуга' : 'Service', value: booking.serviceName },
+                          { label: language === 'ru' ? 'Услуги' : 'Services', value: booking.serviceSummary || booking.serviceName },
                           { label: language === 'ru' ? 'Дата' : 'Date', value: booking.bookingDate },
                           { label: language === 'ru' ? 'Время' : 'Time', value: booking.bookingTime },
+                          { label: language === 'ru' ? 'Длительность' : 'Duration', value: booking.totalDurationMinutes ? `${booking.totalDurationMinutes} ${language === 'ru' ? 'мин' : 'min'}` : '—' },
+                          { label: language === 'ru' ? 'Стоимость' : 'Price', value: booking.totalPriceSummary || '—' },
                           { label: language === 'ru' ? 'Телефон' : 'Phone', value: booking.clientPhone },
+                          ...(booking.clientEmail ? [{ label: 'Email', value: booking.clientEmail }] : []),
                         ].map(row => (
                           <div key={row.label}>
                             <p style={{ ...labelStyle, margin: '0 0 0.25rem', fontSize: '0.5625rem' }}>{row.label}</p>
@@ -251,6 +287,21 @@ export default function AdminDashboard() {
                           </button>
                         </div>
                       )}
+                      {booking.status === 'confirmed' && booking.clientEmail && (
+                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', paddingTop: '0.25rem' }}>
+                          <button
+                            className="btn-outline"
+                            style={{ fontSize: '0.625rem', padding: '0.625rem 1rem' }}
+                            onClick={() => requestReviewMutation.mutate({ id: booking.id })}
+                            disabled={requestReviewMutation.isPending}
+                          >
+                            {language === 'ru' ? 'Отправить запрос на отзыв' : 'Send review request'}
+                          </button>
+                          <span style={{ ...labelStyle, fontSize: '0.5625rem' }}>
+                            {language === 'ru' ? 'Отправляй после визита' : 'Send after the visit'}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                     ))}
@@ -263,10 +314,14 @@ export default function AdminDashboard() {
 
         {activeTab === 'schedule' && (
           <div>
+            <div style={{ marginBottom: '1.25rem' }}>
+              <p style={{ ...labelStyle, margin: '0 0 0.4rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Контроль расписания' : 'Schedule control'}</p>
+              <h3 style={{ margin: 0, fontStyle: 'italic' }}>{language === 'ru' ? 'Доступность для записи' : 'Booking availability'}</h3>
+            </div>
             <p style={{ color: 'hsl(var(--muted-foreground))', marginBottom: '2rem', fontSize: '0.875rem' }}>
               {language === 'ru'
-                ? 'Нажми на день чтобы закрыть или открыть его для записи.'
-                : 'Click a day to block or unblock it for bookings.'}
+                ? 'Открывайте и закрывайте отдельные дни для онлайн-записи.'
+                : 'Open or close individual days for online booking.'}
             </p>
             <ScheduleCalendar language={language as 'ru' | 'en'} />
           </div>
@@ -274,6 +329,10 @@ export default function AdminDashboard() {
 
         {activeTab === 'calendar' && (
           <div>
+            <div style={{ marginBottom: '1.25rem' }}>
+              <p style={{ ...labelStyle, margin: '0 0 0.4rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'План визитов' : 'Visit plan'}</p>
+              <h3 style={{ margin: 0, fontStyle: 'italic' }}>{language === 'ru' ? 'Календарь клиентов' : 'Client calendar'}</h3>
+            </div>
             <p style={{ color: 'hsl(var(--muted-foreground))', marginBottom: '2rem', fontSize: '0.875rem' }}>
               {language === 'ru'
                 ? 'Выберите дату, чтобы увидеть записи клиентов и их текущий статус.'
@@ -291,6 +350,10 @@ export default function AdminDashboard() {
 
         {activeTab === 'reviews' && (
           <div>
+            <div style={{ marginBottom: '1.25rem' }}>
+              <p style={{ ...labelStyle, margin: '0 0 0.4rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Репутация' : 'Reputation'}</p>
+              <h3 style={{ margin: 0, fontStyle: 'italic' }}>{language === 'ru' ? 'Отзывы клиентов' : 'Client reviews'}</h3>
+            </div>
             {!allReviews?.length ? <p style={labelStyle}>{language === 'ru' ? 'Нет отзывов' : 'No reviews yet'}</p> : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {allReviews.map(review => (

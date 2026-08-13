@@ -1,0 +1,2 @@
+DROP INDEX `bookingServices_bookingId_serviceId_idx` ON `bookingServices`;--> statement-breakpoint
+ALTER TABLE `bookingServices` ADD CONSTRAINT `bookingServices_bookingId_serviceId_idx` UNIQUE(`bookingId`,`serviceId`);

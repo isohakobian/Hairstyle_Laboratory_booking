@@ -12,6 +12,18 @@ vi.mock("@/contexts/LanguageContext", () => ({
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
+    services: {
+      list: {
+        useQuery: () => ({
+          data: [
+            { id: 150001, nameEn: "Haircut", durationMinutes: 45, priceAmd: 15000, priceMinAmd: null, priceMaxAmd: null, depositAmd: null },
+            { id: 150002, nameEn: "Beard Modeling", durationMinutes: 30, priceAmd: 12000, priceMinAmd: null, priceMaxAmd: null, depositAmd: null },
+            { id: 150003, nameEn: "Bio Perm", durationMinutes: 180, priceAmd: null, priceMinAmd: 70000, priceMaxAmd: 110000, depositAmd: 35000 },
+          ],
+          isLoading: false,
+        }),
+      },
+    },
     bookings: {
       create: {
         useMutation: () => ({ mutateAsync, isPending: false }),
@@ -36,10 +48,13 @@ describe("Booking form", () => {
     mutateAsync.mockClear();
   });
 
-  it("submits the client email from the visible form to the booking mutation", async () => {
+  it("submits distinct selected services and the client email from the visible form", async () => {
     const { container } = render(<Booking />);
 
     fireEvent.click(screen.getByRole("button", { name: /Стрижка/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Моделирование бороды/i }));
+    expect(screen.getByText('75 мин')).toBeTruthy();
+    expect(screen.getByText('27,000 ֏')).toBeTruthy();
     fireEvent.change(container.querySelector('input[type="date"]')!, { target: { value: "2099-12-30" } });
     fireEvent.change(container.querySelector("select")!, { target: { value: "14:00" } });
     fireEvent.change(container.querySelector('input[type="text"]')!, { target: { value: "Client Name" } });
@@ -50,8 +65,7 @@ describe("Booking form", () => {
 
     await waitFor(() => {
       expect(mutateAsync).toHaveBeenCalledWith(expect.objectContaining({
-        serviceId: 1,
-        serviceName: "Стрижка",
+        serviceIds: [150001, 150002],
         clientEmail: "client@example.com",
         clientName: "Client Name",
         clientPhone: "+37455000000",

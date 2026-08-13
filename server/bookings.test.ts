@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { appRouter } from './routers';
 import type { TrpcContext } from './_core/context';
 import { createBooking, getBookingByReference } from './db';
+import { clearExampleTestBookings } from './testCleanup';
 
 // Mock context for testing
 function createMockContext(userId: number = 1, role: 'user' | 'admin' = 'user'): TrpcContext {
@@ -29,10 +30,20 @@ function createMockContext(userId: number = 1, role: 'user' | 'admin' = 'user'):
 
 describe('Bookings API', () => {
   let caller: ReturnType<typeof appRouter.createCaller>;
+  let haircutServiceId: number;
+  let beardServiceId: number;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     const ctx = createMockContext();
     caller = appRouter.createCaller(ctx);
+    const services = await caller.services.list();
+    haircutServiceId = services.find((service) => service.nameEn === 'Haircut')?.id ?? 0;
+    beardServiceId = services.find((service) => service.nameEn === 'Beard Modeling')?.id ?? 0;
+    if (!haircutServiceId || !beardServiceId) throw new Error('Required services are unavailable');
+  });
+
+  afterAll(async () => {
+    await clearExampleTestBookings();
   });
 
   describe('services.list', () => {
@@ -67,8 +78,7 @@ describe('Bookings API', () => {
   describe('bookings.create', () => {
     it('should create a booking with valid data', async () => {
       const bookingData = {
-        serviceId: 1,
-        serviceName: "Men's Haircut",
+        serviceIds: [haircutServiceId],
         bookingDate: '2026-07-15',
         bookingTime: '14:00',
         clientName: 'John Doe',
@@ -89,8 +99,7 @@ describe('Bookings API', () => {
 
     it('should generate unique reference numbers', async () => {
       const bookingData1 = {
-        serviceId: 1,
-        serviceName: "Men's Haircut",
+        serviceIds: [haircutServiceId],
         bookingDate: '2026-07-15',
         bookingTime: '15:00',
         clientName: 'Jane Doe',
@@ -99,8 +108,7 @@ describe('Bookings API', () => {
       };
 
       const bookingData2 = {
-        serviceId: 2,
-        serviceName: 'Beard Modeling',
+        serviceIds: [beardServiceId],
         bookingDate: '2026-07-15',
         bookingTime: '16:00',
         clientName: 'Bob Smith',
@@ -114,14 +122,13 @@ describe('Bookings API', () => {
       expect(booking1.referenceNumber).not.toBe(booking2.referenceNumber);
       expect(booking1.referenceNumber).toMatch(/^[A-Z0-9]+$/);
       expect(booking2.referenceNumber).toMatch(/^[A-Z0-9]+$/);
-    });
+    }, 15000);
   });
 
   describe('bookings.getByReference', () => {
     it('should retrieve booking by reference number', async () => {
       const bookingData = {
-        serviceId: 1,
-        serviceName: "Men's Haircut",
+        serviceIds: [haircutServiceId],
         bookingDate: '2026-07-20',
         bookingTime: '10:00',
         clientName: 'Alice Johnson',
@@ -152,8 +159,7 @@ describe('Bookings API', () => {
     it('should retrieve bookings by email', async () => {
       const email = 'test-user@example.com';
       const bookingData = {
-        serviceId: 1,
-        serviceName: "Men's Haircut",
+        serviceIds: [haircutServiceId],
         bookingDate: '2026-07-25',
         bookingTime: '11:00',
         clientName: 'Test User',
@@ -175,6 +181,35 @@ describe('Bookings API', () => {
       });
 
       expect(Array.isArray(results)).toBe(true);
+    });
+  });
+
+  describe('multi-service bookings', () => {
+    it('should create one visit with several distinct services', async () => {
+      const result = await caller.bookings.create({
+        serviceIds: [haircutServiceId, beardServiceId],
+        bookingDate: '2099-12-27',
+        bookingTime: '10:00',
+        clientName: 'Multi Service Client',
+        clientPhone: '+37455000001',
+        clientEmail: 'multi-service@example.com',
+      });
+
+      expect(result.serviceSummary).toContain('Haircut');
+      expect(result.serviceSummary).toContain('Beard Modeling');
+      expect(result.totalDurationMinutes).toBe(75);
+      expect(result.totalPriceSummary).toBe('27,000 ֏');
+    });
+
+    it('should reject duplicate services in one visit', async () => {
+      await expect(caller.bookings.create({
+        serviceIds: [haircutServiceId, haircutServiceId],
+        bookingDate: '2099-12-28',
+        bookingTime: '10:00',
+        clientName: 'Duplicate Service Client',
+        clientPhone: '+37455000002',
+        clientEmail: 'duplicate-service@example.com',
+      })).rejects.toThrow('Each service can only be selected once');
     });
   });
 

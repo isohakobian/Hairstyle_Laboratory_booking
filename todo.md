@@ -79,13 +79,21 @@
 - [ ] Recurring appointments
 - [x] Fix and verify RU/EN language switcher visibility on mobile header
 - [x] Stabilize booking tests when dates are blocked in the live calendar
-- [ ] Support multiple distinct services in one booking while preventing duplicate services
-- [ ] Calculate combined duration and price details for multi-service bookings
+- [x] Support multiple distinct services in one booking while preventing duplicate services
+- [x] Calculate combined duration and price details for multi-service bookings
 - [x] Send Gmail confirmation email with booking details to the client
-- [ ] Add an iCalendar attachment or link so clients can save the booking to their calendar
-- [ ] Send a post-appointment review request email with a secure review link
-- [ ] Simplify and visually organize the admin panel around bookings, calendar, availability, and reviews
+- [x] Add an iCalendar attachment or link so clients can save the booking to their calendar
+- [x] Send a manual post-visit review request email with a secure review link
+- [x] Add one-time, hashed database-backed review tokens with a 30-day expiry
+- [x] Test rejection of an expired review token
+- [x] Rewrite the review request email in Isaac's warm first-person voice
+- [x] Verify the real authenticated calendar, availability, and reviews sections on desktop and mobile
+- [ ] Test real booking-card navigation and review-request action when a client booking is available
+- [x] Support direct links to admin sections for verification and daily use
+- [x] Prevent automated tests from leaving booking reviews in the live admin panel
 - [x] Evaluate and implement direct Gmail delivery for new form submissions without a custom domain
 - [x] Configure Gmail App Password SMTP delivery for booking notifications
 - [x] Restore and validate client email in the booking form so client confirmations are delivered
 - [x] Test the visible Booking form payload and backend email-delivery contract with clientEmail
+- [x] Add loading, error, and empty states to the service selector
+- [x] Verify the complete multi-service booking flow in the client interface

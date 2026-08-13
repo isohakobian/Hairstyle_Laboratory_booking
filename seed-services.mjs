@@ -12,9 +12,10 @@ const services = [
     descriptionEn: 'Precision cut and styling',
     descriptionRu: 'Точная стрижка и стайлинг',
     durationMinutes: 45,
-    priceRub: null,
-    priceMinRub: null,
-    priceMaxRub: null,
+    priceAmd: 15000,
+    priceMinAmd: null,
+    priceMaxAmd: null,
+    depositAmd: null,
     noteEn: '15,000 ֏',
     noteRu: '15,000 ֏',
   },
@@ -24,9 +25,10 @@ const services = [
     descriptionEn: 'Beard shaping and grooming',
     descriptionRu: 'Формовка и уход за бородой',
     durationMinutes: 30,
-    priceRub: null,
-    priceMinRub: null,
-    priceMaxRub: null,
+    priceAmd: 12000,
+    priceMinAmd: null,
+    priceMaxAmd: null,
+    depositAmd: null,
     noteEn: '12,000 ֏',
     noteRu: '12,000 ֏',
   },
@@ -36,34 +38,35 @@ const services = [
     descriptionEn: 'Chemical wave treatment with care',
     descriptionRu: 'Химическая завивка с уходом',
     durationMinutes: 180,
-    priceRub: null,
-    priceMinRub: null,
-    priceMaxRub: null,
+    priceAmd: null,
+    priceMinAmd: 70000,
+    priceMaxAmd: 110000,
+    depositAmd: 35000,
     noteEn: '70,000 – 110,000 ֏ (deposit: 35,000 ֏)',
     noteRu: '70,000 – 110,000 ֏ (предоплата: 35,000 ֏)',
   },
 ];
 
 try {
-  // Clear existing services
-  await connection.execute('DELETE FROM services');
-  
-  // Insert new services
   for (const service of services) {
     await connection.execute(
-      'INSERT INTO services (nameEn, nameRu, descriptionEn, descriptionRu, durationMinutes, priceRub, priceMinRub, priceMaxRub, noteEn, noteRu) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      `UPDATE services
+       SET nameRu = ?, descriptionEn = ?, descriptionRu = ?, durationMinutes = ?,
+           priceAmd = ?, priceMinAmd = ?, priceMaxAmd = ?, depositAmd = ?, noteEn = ?, noteRu = ?
+       WHERE nameEn = ?`,
       [
-        service.nameEn,
         service.nameRu,
         service.descriptionEn,
         service.descriptionRu,
         service.durationMinutes,
-        service.priceRub,
-        service.priceMinRub,
-        service.priceMaxRub,
+        service.priceAmd,
+        service.priceMinAmd,
+        service.priceMaxAmd,
+        service.depositAmd,
         service.noteEn,
         service.noteRu,
-      ]
+        service.nameEn,
+      ],
     );
   }
 

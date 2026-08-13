@@ -3,6 +3,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
 import { useLocation } from 'wouter';
+import { downloadCalendarInvite, type CalendarInviteDetails } from '@/lib/calendarInvite';
 
 type Lang = 'ru' | 'en';
 
@@ -10,6 +11,13 @@ const copy: Record<Lang, {
   title: string;
   sub: string;
   selectService: string;
+  selectServiceHint: string;
+  selectionSummary: string;
+  totalDuration: string;
+  totalPrice: string;
+  loadingServices: string;
+  servicesUnavailable: string;
+  noServicesAvailable: string;
   selectDate: string;
   selectTime: string;
   name: string;
@@ -24,6 +32,7 @@ const copy: Record<Lang, {
   refLabel: string;
   checkStatus: string;
   backHome: string;
+  addToCalendar: string;
   haircut: string;
   beard: string;
   bioPerm: string;
@@ -42,7 +51,14 @@ const copy: Record<Lang, {
   ru: {
     title: 'Запись',
     sub: 'Выберите услугу, дату и время',
-    selectService: 'Услуга',
+    selectService: 'Услуги',
+    selectServiceHint: 'Можно выбрать несколько услуг. Одну и ту же услугу — только один раз.',
+    selectionSummary: 'Ваш визит',
+    totalDuration: 'Общая длительность',
+    totalPrice: 'Ориентир по стоимости',
+    loadingServices: 'Загружаем услуги…',
+    servicesUnavailable: 'Услуги временно недоступны. Обновите страницу и попробуйте снова.',
+    noServicesAvailable: 'Сейчас нет доступных услуг для онлайн-записи. Свяжитесь с Isaac напрямую.',
     selectDate: 'Дата',
     selectTime: 'Время',
     name: 'Ваше имя',
@@ -57,6 +73,7 @@ const copy: Record<Lang, {
     refLabel: 'Номер заявки',
     checkStatus: 'Проверить статус',
     backHome: 'На главную',
+    addToCalendar: 'Добавить в календарь',
     haircut: 'Стрижка',
     beard: 'Моделирование бороды',
     bioPerm: 'Биохимическая завивка',
@@ -75,7 +92,14 @@ const copy: Record<Lang, {
   en: {
     title: 'Booking',
     sub: 'Select service, date and time',
-    selectService: 'Service',
+    selectService: 'Services',
+    selectServiceHint: 'Select one or more services. Each service can be selected only once.',
+    selectionSummary: 'Your visit',
+    totalDuration: 'Total duration',
+    totalPrice: 'Estimated price',
+    loadingServices: 'Loading services…',
+    servicesUnavailable: 'Services are temporarily unavailable. Refresh the page and try again.',
+    noServicesAvailable: 'There are no services available for online booking right now. Please contact Isaac directly.',
     selectDate: 'Date',
     selectTime: 'Time',
     name: 'Your name',
@@ -90,6 +114,7 @@ const copy: Record<Lang, {
     refLabel: 'Reference number',
     checkStatus: 'Check status',
     backHome: 'Back to home',
+    addToCalendar: 'Add to calendar',
     haircut: 'Haircut',
     beard: 'Beard modeling',
     bioPerm: 'Bio Perm',
@@ -107,10 +132,10 @@ const copy: Record<Lang, {
   },
 };
 
-const servicesList = [
-  { id: 1, nameKey: 'haircut' as const, priceAmd: 15000, priceMinAmd: null as number | null, priceMaxAmd: null as number | null, duration: 45, deposit: null as number | null },
-  { id: 2, nameKey: 'beard' as const, priceAmd: 12000, priceMinAmd: null as number | null, priceMaxAmd: null as number | null, duration: 30, deposit: null as number | null },
-  { id: 3, nameKey: 'bioPerm' as const, priceAmd: null as number | null, priceMinAmd: 70000, priceMaxAmd: 110000, duration: 180, deposit: 35000 },
+const serviceCatalog = [
+  { nameEn: 'Haircut', nameKey: 'haircut' as const, priceAmd: 15000, priceMinAmd: null as number | null, priceMaxAmd: null as number | null, duration: 45, deposit: null as number | null },
+  { nameEn: 'Beard Modeling', nameKey: 'beard' as const, priceAmd: 12000, priceMinAmd: null as number | null, priceMaxAmd: null as number | null, duration: 30, deposit: null as number | null },
+  { nameEn: 'Bio Perm', nameKey: 'bioPerm' as const, priceAmd: null as number | null, priceMinAmd: 70000, priceMaxAmd: 110000, duration: 180, deposit: 35000 },
 ];
 
 const timeSlots = [
@@ -139,7 +164,7 @@ export default function Booking() {
 
   const c = copy[language] ?? copy.ru;
 
-  const [selectedService, setSelectedService] = useState<number | null>(null);
+  const [selectedServiceIds, setSelectedServiceIds] = useState<number[]>([]);
   const [bookingDate, setBookingDate] = useState('');
   const [bookingTime, setBookingTime] = useState('');
   const [clientName, setClientName] = useState('');
@@ -147,12 +172,36 @@ export default function Booking() {
   const [clientEmail, setClientEmail] = useState('');
   const [comment, setComment] = useState('');
   const [referenceNumber, setReferenceNumber] = useState('');
+  const [calendarInvite, setCalendarInvite] = useState<CalendarInviteDetails | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
   const createBookingMutation = trpc.bookings.create.useMutation();
+  const { data: databaseServices, isLoading: servicesLoading, isError: servicesError } = trpc.services.list.useQuery();
+  const servicesList = serviceCatalog.flatMap((service) => {
+    const databaseService = databaseServices?.find((item) => item.nameEn === service.nameEn);
+    return databaseService ? [{
+      ...service,
+      id: databaseService.id,
+      duration: databaseService.durationMinutes,
+      priceAmd: databaseService.priceAmd,
+      priceMinAmd: databaseService.priceMinAmd,
+      priceMaxAmd: databaseService.priceMaxAmd,
+      deposit: databaseService.depositAmd,
+    }] : [];
+  });
+  const servicesReady = !servicesLoading && !servicesError && servicesList.length > 0;
 
-  const selectedSvc = servicesList.find(s => s.id === selectedService);
+  const selectedServices = servicesList.filter((service) => selectedServiceIds.includes(service.id));
+  const totalDuration = selectedServices.reduce((total, service) => total + service.duration, 0);
+
+  const toggleService = (serviceId: number) => {
+    setSelectedServiceIds((current) => (
+      current.includes(serviceId)
+        ? current.filter((id) => id !== serviceId)
+        : [...current, serviceId]
+    ));
+  };
 
   const formatPrice = (svc: typeof servicesList[number]) => {
     if (svc.priceMinAmd) return `${svc.priceMinAmd.toLocaleString()} – ${svc.priceMaxAmd!.toLocaleString()} ֏`;
@@ -160,9 +209,25 @@ export default function Booking() {
     return '—';
   };
 
+  const formatTotalPrice = () => {
+    const fixedTotal = selectedServices.reduce((total, service) => total + (service.priceAmd ?? 0), 0);
+    const rangedServices = selectedServices.filter((service) => service.priceMinAmd !== null && service.priceMaxAmd !== null);
+    const depositTotal = selectedServices.reduce((total, service) => total + (service.deposit ?? 0), 0);
+
+    if (rangedServices.length > 0) {
+      const min = fixedTotal + rangedServices.reduce((total, service) => total + (service.priceMinAmd ?? 0), 0);
+      const max = fixedTotal + rangedServices.reduce((total, service) => total + (service.priceMaxAmd ?? 0), 0);
+      const deposit = depositTotal > 0 ? ` · ${language === 'ru' ? 'предоплата' : 'deposit'} ${depositTotal.toLocaleString()} ֏` : '';
+      return `${min.toLocaleString()} – ${max.toLocaleString()} ֏${deposit}`;
+    }
+
+    return fixedTotal > 0 ? `${fixedTotal.toLocaleString()} ֏` : '—';
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedService) { toast.error(c.errors.service); return; }
+    if (!servicesReady) { toast.error(c.servicesUnavailable); return; }
+    if (selectedServiceIds.length === 0) { toast.error(c.errors.service); return; }
     if (!bookingDate) { toast.error(c.errors.date); return; }
     if (!bookingTime) { toast.error(c.errors.time); return; }
     if (!clientName.trim()) { toast.error(c.errors.name); return; }
@@ -172,8 +237,7 @@ export default function Booking() {
 
     try {
       const result = await createBookingMutation.mutateAsync({
-        serviceId: selectedService,
-        serviceName: c[selectedSvc!.nameKey],
+        serviceIds: selectedServiceIds,
         bookingDate,
         bookingTime,
         clientName: clientName.trim(),
@@ -183,6 +247,14 @@ export default function Booking() {
       });
       if (result) {
         setReferenceNumber(result.referenceNumber);
+        setCalendarInvite({
+          referenceNumber: result.referenceNumber,
+          serviceName: selectedServices.map((service) => c[service.nameKey]).join(' + '),
+          bookingDate,
+          bookingTime,
+          durationMinutes: totalDuration,
+          totalPriceSummary: formatTotalPrice(),
+        });
         setSubmitted(true);
       }
     } catch (error: any) {
@@ -218,6 +290,11 @@ export default function Booking() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {calendarInvite && (
+                <button className="btn-outline" onClick={() => downloadCalendarInvite(calendarInvite)}>
+                  {c.addToCalendar}
+                </button>
+              )}
               <button className="btn-primary" onClick={() => setLocation('/status')}>
                 {c.checkStatus}
               </button>
@@ -255,12 +332,27 @@ export default function Booking() {
           {/* Service selection */}
           <div style={{ marginBottom: '2.5rem' }}>
             <p className="label-caps" style={{ marginBottom: '1rem' }}>{c.selectService}</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-              {servicesList.map((svc, i) => (
+            <p style={{ margin: '0 0 1rem', color: 'hsl(var(--muted-foreground))', fontSize: '0.8125rem', lineHeight: 1.5 }}>{c.selectServiceHint}</p>
+            {servicesLoading ? (
+              <div aria-live="polite" style={{ padding: '1.5rem 0', borderTop: '1px solid hsl(var(--border))', borderBottom: '1px solid hsl(var(--border))', color: 'hsl(var(--muted-foreground))' }}>
+                {c.loadingServices}
+              </div>
+            ) : servicesError ? (
+              <div role="alert" style={{ padding: '1.5rem 0', borderTop: '1px solid hsl(var(--border))', borderBottom: '1px solid hsl(var(--border))', color: 'hsl(var(--destructive))' }}>
+                {c.servicesUnavailable}
+              </div>
+            ) : servicesList.length === 0 ? (
+              <div role="status" style={{ padding: '1.5rem 0', borderTop: '1px solid hsl(var(--border))', borderBottom: '1px solid hsl(var(--border))', color: 'hsl(var(--muted-foreground))' }}>
+                {c.noServicesAvailable}
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+                {servicesList.map((svc, i) => (
                 <button
                   key={svc.id}
                   type="button"
-                  onClick={() => setSelectedService(svc.id)}
+                  aria-pressed={selectedServiceIds.includes(svc.id)}
+                  onClick={() => toggleService(svc.id)}
                   style={{
                     display: 'flex',
                     justifyContent: 'space-between',
@@ -271,7 +363,7 @@ export default function Booking() {
                     background: 'none',
                     cursor: 'pointer',
                     transition: 'opacity 200ms ease',
-                    opacity: selectedService && selectedService !== svc.id ? 0.4 : 1,
+                    opacity: selectedServiceIds.length > 0 && !selectedServiceIds.includes(svc.id) ? 0.58 : 1,
                   }}
                 >
                   <div style={{ textAlign: 'left' }}>
@@ -291,14 +383,33 @@ export default function Booking() {
                       height: '1.25rem',
                       borderRadius: '50%',
                       border: '1px solid hsl(var(--border))',
-                      backgroundColor: selectedService === svc.id ? 'hsl(var(--foreground))' : 'transparent',
+                      backgroundColor: selectedServiceIds.includes(svc.id) ? 'hsl(var(--foreground))' : 'transparent',
                       transition: 'background-color 200ms ease',
                       flexShrink: 0,
                     }} />
                   </div>
                 </button>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
+            {selectedServices.length > 0 && (
+              <div style={{ marginTop: '1.25rem', padding: '1.1rem 1.25rem', border: '1px solid hsl(var(--border))', backgroundColor: 'hsl(var(--card))' }}>
+                <p className="label-caps" style={{ margin: '0 0 0.65rem' }}>{c.selectionSummary}</p>
+                <p style={{ margin: '0 0 0.8rem', color: 'hsl(var(--foreground))', fontFamily: "'Cormorant Garamond', serif", fontSize: '1.25rem' }}>
+                  {selectedServices.map((service) => c[service.nameKey]).join(' + ')}
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', borderTop: '1px solid hsl(var(--border))', paddingTop: '0.8rem' }}>
+                  <div>
+                    <p className="label-caps" style={{ margin: 0, fontSize: '0.625rem' }}>{c.totalDuration}</p>
+                    <p style={{ margin: '0.3rem 0 0', fontSize: '0.875rem' }}>{totalDuration} {language === 'ru' ? 'мин' : 'min'}</p>
+                  </div>
+                  <div>
+                    <p className="label-caps" style={{ margin: 0, fontSize: '0.625rem' }}>{c.totalPrice}</p>
+                    <p style={{ margin: '0.3rem 0 0', fontSize: '0.875rem' }}>{formatTotalPrice()}</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Date + Time */}

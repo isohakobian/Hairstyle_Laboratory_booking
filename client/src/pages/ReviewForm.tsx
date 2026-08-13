@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
@@ -7,9 +7,9 @@ import { useLocation } from 'wouter';
 const copy = {
   ru: {
     title: 'Оставить отзыв',
-    sub: 'Введите номер заявки для подтверждения',
-    refLabel: 'Номер заявки',
-    refPlaceholder: 'Например: AB12CD',
+    sub: 'Оставьте короткий отзыв о вашем визите',
+    refLabel: 'Защищённая ссылка на отзыв',
+    refPlaceholder: '',
     ratingLabel: 'Оценка',
     textLabel: 'Комментарий (необязательно)',
     textPlaceholder: 'Расскажите о вашем опыте...',
@@ -20,6 +20,7 @@ const copy = {
     backHome: 'На главную',
     errors: {
       ref: 'Введите номер заявки',
+      invalidLink: 'Откройте защищённую ссылку из письма, чтобы оставить отзыв',
       rating: 'Выберите оценку',
       notFound: 'Заявка не найдена',
       notConfirmed: 'Отзыв можно оставить только для подтверждённой записи',
@@ -29,9 +30,9 @@ const copy = {
   },
   en: {
     title: 'Leave a review',
-    sub: 'Enter your reference number to confirm',
-    refLabel: 'Reference number',
-    refPlaceholder: 'e.g. AB12CD',
+    sub: 'Leave a short review about your visit',
+    refLabel: 'Secure review link',
+    refPlaceholder: '',
     ratingLabel: 'Rating',
     textLabel: 'Comment (optional)',
     textPlaceholder: 'Tell us about your experience...',
@@ -42,6 +43,7 @@ const copy = {
     backHome: 'Back to home',
     errors: {
       ref: 'Enter your reference number',
+      invalidLink: 'Open the secure link from your email to leave a review',
       rating: 'Select a rating',
       notFound: 'Booking not found',
       notConfirmed: 'Reviews can only be submitted for confirmed bookings',
@@ -56,7 +58,10 @@ export default function ReviewForm() {
   const [, setLocation] = useLocation();
   const c = copy[language] ?? copy.ru;
 
-  const [referenceNumber, setReferenceNumber] = useState('');
+  const [reviewToken] = useState(() => {
+    if (typeof window === 'undefined') return '';
+    return new URLSearchParams(window.location.search).get('token') ?? '';
+  });
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [text, setText] = useState('');
@@ -75,10 +80,10 @@ export default function ReviewForm() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!referenceNumber.trim()) { toast.error(c.errors.ref); return; }
+    if (!reviewToken) { toast.error(c.errors.invalidLink); return; }
     if (!rating) { toast.error(c.errors.rating); return; }
     submitMutation.mutate({
-      referenceNumber: referenceNumber.trim().toUpperCase(),
+      token: reviewToken,
       rating,
       text: text.trim() || undefined,
     });
@@ -122,18 +127,11 @@ export default function ReviewForm() {
         </div>
 
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '2rem' }}>
-            <p style={{ fontFamily: "'Inter', sans-serif", fontSize: '0.6875rem', fontWeight: 500, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'hsl(var(--muted-foreground))', marginBottom: '0.75rem' }}>
-              {c.refLabel}
+          <div style={{ marginBottom: '2rem', padding: '1rem 0', borderTop: '1px solid hsl(var(--border))', borderBottom: '1px solid hsl(var(--border))' }}>
+            <p className="label-caps" style={{ margin: 0 }}>{c.refLabel}</p>
+            <p style={{ margin: '0.5rem 0 0', color: reviewToken ? 'hsl(142, 50%, 40%)' : 'hsl(var(--destructive))', fontSize: '0.8125rem' }}>
+              {reviewToken ? (language === 'ru' ? 'Ссылка подтверждена' : 'Link verified') : c.errors.invalidLink}
             </p>
-            <input
-              type="text"
-              value={referenceNumber}
-              onChange={e => setReferenceNumber(e.target.value.toUpperCase())}
-              placeholder={c.refPlaceholder}
-              style={inputStyle}
-              autoComplete="off"
-            />
           </div>
 
           <div style={{ marginBottom: '2rem' }}>
