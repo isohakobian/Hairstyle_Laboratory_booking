@@ -62,12 +62,23 @@ export const bookings = mysqlTable("bookings", {
   clientEmail: varchar("clientEmail", { length: 320 }),
   comment: text("comment"),
   status: mysqlEnum("status", ["pending", "confirmed", "declined"]).default("pending").notNull(),
+  repeatFollowUpClaimedAt: timestamp("repeatFollowUpClaimedAt"),
+  repeatFollowUpSentAt: timestamp("repeatFollowUpSentAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
 export type Booking = typeof bookings.$inferSelect;
 export type InsertBooking = typeof bookings.$inferInsert;
+
+// Project-level scheduled jobs keep their platform task IDs here for later
+// inspection, pause, or deletion without relying on a sandbox session.
+export const automationSettings = mysqlTable("automationSettings", {
+  key: varchar("key", { length: 100 }).primaryKey(),
+  scheduleCronTaskUid: varchar("scheduleCronTaskUid", { length: 65 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
 
 // Each row represents a distinct service selected for one booking. A unique
 // index prevents clients from adding the same service twice to one visit.

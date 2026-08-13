@@ -140,6 +140,30 @@ export function buildReviewRequestEmail(details: BookingEmailDetails, reviewUrl:
   };
 }
 
+export function buildRepeatFollowUpEmail(details: BookingEmailDetails, bookingUrl: string): EmailMessage {
+  const safeName = escapeHtml(details.clientName);
+  const safeUrl = escapeHtml(bookingUrl);
+  return {
+    subject: "Ready for your next visit? — Isaac",
+    text: [
+      `Hi, ${details.clientName}.`,
+      "It has been a little while since your last visit. If you are ready for another haircut or grooming appointment, I would love to see you again.",
+      `Book your next visit: ${bookingUrl}`,
+      "",
+      "See you soon,",
+      "Isaac",
+      "",
+      `Привет, ${details.clientName}.`,
+      "Прошло уже немного времени после вашего последнего визита. Если вы готовы к новой стрижке или уходу, буду рад снова вас видеть.",
+      `Записаться на следующий визит: ${bookingUrl}`,
+      "",
+      "До встречи,",
+      "Isaac",
+    ].join("\n"),
+    html: `<!doctype html><html><body style="margin:0;background:#F7F5F1;font-family:Arial,sans-serif;color:#17191E;"><div style="max-width:600px;margin:0 auto;padding:36px 24px;"><p style="margin:0 0 8px;color:#A17A2C;font-size:11px;font-weight:700;letter-spacing:2px;">ISAAC HAKOBIAN</p><h1 style="margin:0 0 18px;font-family:Georgia,serif;font-size:32px;line-height:1.1;">Ready for your next visit?</h1><p style="margin:0 0 8px;font-size:15px;line-height:1.6;">Hi, ${safeName}.</p><p style="margin:0 0 8px;font-size:15px;line-height:1.6;">It has been a little while since your last visit. If you are ready for another haircut or grooming appointment, I would love to see you again.</p><p style="margin:0 0 24px;font-size:15px;line-height:1.6;">Прошло уже немного времени после вашего последнего визита. Если вы готовы к новой стрижке или уходу, буду рад снова вас видеть.</p><a href="${safeUrl}" style="display:inline-block;background:#17191E;color:#FFFFFF;text-decoration:none;padding:14px 20px;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">Book your next visit / Записаться</a><p style="margin:26px 0 0;font-size:15px;line-height:1.6;">See you soon,<br><strong>Isaac</strong></p></div></body></html>`,
+  };
+}
+
 function getMailTransport() {
   const user = process.env.GMAIL_SMTP_USER;
   const pass = process.env.GMAIL_SMTP_APP_PASSWORD;
@@ -231,6 +255,23 @@ export async function sendReviewRequestEmail(details: BookingEmailDetails, revie
   if (!config) return { skipped: true } as const;
 
   const email = buildReviewRequestEmail(details, reviewUrl);
+  return config.transport.sendMail({
+    from: `Hairstyle Laboratory <${config.user}>`,
+    to: details.clientEmail,
+    replyTo: config.user,
+    subject: email.subject,
+    text: email.text,
+    html: email.html,
+    headers: { "X-Booking-Reference": details.referenceNumber },
+  });
+}
+
+export async function sendRepeatFollowUpEmail(details: BookingEmailDetails, bookingUrl: string) {
+  if (process.env.NODE_ENV === "test" || !details.clientEmail) return { skipped: true } as const;
+  const config = getMailTransport();
+  if (!config) return { skipped: true } as const;
+
+  const email = buildRepeatFollowUpEmail(details, bookingUrl);
   return config.transport.sendMail({
     from: `Hairstyle Laboratory <${config.user}>`,
     to: details.clientEmail,

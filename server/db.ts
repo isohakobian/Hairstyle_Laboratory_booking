@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull, lt, lte, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, InsertBooking, InsertBookingService, users, services, bookings, bookingServices, reviewTokens } from "../drizzle/schema";
 import { ENV } from './_core/env';
@@ -167,6 +167,45 @@ export async function updateBookingStatus(id: number, status: "pending" | "confi
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   return db.update(bookings).set({ status }).where(eq(bookings.id, id));
+}
+
+export async function getRepeatFollowUpDueBookings(visitDate: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(bookings).where(and(
+    eq(bookings.status, "confirmed"),
+    lte(bookings.bookingDate, visitDate),
+    isNull(bookings.repeatFollowUpSentAt),
+  ));
+}
+
+export async function markRepeatFollowUpSent(bookingId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(bookings)
+    .set({ repeatFollowUpSentAt: new Date() })
+    .where(and(eq(bookings.id, bookingId), isNull(bookings.repeatFollowUpSentAt)));
+}
+
+export async function claimRepeatFollowUp(bookingId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const staleClaimBefore = new Date(Date.now() - 60 * 60 * 1000);
+  return db.update(bookings)
+    .set({ repeatFollowUpClaimedAt: new Date() })
+    .where(and(
+      eq(bookings.id, bookingId),
+      isNull(bookings.repeatFollowUpSentAt),
+      or(isNull(bookings.repeatFollowUpClaimedAt), lt(bookings.repeatFollowUpClaimedAt, staleClaimBefore)),
+    ));
+}
+
+export async function releaseRepeatFollowUpClaim(bookingId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(bookings)
+    .set({ repeatFollowUpClaimedAt: null })
+    .where(and(eq(bookings.id, bookingId), isNull(bookings.repeatFollowUpSentAt)));
 }
 
 // Check for double booking on confirmed slots

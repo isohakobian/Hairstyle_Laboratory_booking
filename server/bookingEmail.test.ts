@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildClientBookingEmail, buildOwnerBookingEmail, buildReviewRequestEmail } from "./bookingEmail";
+import { buildClientBookingEmail, buildOwnerBookingEmail, buildRepeatFollowUpEmail, buildReviewRequestEmail } from "./bookingEmail";
 
 const booking = {
   referenceNumber: "ABC123",
@@ -40,5 +40,15 @@ describe("booking email templates", () => {
     expect(email.text).toContain("Thank you again,\nIsaac");
     expect(email.html).toContain("ISAAC HAKOBIAN");
     expect(email.html).toContain("https://example.com/review?token=secure-token");
+  });
+
+  it("creates a personal bilingual repeat-booking invitation", () => {
+    const email = buildRepeatFollowUpEmail(booking, "https://example.com/booking");
+
+    expect(email.subject).toBe("Ready for your next visit? — Isaac");
+    expect(email.text).toContain("I would love to see you again.");
+    expect(email.text).toContain("буду рад снова вас видеть");
+    expect(email.html).toContain("https://example.com/booking");
+    expect(email.html).toContain("Isaac &lt;Client&gt;");
   });
 });

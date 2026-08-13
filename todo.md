@@ -77,6 +77,7 @@
 - [x] Add loading and error states to the booking calendar tab
 - [x] Verify published public-site accessibility and resolve admin render error
 - [ ] Recurring appointments
+- [ ] Send a personal repeat-booking email 14 weeks after a confirmed visit at 10:00 Yerevan time
 - [x] Fix and verify RU/EN language switcher visibility on mobile header
 - [x] Stabilize booking tests when dates are blocked in the live calendar
 - [x] Support multiple distinct services in one booking while preventing duplicate services
