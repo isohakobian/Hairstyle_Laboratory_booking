@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
@@ -14,6 +14,7 @@ const copy: Record<Lang, {
   selectTime: string;
   name: string;
   phone: string;
+  email: string;
   comment: string;
   submit: string;
   back: string;
@@ -33,6 +34,7 @@ const copy: Record<Lang, {
     time: string;
     name: string;
     phone: string;
+    email: string;
     conflict: string;
     generic: string;
   };
@@ -45,6 +47,7 @@ const copy: Record<Lang, {
     selectTime: 'Время',
     name: 'Ваше имя',
     phone: 'Телефон / WhatsApp',
+    email: 'Email для подтверждения',
     comment: 'Комментарий (необязательно)',
     submit: 'Отправить заявку',
     back: '← Назад',
@@ -64,6 +67,7 @@ const copy: Record<Lang, {
       time: 'Выберите время',
       name: 'Введите ваше имя',
       phone: 'Введите номер телефона',
+      email: 'Введите корректный email',
       conflict: 'Это время уже занято',
       generic: 'Ошибка. Попробуйте ещё раз.',
     },
@@ -76,6 +80,7 @@ const copy: Record<Lang, {
     selectTime: 'Time',
     name: 'Your name',
     phone: 'Phone / WhatsApp',
+    email: 'Confirmation email',
     comment: 'Comment (optional)',
     submit: 'Submit booking',
     back: '← Back',
@@ -95,6 +100,7 @@ const copy: Record<Lang, {
       time: 'Select a time',
       name: 'Enter your name',
       phone: 'Enter your phone number',
+      email: 'Enter a valid email address',
       conflict: 'This time slot is already taken',
       generic: 'Error. Please try again.',
     },
@@ -138,6 +144,7 @@ export default function Booking() {
   const [bookingTime, setBookingTime] = useState('');
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
+  const [clientEmail, setClientEmail] = useState('');
   const [comment, setComment] = useState('');
   const [referenceNumber, setReferenceNumber] = useState('');
   const [submitted, setSubmitted] = useState(false);
@@ -160,6 +167,8 @@ export default function Booking() {
     if (!bookingTime) { toast.error(c.errors.time); return; }
     if (!clientName.trim()) { toast.error(c.errors.name); return; }
     if (!clientPhone.trim()) { toast.error(c.errors.phone); return; }
+    const normalizedEmail = clientEmail.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) { toast.error(c.errors.email); return; }
 
     try {
       const result = await createBookingMutation.mutateAsync({
@@ -169,6 +178,7 @@ export default function Booking() {
         bookingTime,
         clientName: clientName.trim(),
         clientPhone: clientPhone.trim(),
+        clientEmail: normalizedEmail,
         comment: comment.trim() || undefined,
       });
       if (result) {
@@ -361,6 +371,23 @@ export default function Booking() {
                 style={{
                   ...inputStyle,
                   borderBottomColor: focusedField === 'phone' ? 'hsl(var(--foreground))' : 'hsl(var(--border))',
+                }}
+              />
+            </div>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <p className="label-caps" style={{ marginBottom: '0.75rem' }}>{c.email}</p>
+              <input
+                type="email"
+                value={clientEmail}
+                onChange={e => setClientEmail(e.target.value)}
+                placeholder="name@email.com"
+                autoComplete="email"
+                required
+                onFocus={() => setFocusedField('email')}
+                onBlur={() => setFocusedField(null)}
+                style={{
+                  ...inputStyle,
+                  borderBottomColor: focusedField === 'email' ? 'hsl(var(--foreground))' : 'hsl(var(--border))',
                 }}
               />
             </div>

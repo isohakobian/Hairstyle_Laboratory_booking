@@ -69,7 +69,7 @@
 
 ## Future Enhancements (Optional)
 - [x] Owner push notifications for new bookings
-- [ ] Implement real Gmail email notifications for new bookings
+- [x] Implement real Gmail email notifications for new bookings
 - [x] Admin dashboard filters/sorting by status
 - [ ] SMS notifications
 - [x] Schedule calendar for opening and closing booking dates
@@ -79,3 +79,13 @@
 - [ ] Recurring appointments
 - [x] Fix and verify RU/EN language switcher visibility on mobile header
 - [x] Stabilize booking tests when dates are blocked in the live calendar
+- [ ] Support multiple distinct services in one booking while preventing duplicate services
+- [ ] Calculate combined duration and price details for multi-service bookings
+- [x] Send Gmail confirmation email with booking details to the client
+- [ ] Add an iCalendar attachment or link so clients can save the booking to their calendar
+- [ ] Send a post-appointment review request email with a secure review link
+- [ ] Simplify and visually organize the admin panel around bookings, calendar, availability, and reviews
+- [x] Evaluate and implement direct Gmail delivery for new form submissions without a custom domain
+- [x] Configure Gmail App Password SMTP delivery for booking notifications
+- [x] Restore and validate client email in the booking form so client confirmations are delivered
+- [x] Test the visible Booking form payload and backend email-delivery contract with clientEmail

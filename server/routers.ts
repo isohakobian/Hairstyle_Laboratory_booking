@@ -11,6 +11,7 @@ import {
 } from "./db";
 import { TRPCError } from "@trpc/server";
 import { notifyOwner } from "./_core/notification";
+import { sendBookingEmails } from "./bookingEmail";
 
 // Admin middleware
 const adminMiddleware = protectedProcedure.use(async ({ ctx, next }) => {
@@ -97,6 +98,22 @@ export const appRouter = router({
         } catch (e) {
           // Notification failure should not block booking creation
           console.warn('[Booking] Failed to send owner notification:', e);
+        }
+
+        try {
+          await sendBookingEmails({
+            referenceNumber,
+            serviceName: input.serviceName,
+            bookingDate: input.bookingDate,
+            bookingTime: input.bookingTime,
+            clientName: input.clientName,
+            clientPhone: input.clientPhone,
+            clientEmail: input.clientEmail,
+            comment: input.comment,
+          });
+        } catch (e) {
+          // Email delivery must never block a successfully created booking.
+          console.warn('[Booking] Failed to send Gmail booking emails:', e);
         }
 
         return booking;
