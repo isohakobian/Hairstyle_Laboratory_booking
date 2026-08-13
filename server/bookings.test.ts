@@ -3,6 +3,7 @@ import { appRouter } from './routers';
 import type { TrpcContext } from './_core/context';
 import { createBooking, getBookingByReference } from './db';
 import { clearExampleTestBookings } from './testCleanup';
+import { setAvailabilityForDates } from './availability';
 
 // Mock context for testing
 function createMockContext(userId: number = 1, role: 'user' | 'admin' = 'user'): TrpcContext {
@@ -40,6 +41,7 @@ describe('Bookings API', () => {
     haircutServiceId = services.find((service) => service.nameEn === 'Haircut')?.id ?? 0;
     beardServiceId = services.find((service) => service.nameEn === 'Beard Modeling')?.id ?? 0;
     if (!haircutServiceId || !beardServiceId) throw new Error('Required services are unavailable');
+    await setAvailabilityForDates(['2099-12-15', '2099-12-16', '2099-12-17', '2099-12-20', '2099-12-21', '2099-12-27'], '09:00', '19:00', 30);
   });
 
   afterAll(async () => {
@@ -79,7 +81,7 @@ describe('Bookings API', () => {
     it('should create a booking with valid data', async () => {
       const bookingData = {
         serviceIds: [haircutServiceId],
-        bookingDate: '2026-07-15',
+        bookingDate: '2099-12-15',
         bookingTime: '14:00',
         clientName: 'John Doe',
         clientPhone: '+1234567890',
@@ -100,7 +102,7 @@ describe('Bookings API', () => {
     it('should generate unique reference numbers', async () => {
       const bookingData1 = {
         serviceIds: [haircutServiceId],
-        bookingDate: '2026-07-15',
+        bookingDate: '2099-12-15',
         bookingTime: '15:00',
         clientName: 'Jane Doe',
         clientPhone: '+1234567891',
@@ -109,7 +111,7 @@ describe('Bookings API', () => {
 
       const bookingData2 = {
         serviceIds: [beardServiceId],
-        bookingDate: '2026-07-15',
+        bookingDate: '2099-12-15',
         bookingTime: '16:00',
         clientName: 'Bob Smith',
         clientPhone: '+1234567892',
@@ -129,7 +131,7 @@ describe('Bookings API', () => {
     it('should retrieve booking by reference number', async () => {
       const bookingData = {
         serviceIds: [haircutServiceId],
-        bookingDate: '2026-07-20',
+        bookingDate: '2099-12-16',
         bookingTime: '10:00',
         clientName: 'Alice Johnson',
         clientPhone: '+1234567893',
@@ -160,7 +162,7 @@ describe('Bookings API', () => {
       const email = 'test-user@example.com';
       const bookingData = {
         serviceIds: [haircutServiceId],
-        bookingDate: '2026-07-25',
+        bookingDate: '2099-12-17',
         bookingTime: '11:00',
         clientName: 'Test User',
         clientPhone: '+1234567894',
@@ -197,7 +199,11 @@ describe('Bookings API', () => {
 
       expect(result.serviceSummary).toContain('Haircut');
       expect(result.serviceSummary).toContain('Beard Modeling');
-      expect(result.totalDurationMinutes).toBe(75);
+      const services = await caller.services.list();
+      const expectedDuration = services
+        .filter(service => [haircutServiceId, beardServiceId].includes(service.id))
+        .reduce((total, service) => total + service.durationMinutes, 0);
+      expect(result.totalDurationMinutes).toBe(expectedDuration);
       expect(result.totalPriceSummary).toBe('27,000 ֏');
     });
 

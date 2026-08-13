@@ -3,6 +3,7 @@ import type { TrpcContext } from "./_core/context";
 import { clearExampleTestBookings } from "./testCleanup";
 import { createReviewToken } from "./db";
 import { createReviewTokenValue, hashReviewToken } from "./reviewToken";
+import { setAvailabilityForDates } from "./availability";
 
 const { sendBookingEmails, sendConfirmedBookingEmail, sendReviewRequestEmail } = vi.hoisted(() => ({
   sendBookingEmails: vi.fn().mockResolvedValue({ skipped: true }),
@@ -38,9 +39,10 @@ function context(role: "user" | "admin"): TrpcContext {
 }
 
 describe("booking lifecycle emails", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     sendConfirmedBookingEmail.mockClear();
     sendReviewRequestEmail.mockClear();
+    await setAvailabilityForDates(["2099-12-30", "2099-12-31"], "09:00", "19:00", 30);
   });
 
   afterAll(async () => {
@@ -67,7 +69,7 @@ describe("booking lifecycle emails", () => {
     expect(sendConfirmedBookingEmail).toHaveBeenCalledWith(expect.objectContaining({
       referenceNumber: booking.referenceNumber,
       clientEmail: "lifecycle-client@example.com",
-      totalDurationMinutes: 45,
+      totalDurationMinutes: booking.totalDurationMinutes,
     }));
 
     await adminCaller.admin.requestReview({ id: booking.id });

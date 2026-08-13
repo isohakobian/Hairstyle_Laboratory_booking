@@ -1,6 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TrpcContext } from "./_core/context";
 import { clearExampleTestBookings } from "./testCleanup";
+import { setAvailabilityForDates } from "./availability";
 
 const { sendBookingEmails, notifyOwner } = vi.hoisted(() => ({
   sendBookingEmails: vi.fn().mockResolvedValue({ skipped: false }),
@@ -21,9 +22,10 @@ function createPublicContext(): TrpcContext {
 }
 
 describe("booking email delivery contract", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     sendBookingEmails.mockClear();
     notifyOwner.mockClear();
+    await setAvailabilityForDates(["2099-12-29"], "09:00", "19:00", 30);
   });
 
   afterAll(async () => {

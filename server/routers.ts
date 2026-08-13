@@ -13,6 +13,9 @@ import {
 import { TRPCError } from "@trpc/server";
 import { sendBookingEmails, sendConfirmedBookingEmail, sendReviewRequestEmail } from "./bookingEmail";
 import { createReviewTokenValue, getReviewTokenExpiry, hashReviewToken } from "./reviewToken";
+import { blockDates, getAvailabilityWindows, getAvailableSlots, getPublicAvailableDates, setAvailabilityForDates } from "./availability";
+import { completeBooking, createBookingEvent, findOrCreateClient, getClientMemory, getSignedVisitMediaUrl, recordReviewRequest, rescheduleBooking, updateClientProfile, uploadVisitMedia } from "./clientMemory";
+import { getActiveAnnouncement, getAllAnnouncements, saveAnnouncement, setAnnouncementPublished } from "./announcements";
 
 // Admin middleware
 const adminMiddleware = protectedProcedure.use(async ({ ctx, next }) => {
@@ -33,9 +36,20 @@ export const appRouter = router({
     }),
   }),
 
+  announcements: router({
+    active: publicProcedure.query(() => getActiveAnnouncement()),
+  }),
+
   services: router({
     list: publicProcedure.query(() => getAllServices()),
     getById: publicProcedure.input(z.object({ id: z.number() })).query(({ input }) => getServiceById(input.id)),
+  }),
+
+  availability: router({
+    dates: publicProcedure.query(() => getPublicAvailableDates()),
+    slots: publicProcedure
+      .input(z.object({ date: z.string(), durationMinutes: z.number().int().positive() }))
+      .query(({ input }) => getAvailableSlots(input.date, input.durationMinutes)),
   }),
 
   bookings: router({
@@ -47,6 +61,8 @@ export const appRouter = router({
         clientName: z.string(),
         clientPhone: z.string(),
         clientEmail: z.string().email().optional(),
+        birthday: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+        instagram: z.string().max(100).optional(),
         comment: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
@@ -78,20 +94,20 @@ export const appRouter = router({
           ? `${(fixedTotalAmd + rangedServices.reduce((total, service) => total + (service.priceMinAmd ?? 0), 0)).toLocaleString()} – ${(fixedTotalAmd + rangedServices.reduce((total, service) => total + (service.priceMaxAmd ?? 0), 0)).toLocaleString()} ֏${depositTotalAmd ? ` · deposit ${depositTotalAmd.toLocaleString()} ֏` : ""}`
           : `${fixedTotalAmd.toLocaleString()} ֏`;
 
-        // Check if date is blocked
-        const blocked = await getBlockedDates();
-        if (blocked.some(b => b.date === input.bookingDate)) {
-          throw new TRPCError({ code: "CONFLICT", message: "This date is not available for booking" });
-        }
-
-        // Check if slot is available
-        const available = await isTimeSlotAvailable(input.bookingDate, input.bookingTime, totalDurationMinutes);
-        if (!available) {
-          throw new TRPCError({ code: "CONFLICT", message: "This time slot is already booked" });
+        const availableSlots = await getAvailableSlots(input.bookingDate, totalDurationMinutes);
+        if (!availableSlots.includes(input.bookingTime)) {
+          throw new TRPCError({ code: "CONFLICT", message: "This date or time slot is not available" });
         }
 
         const referenceNumber = Math.random().toString(36).substring(2, 8).toUpperCase() +
           Date.now().toString(36).substring(0, 4).toUpperCase();
+        const client = await findOrCreateClient({
+          name: input.clientName.trim(),
+          phone: input.clientPhone.trim(),
+          email: input.clientEmail,
+          birthday: input.birthday,
+          instagram: input.instagram?.trim().replace(/^@/, "") || undefined,
+        });
 
         await createBookingWithServices({
           referenceNumber,
@@ -106,6 +122,7 @@ export const appRouter = router({
           clientName: input.clientName,
           clientPhone: input.clientPhone,
           clientEmail: input.clientEmail,
+          clientId: client.id,
           comment: input.comment,
           status: "pending",
         }, services.map((service) => ({
@@ -116,6 +133,14 @@ export const appRouter = router({
         })));
 
         const booking = await getBookingByReference(referenceNumber);
+        if (booking) {
+          await createBookingEvent({
+            bookingId: booking.id,
+            eventType: "created",
+            nextDate: booking.bookingDate,
+            nextTime: booking.bookingTime,
+          });
+        }
 
         try {
           await sendBookingEmails({
@@ -201,12 +226,31 @@ export const appRouter = router({
 
   admin: router({
     bookings: adminMiddleware.query(() => getAllBookings()),
+    announcements: adminMiddleware.query(() => getAllAnnouncements()),
+
+    saveAnnouncement: adminMiddleware
+      .input(z.object({
+        id: z.number().int().positive().optional(),
+        titleRu: z.string().min(1).max(255),
+        titleEn: z.string().min(1).max(255),
+        bodyRu: z.string().min(1).max(5000),
+        bodyEn: z.string().min(1).max(5000),
+        startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        isPublished: z.enum(["yes", "no"]),
+      }))
+      .mutation(({ input }) => saveAnnouncement(input)),
+
+    setAnnouncementPublished: adminMiddleware
+      .input(z.object({ id: z.number().int().positive(), isPublished: z.enum(["yes", "no"]) }))
+      .mutation(({ input }) => setAnnouncementPublished(input.id, input.isPublished)),
 
     confirmBooking: adminMiddleware
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
         await updateBookingStatus(input.id, "confirmed");
         const booking = await getBookingById(input.id);
+        if (booking) await createBookingEvent({ bookingId: booking.id, eventType: "confirmed" });
         if (booking?.clientEmail) {
           try {
             await sendConfirmedBookingEmail({
@@ -232,6 +276,7 @@ export const appRouter = router({
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
         await updateBookingStatus(input.id, "declined");
+        await createBookingEvent({ bookingId: input.id, eventType: "declined" });
         return { success: true };
       }),
 
@@ -262,11 +307,32 @@ export const appRouter = router({
           clientEmail: booking.clientEmail,
           comment: booking.comment,
         }, reviewUrl);
+        await recordReviewRequest(booking.id, booking.clientEmail);
         return { success: true };
       }),
 
     // Schedule management
     blockedDates: adminMiddleware.query(() => getBlockedDates()),
+    availabilityWindows: adminMiddleware.query(() => getAvailabilityWindows()),
+
+    setAvailability: adminMiddleware
+      .input(z.object({
+        dates: z.array(z.string()).min(1).max(62),
+        startTime: z.string().regex(/^\d{2}:\d{2}$/),
+        endTime: z.string().regex(/^\d{2}:\d{2}$/),
+        slotIntervalMinutes: z.number().int().min(15).max(60).default(30),
+      }))
+      .mutation(async ({ input }) => {
+        await setAvailabilityForDates(input.dates, input.startTime, input.endTime, input.slotIntervalMinutes);
+        return { success: true };
+      }),
+
+    blockDates: adminMiddleware
+      .input(z.object({ dates: z.array(z.string()).min(1).max(62), reason: z.string().max(255).optional() }))
+      .mutation(async ({ input }) => {
+        await blockDates(input.dates, input.reason);
+        return { success: true };
+      }),
 
     blockDate: adminMiddleware
       .input(z.object({ date: z.string(), reason: z.string().optional() }))
@@ -281,6 +347,62 @@ export const appRouter = router({
         await unblockDate(input.date);
         return { success: true };
       }),
+
+    rescheduleBooking: adminMiddleware
+      .input(z.object({
+        id: z.number().int().positive(),
+        bookingDate: z.string(),
+        bookingTime: z.string().regex(/^\d{2}:\d{2}$/),
+        note: z.string().max(1000).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        await rescheduleBooking(input.id, input.bookingDate, input.bookingTime, input.note);
+        return { success: true };
+      }),
+
+    completeBooking: adminMiddleware
+      .input(z.object({ id: z.number().int().positive(), finalPriceAmd: z.number().int().nonnegative().optional(), note: z.string().max(1000).optional() }))
+      .mutation(async ({ input }) => {
+        await completeBooking(input.id, input.finalPriceAmd, input.note);
+        return { success: true };
+      }),
+
+    clientMemory: adminMiddleware
+      .input(z.object({ clientId: z.number().int().positive() }))
+      .query(({ input }) => getClientMemory(input.clientId)),
+
+    updateClientMemory: adminMiddleware
+      .input(z.object({
+        clientId: z.number().int().positive(),
+        birthday: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+        instagram: z.string().max(100).nullable().optional(),
+        preferredHairLength: z.string().max(2000).nullable().optional(),
+        preferredBeardShape: z.string().max(2000).nullable().optional(),
+        preferredStyling: z.string().max(2000).nullable().optional(),
+        dislikes: z.string().max(2000).nullable().optional(),
+        skinSensitivity: z.string().max(2000).nullable().optional(),
+        stylistNotes: z.string().max(5000).nullable().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { clientId, ...changes } = input;
+        await updateClientProfile(clientId, changes);
+        return { success: true };
+      }),
+
+    uploadVisitMedia: adminMiddleware
+      .input(z.object({
+        bookingId: z.number().int().positive(),
+        mediaType: z.enum(["before", "after"]),
+        fileName: z.string().min(1).max(255),
+        mimeType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+        base64Data: z.string().min(1),
+        caption: z.string().max(1000).optional(),
+      }))
+      .mutation(async ({ input }) => uploadVisitMedia(input)),
+
+    visitMediaUrl: adminMiddleware
+      .input(z.object({ storageKey: z.string().min(1).max(500) }))
+      .query(({ input }) => getSignedVisitMediaUrl(input.storageKey)),
 
     // Reviews management
     reviews: adminMiddleware.query(() => getAllReviews()),

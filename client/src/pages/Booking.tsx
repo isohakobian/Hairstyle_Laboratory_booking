@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
@@ -23,7 +23,12 @@ const copy: Record<Lang, {
   name: string;
   phone: string;
   email: string;
+  birthday: string;
+  instagram: string;
   comment: string;
+  noOpenDates: string;
+  noOpenSlots: string;
+  chooseServicesFirst: string;
   submit: string;
   back: string;
   sentTitle: string;
@@ -64,7 +69,12 @@ const copy: Record<Lang, {
     name: 'Ваше имя',
     phone: 'Телефон / WhatsApp',
     email: 'Email для подтверждения',
+    birthday: 'Дата рождения (необязательно)',
+    instagram: 'Instagram (необязательно)',
     comment: 'Комментарий (необязательно)',
+    noOpenDates: 'Сейчас нет открытых дат для онлайн-записи. Свяжитесь с Isaac напрямую.',
+    noOpenSlots: 'На эту дату нет свободных слотов для выбранных услуг.',
+    chooseServicesFirst: 'Сначала выберите услугу, чтобы увидеть доступное время.',
     submit: 'Отправить заявку',
     back: '← Назад',
     sentTitle: 'Заявка отправлена',
@@ -105,7 +115,12 @@ const copy: Record<Lang, {
     name: 'Your name',
     phone: 'Phone / WhatsApp',
     email: 'Confirmation email',
+    birthday: 'Birthday (optional)',
+    instagram: 'Instagram (optional)',
     comment: 'Comment (optional)',
+    noOpenDates: 'There are no open dates for online booking right now. Please contact Isaac directly.',
+    noOpenSlots: 'There are no open slots for the selected services on this date.',
+    chooseServicesFirst: 'Select a service first to see available times.',
     submit: 'Submit booking',
     back: '← Back',
     sentTitle: 'Request sent',
@@ -138,13 +153,6 @@ const serviceCatalog = [
   { nameEn: 'Bio Perm', nameKey: 'bioPerm' as const, priceAmd: null as number | null, priceMinAmd: 70000, priceMaxAmd: 110000, duration: 180, deposit: 35000 },
 ];
 
-const timeSlots = [
-  '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
-  '12:00', '12:30', '13:00', '13:30', '14:00', '14:30',
-  '15:00', '15:30', '16:00', '16:30', '17:00', '17:30',
-  '18:00', '18:30', '19:00',
-];
-
 const inputStyle: React.CSSProperties = {
   width: '100%',
   padding: '0.875rem 0',
@@ -170,6 +178,8 @@ export default function Booking() {
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
   const [clientEmail, setClientEmail] = useState('');
+  const [clientBirthday, setClientBirthday] = useState('');
+  const [clientInstagram, setClientInstagram] = useState('');
   const [comment, setComment] = useState('');
   const [referenceNumber, setReferenceNumber] = useState('');
   const [calendarInvite, setCalendarInvite] = useState<CalendarInviteDetails | null>(null);
@@ -194,8 +204,17 @@ export default function Booking() {
 
   const selectedServices = servicesList.filter((service) => selectedServiceIds.includes(service.id));
   const totalDuration = selectedServices.reduce((total, service) => total + service.duration, 0);
+  const availabilityInput = useMemo(() => ({
+    date: bookingDate || '1970-01-01',
+    durationMinutes: Math.max(totalDuration, 1),
+  }), [bookingDate, totalDuration]);
+  const { data: openDates, isLoading: openDatesLoading } = trpc.availability.dates.useQuery();
+  const { data: availableSlots, isLoading: slotsLoading } = trpc.availability.slots.useQuery(availabilityInput, {
+    enabled: Boolean(bookingDate && totalDuration > 0),
+  });
 
   const toggleService = (serviceId: number) => {
+    setBookingTime('');
     setSelectedServiceIds((current) => (
       current.includes(serviceId)
         ? current.filter((id) => id !== serviceId)
@@ -243,6 +262,8 @@ export default function Booking() {
         clientName: clientName.trim(),
         clientPhone: clientPhone.trim(),
         clientEmail: normalizedEmail,
+        birthday: clientBirthday || undefined,
+        instagram: clientInstagram.trim() || undefined,
         comment: comment.trim() || undefined,
       });
       if (result) {
@@ -416,19 +437,21 @@ export default function Booking() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2.5rem' }}>
             <div>
               <p className="label-caps" style={{ marginBottom: '0.75rem' }}>{c.selectDate}</p>
-              <input
-                type="date"
+              <select
                 value={bookingDate}
-                min={minDate}
-                max={maxDate}
-                onChange={e => setBookingDate(e.target.value)}
+                onChange={e => { setBookingDate(e.target.value); setBookingTime(''); }}
                 onFocus={() => setFocusedField('date')}
                 onBlur={() => setFocusedField(null)}
                 style={{
                   ...inputStyle,
                   borderBottomColor: focusedField === 'date' ? 'hsl(var(--foreground))' : 'hsl(var(--border))',
+                  cursor: 'pointer',
                 }}
-              />
+              >
+                <option value="">—</option>
+                {(openDates ?? []).map(date => <option key={date} value={date}>{date}</option>)}
+              </select>
+              {!openDatesLoading && (openDates?.length ?? 0) === 0 && <p style={{ margin: '0.55rem 0 0', fontSize: '0.75rem', lineHeight: 1.4, color: 'hsl(var(--muted-foreground))' }}>{c.noOpenDates}</p>}
             </div>
             <div>
               <p className="label-caps" style={{ marginBottom: '0.75rem' }}>{c.selectTime}</p>
@@ -446,10 +469,12 @@ export default function Booking() {
                 }}
               >
                 <option value="">—</option>
-                {timeSlots.map(t => (
+                {(availableSlots ?? []).map(t => (
                   <option key={t} value={t}>{t}</option>
                 ))}
               </select>
+              {bookingDate && totalDuration === 0 && <p style={{ margin: '0.55rem 0 0', fontSize: '0.75rem', lineHeight: 1.4, color: 'hsl(var(--muted-foreground))' }}>{c.chooseServicesFirst}</p>}
+              {bookingDate && totalDuration > 0 && !slotsLoading && (availableSlots?.length ?? 0) === 0 && <p style={{ margin: '0.55rem 0 0', fontSize: '0.75rem', lineHeight: 1.4, color: 'hsl(var(--muted-foreground))' }}>{c.noOpenSlots}</p>}
             </div>
           </div>
 
@@ -501,6 +526,28 @@ export default function Booking() {
                   borderBottomColor: focusedField === 'email' ? 'hsl(var(--foreground))' : 'hsl(var(--border))',
                 }}
               />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.5rem' }}>
+              <div>
+                <p className="label-caps" style={{ marginBottom: '0.75rem' }}>{c.birthday}</p>
+                <input
+                  type="date"
+                  value={clientBirthday}
+                  onChange={e => setClientBirthday(e.target.value)}
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <p className="label-caps" style={{ marginBottom: '0.75rem' }}>{c.instagram}</p>
+                <input
+                  type="text"
+                  value={clientInstagram}
+                  onChange={e => setClientInstagram(e.target.value)}
+                  placeholder="@username"
+                  autoComplete="off"
+                  style={inputStyle}
+                />
+              </div>
             </div>
             <div style={{ marginBottom: '3rem' }}>
               <p className="label-caps" style={{ marginBottom: '0.75rem' }}>{c.comment}</p>

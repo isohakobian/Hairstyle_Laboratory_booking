@@ -7,15 +7,17 @@ import { useAuth } from '@/_core/hooks/useAuth';
 import { getLoginUrl } from '@/const';
 import ScheduleCalendar from '@/components/ScheduleCalendar';
 import BookingCalendar from '@/components/BookingCalendar';
+import ClientMemoryPanel from '@/components/ClientMemoryPanel';
+import AnnouncementManager from '@/components/AnnouncementManager';
 
-type Tab = 'bookings' | 'calendar' | 'schedule' | 'reviews';
+type Tab = 'bookings' | 'calendar' | 'schedule' | 'reviews' | 'clients' | 'news';
 type BookingStatusFilter = 'all' | 'pending' | 'confirmed' | 'declined';
 type BookingSort = 'appointmentAsc' | 'appointmentDesc' | 'newest' | 'statusAsc';
 
 function getInitialTab(): Tab {
   if (typeof window === 'undefined') return 'bookings';
   const tab = new URLSearchParams(window.location.search).get('section');
-  return tab === 'calendar' || tab === 'schedule' || tab === 'reviews' ? tab : 'bookings';
+  return tab === 'calendar' || tab === 'schedule' || tab === 'reviews' || tab === 'clients' || tab === 'news' ? tab : 'bookings';
 }
 
 const labelStyle: React.CSSProperties = {
@@ -47,11 +49,28 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<Tab>(getInitialTab);
   const [bookingStatusFilter, setBookingStatusFilter] = useState<BookingStatusFilter>('all');
   const [bookingSort, setBookingSort] = useState<BookingSort>('appointmentAsc');
+  const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
+  const [rescheduleBookingId, setRescheduleBookingId] = useState<number | null>(null);
+  const [rescheduleDate, setRescheduleDate] = useState('');
+  const [rescheduleTime, setRescheduleTime] = useState('');
+  const [rescheduleNote, setRescheduleNote] = useState('');
+  const [completeBookingId, setCompleteBookingId] = useState<number | null>(null);
+  const [finalPriceAmd, setFinalPriceAmd] = useState('');
+  const [completionNote, setCompletionNote] = useState('');
   const { data: bookings, isLoading: bookingsLoading, isError: bookingsError, refetch: refetchBookings } = trpc.admin.bookings.useQuery(undefined, {
     enabled: isAuthenticated && user?.role === 'admin',
   });
   const { data: allReviews, refetch: refetchReviews } = trpc.admin.reviews.useQuery(undefined, {
     enabled: isAuthenticated && user?.role === 'admin',
+  });
+  const { data: openDates } = trpc.availability.dates.useQuery();
+  const rescheduleTarget = useMemo(() => (bookings ?? []).find(booking => booking.id === rescheduleBookingId) ?? null, [bookings, rescheduleBookingId]);
+  const rescheduleSlotsInput = useMemo(() => ({
+    date: rescheduleDate || '1970-01-01',
+    durationMinutes: Math.max(rescheduleTarget?.totalDurationMinutes || 30, 1),
+  }), [rescheduleDate, rescheduleTarget?.totalDurationMinutes]);
+  const { data: rescheduleSlots } = trpc.availability.slots.useQuery(rescheduleSlotsInput, {
+    enabled: Boolean(rescheduleTarget && rescheduleDate),
   });
 
   const confirmMutation = trpc.admin.confirmBooking.useMutation({
@@ -68,6 +87,20 @@ export default function AdminDashboard() {
   });
   const publishReviewMutation = trpc.admin.publishReview.useMutation({
     onSuccess: () => { toast.success(language === 'ru' ? 'Обновлено' : 'Updated'); refetchReviews(); },
+    onError: (e) => toast.error(e.message),
+  });
+  const rescheduleMutation = trpc.admin.rescheduleBooking.useMutation({
+    onSuccess: () => {
+      toast.success(language === 'ru' ? 'Визит перенесён, история сохранена' : 'Visit rescheduled and history saved');
+      setRescheduleBookingId(null); setRescheduleDate(''); setRescheduleTime(''); setRescheduleNote(''); refetchBookings();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const completeMutation = trpc.admin.completeBooking.useMutation({
+    onSuccess: () => {
+      toast.success(language === 'ru' ? 'Визит отмечен как завершённый' : 'Visit marked as complete');
+      setCompleteBookingId(null); setFinalPriceAmd(''); setCompletionNote(''); refetchBookings();
+    },
     onError: (e) => toast.error(e.message),
   });
 
@@ -129,6 +162,8 @@ export default function AdminDashboard() {
     { id: 'calendar', label: language === 'ru' ? 'Календарь' : 'Calendar', description: language === 'ru' ? 'Визиты по дням' : 'Visits by date', count: confirmed.length },
     { id: 'schedule', label: language === 'ru' ? 'Доступность' : 'Availability', description: language === 'ru' ? 'Открытые дни для записи' : 'Open days for booking' },
     { id: 'reviews', label: language === 'ru' ? 'Отзывы' : 'Reviews', description: language === 'ru' ? 'Модерация обратной связи' : 'Feedback moderation', count: allReviews?.length ?? 0 },
+    { id: 'clients', label: language === 'ru' ? 'Клиенты' : 'Clients', description: language === 'ru' ? 'Память о клиенте' : 'Client memory' },
+    { id: 'news', label: language === 'ru' ? 'Афиша' : 'Notices', description: language === 'ru' ? 'Новости и отпуск' : 'News and vacation' },
   ];
 
   const inputStyle: React.CSSProperties = {
@@ -276,7 +311,17 @@ export default function AdminDashboard() {
                           </div>
                         ))}
                       </div>
-                      {booking.comment && <p style={{ fontSize: '0.8125rem', color: 'hsl(var(--muted-foreground))', marginBottom: '1rem', fontStyle: 'italic' }}>"{booking.comment}"</p>}
+                      {booking.comment && <p style={{ fontSize: '0.8125rem', color: 'hsl(var(--muted-foreground))', marginBottom: '1rem', fontStyle: 'italic' }}>"{booking.comment}"</p>}
+                      {booking.clientId && (
+                        <button
+                          type="button"
+                          className="btn-ghost"
+                          onClick={() => { setSelectedClientId(booking.clientId); selectTab('clients'); }}
+                          style={{ fontSize: '0.625rem', padding: '0 0 1rem', color: 'var(--gold-mid)' }}
+                        >
+                          {language === 'ru' ? 'Открыть память о клиенте →' : 'Open client memory →'}
+                        </button>
+                      )}
                       {booking.status === 'pending' && (
                         <div style={{ display: 'flex', gap: '0.75rem' }}>
                           <button className="btn-primary" style={{ flex: 1, fontSize: '0.625rem', padding: '0.625rem 1rem' }} onClick={() => confirmMutation.mutate({ id: booking.id })} disabled={confirmMutation.isPending || declineMutation.isPending}>
@@ -302,6 +347,41 @@ export default function AdminDashboard() {
                           </span>
                         </div>
                       )}
+                      {booking.status === 'confirmed' && (
+                        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginTop: '0.9rem' }}>
+                          <button type="button" className="btn-outline" style={{ fontSize: '0.625rem', padding: '0.625rem 1rem' }} onClick={() => { setRescheduleBookingId(booking.id); setRescheduleDate(booking.bookingDate); setRescheduleTime(booking.bookingTime); setRescheduleNote(''); }}>
+                            {language === 'ru' ? 'Перенести' : 'Reschedule'}
+                          </button>
+                          {!booking.completedAt && <button type="button" className="btn-primary" style={{ fontSize: '0.625rem', padding: '0.625rem 1rem' }} onClick={() => { setCompleteBookingId(booking.id); setFinalPriceAmd(''); setCompletionNote(''); }}>
+                            {language === 'ru' ? 'Визит завершён' : 'Complete visit'}
+                          </button>}
+                        </div>
+                      )}
+                      {rescheduleBookingId === booking.id && (
+                        <div style={{ marginTop: '1rem', padding: '1rem', border: '1px solid var(--gold-mid)', background: 'hsl(var(--secondary))' }}>
+                          <p style={{ ...labelStyle, margin: '0 0 0.75rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Перенос визита' : 'Reschedule visit'}</p>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(8rem, 1fr))', gap: '0.75rem' }}>
+                            <select value={rescheduleDate} onChange={event => { setRescheduleDate(event.target.value); setRescheduleTime(''); }} style={{ ...inputStyle, background: 'hsl(var(--card))' }}><option value="">—</option>{(openDates ?? []).map(date => <option key={date} value={date}>{date}</option>)}</select>
+                            <select value={rescheduleTime} onChange={event => setRescheduleTime(event.target.value)} style={{ ...inputStyle, background: 'hsl(var(--card))' }}><option value="">—</option>{Array.from(new Set([...(rescheduleSlots ?? []), ...(rescheduleDate === booking.bookingDate ? [booking.bookingTime] : [])])).sort().map(time => <option key={time} value={time}>{time}</option>)}</select>
+                          </div>
+                          <input value={rescheduleNote} onChange={event => setRescheduleNote(event.target.value)} placeholder={language === 'ru' ? 'Причина или заметка (необязательно)' : 'Reason or note (optional)'} style={{ ...inputStyle, marginTop: '0.75rem' }} />
+                          <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
+                            <button type="button" className="btn-primary" style={{ flex: 1, fontSize: '0.625rem' }} disabled={!rescheduleDate || !rescheduleTime || rescheduleMutation.isPending} onClick={() => rescheduleMutation.mutate({ id: booking.id, bookingDate: rescheduleDate, bookingTime: rescheduleTime, note: rescheduleNote.trim() || undefined })}>{language === 'ru' ? 'Сохранить перенос' : 'Save move'}</button>
+                            <button type="button" className="btn-outline" style={{ flex: 1, fontSize: '0.625rem' }} onClick={() => setRescheduleBookingId(null)}>{language === 'ru' ? 'Отмена' : 'Cancel'}</button>
+                          </div>
+                        </div>
+                      )}
+                      {completeBookingId === booking.id && (
+                        <div style={{ marginTop: '1rem', padding: '1rem', border: '1px solid hsl(142 50% 40% / 0.5)', background: 'hsl(142 50% 40% / 0.08)' }}>
+                          <p style={{ ...labelStyle, margin: '0 0 0.75rem', color: 'hsl(142 50% 40%)' }}>{language === 'ru' ? 'Завершить визит и обновить память' : 'Complete visit and update memory'}</p>
+                          <input type="number" min="0" value={finalPriceAmd} onChange={event => setFinalPriceAmd(event.target.value)} placeholder={language === 'ru' ? 'Фактическая стоимость в ֏ (необязательно)' : 'Final amount in ֏ (optional)'} style={inputStyle} />
+                          <input value={completionNote} onChange={event => setCompletionNote(event.target.value)} placeholder={language === 'ru' ? 'Заметка к визиту (необязательно)' : 'Visit note (optional)'} style={{ ...inputStyle, marginTop: '0.75rem' }} />
+                          <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
+                            <button type="button" className="btn-primary" style={{ flex: 1, fontSize: '0.625rem' }} disabled={completeMutation.isPending} onClick={() => completeMutation.mutate({ id: booking.id, finalPriceAmd: finalPriceAmd ? Number(finalPriceAmd) : undefined, note: completionNote.trim() || undefined })}>{language === 'ru' ? 'Подтвердить завершение' : 'Confirm completion'}</button>
+                            <button type="button" className="btn-outline" style={{ flex: 1, fontSize: '0.625rem' }} onClick={() => setCompleteBookingId(null)}>{language === 'ru' ? 'Отмена' : 'Cancel'}</button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                     ))}
@@ -320,8 +400,8 @@ export default function AdminDashboard() {
             </div>
             <p style={{ color: 'hsl(var(--muted-foreground))', marginBottom: '2rem', fontSize: '0.875rem' }}>
               {language === 'ru'
-                ? 'Открывайте и закрывайте отдельные дни для онлайн-записи.'
-                : 'Open or close individual days for online booking.'}
+                ? 'Выделяйте несколько дней и одним действием открывайте или закрывайте точные рабочие часы для онлайн-записи.'
+                : 'Select multiple days and open or close precise working hours in one action.'}
             </p>
             <ScheduleCalendar language={language as 'ru' | 'en'} />
           </div>
@@ -345,6 +425,39 @@ export default function AdminDashboard() {
             ) : (
               <BookingCalendar language={language as 'ru' | 'en'} bookings={bookings ?? []} />
             )}
+          </div>
+        )}
+
+        {activeTab === 'clients' && (
+          <div>
+            <div style={{ marginBottom: '1.25rem' }}>
+              <p style={{ ...labelStyle, margin: '0 0 0.4rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Рабочая память' : 'Working memory'}</p>
+              <h3 style={{ margin: 0, fontStyle: 'italic' }}>{language === 'ru' ? 'Клиенты' : 'Clients'}</h3>
+            </div>
+            {!selectedClientId ? (
+              <p style={{ maxWidth: '38rem', padding: '1rem', borderLeft: '2px solid var(--gold-mid)', background: 'hsl(var(--secondary))', color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem', lineHeight: 1.6 }}>
+                {language === 'ru'
+                  ? 'Откройте любую запись в разделе «Заявки» и нажмите «Открыть память о клиенте». Здесь будут предпочтения, заметки, история визитов, фото и статистика перед следующим визитом.'
+                  : 'Open any booking in “Bookings” and choose “Open client memory”. This workspace shows preferences, notes, visit history, photos, and useful metrics before the next visit.'}
+              </p>
+            ) : (
+              <ClientMemoryPanel clientId={selectedClientId} language={language as 'ru' | 'en'} onClose={() => setSelectedClientId(null)} />
+            )}
+          </div>
+        )}
+
+        {activeTab === 'news' && (
+          <div>
+            <div style={{ marginBottom: '1.25rem' }}>
+              <p style={{ ...labelStyle, margin: '0 0 0.4rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Редакционная афиша' : 'Editorial notice'}</p>
+              <h3 style={{ margin: 0, fontStyle: 'italic' }}>{language === 'ru' ? 'Новости и отпуск' : 'News and vacation'}</h3>
+            </div>
+            <p style={{ color: 'hsl(var(--muted-foreground))', marginBottom: '1.5rem', fontSize: '0.875rem', lineHeight: 1.6 }}>
+              {language === 'ru'
+                ? 'Создайте двуязычную афишу, задайте период и опубликуйте её. Она появится справа в первом экране сайта только в активные даты.'
+                : 'Create a bilingual notice, set its dates, and publish it. It appears on the right side of the home hero only during its active period.'}
+            </p>
+            <AnnouncementManager language={language as 'ru' | 'en'} />
           </div>
         )}
 

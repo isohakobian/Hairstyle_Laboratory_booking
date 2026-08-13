@@ -55,21 +55,122 @@ export const bookings = mysqlTable("bookings", {
   serviceSummary: varchar("serviceSummary", { length: 1000 }).notNull().default(""),
   totalDurationMinutes: int("totalDurationMinutes").notNull().default(0),
   totalPriceSummary: varchar("totalPriceSummary", { length: 255 }).notNull().default(""),
+  finalPriceAmd: int("finalPriceAmd"),
   bookingDate: varchar("bookingDate", { length: 10 }).notNull(), // YYYY-MM-DD
   bookingTime: varchar("bookingTime", { length: 5 }).notNull(), // HH:MM
   clientName: varchar("clientName", { length: 255 }).notNull(),
   clientPhone: varchar("clientPhone", { length: 20 }).notNull(),
   clientEmail: varchar("clientEmail", { length: 320 }),
+  clientId: int("clientId"),
+  completedAt: timestamp("completedAt"),
   comment: text("comment"),
   status: mysqlEnum("status", ["pending", "confirmed", "declined"]).default("pending").notNull(),
   repeatFollowUpClaimedAt: timestamp("repeatFollowUpClaimedAt"),
   repeatFollowUpSentAt: timestamp("repeatFollowUpSentAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (table) => [
+  index("bookings_clientId_idx").on(table.clientId),
+  index("bookings_date_time_idx").on(table.bookingDate, table.bookingTime),
+]);
 
 export type Booking = typeof bookings.$inferSelect;
 export type InsertBooking = typeof bookings.$inferInsert;
+
+// Private client profiles turn the admin workspace into Isaac's working memory.
+export const clients = mysqlTable("clients", {
+  id: int("id").autoincrement().primaryKey(),
+  lookupKey: varchar("lookupKey", { length: 360 }).notNull().unique(),
+  name: varchar("name", { length: 255 }).notNull(),
+  phone: varchar("phone", { length: 20 }).notNull(),
+  email: varchar("email", { length: 320 }),
+  birthday: varchar("birthday", { length: 10 }),
+  instagram: varchar("instagram", { length: 100 }),
+  preferredHairLength: text("preferredHairLength"),
+  preferredBeardShape: text("preferredBeardShape"),
+  preferredStyling: text("preferredStyling"),
+  dislikes: text("dislikes"),
+  skinSensitivity: text("skinSensitivity"),
+  stylistNotes: text("stylistNotes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Client = typeof clients.$inferSelect;
+export type InsertClient = typeof clients.$inferInsert;
+
+// Exact working ranges opened by Isaac. A client only sees slots that fit
+// completely inside a window and do not overlap an existing appointment.
+export const availabilityWindows = mysqlTable("availabilityWindows", {
+  id: int("id").autoincrement().primaryKey(),
+  date: varchar("date", { length: 10 }).notNull(),
+  startTime: varchar("startTime", { length: 5 }).notNull(),
+  endTime: varchar("endTime", { length: 5 }).notNull(),
+  slotIntervalMinutes: int("slotIntervalMinutes").notNull().default(30),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [
+  index("availabilityWindows_date_idx").on(table.date),
+  uniqueIndex("availabilityWindows_date_range_idx").on(table.date, table.startTime, table.endTime),
+]);
+
+export type AvailabilityWindow = typeof availabilityWindows.$inferSelect;
+
+// A move records both the original and new appointment so the client timeline
+// stays accurate and the original details are never overwritten.
+export const bookingEvents = mysqlTable("bookingEvents", {
+  id: int("id").autoincrement().primaryKey(),
+  bookingId: int("bookingId").notNull(),
+  eventType: mysqlEnum("eventType", ["created", "confirmed", "declined", "rescheduled", "completed", "note"]).notNull(),
+  previousDate: varchar("previousDate", { length: 10 }),
+  previousTime: varchar("previousTime", { length: 5 }),
+  nextDate: varchar("nextDate", { length: 10 }),
+  nextTime: varchar("nextTime", { length: 5 }),
+  note: text("note"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [
+  index("bookingEvents_bookingId_idx").on(table.bookingId),
+]);
+
+export type BookingEvent = typeof bookingEvents.$inferSelect;
+
+// Private before/after photographs live in S3; only their metadata is stored here.
+export const visitMedia = mysqlTable("visitMedia", {
+  id: int("id").autoincrement().primaryKey(),
+  bookingId: int("bookingId").notNull(),
+  mediaType: mysqlEnum("mediaType", ["before", "after"]).notNull(),
+  storageKey: varchar("storageKey", { length: 500 }).notNull(),
+  fileName: varchar("fileName", { length: 255 }).notNull(),
+  caption: text("caption"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [
+  index("visitMedia_bookingId_idx").on(table.bookingId),
+]);
+
+export const reviewRequestHistory = mysqlTable("reviewRequestHistory", {
+  id: int("id").autoincrement().primaryKey(),
+  bookingId: int("bookingId").notNull(),
+  recipientEmail: varchar("recipientEmail", { length: 320 }).notNull(),
+  sentAt: timestamp("sentAt").defaultNow().notNull(),
+}, (table) => [
+  index("reviewRequestHistory_bookingId_idx").on(table.bookingId),
+]);
+
+// Editorial notices are date-bound, bilingual, and appear in the public hero
+// only while they are published and active.
+export const announcements = mysqlTable("announcements", {
+  id: int("id").autoincrement().primaryKey(),
+  titleRu: varchar("titleRu", { length: 255 }).notNull(),
+  titleEn: varchar("titleEn", { length: 255 }).notNull(),
+  bodyRu: text("bodyRu").notNull(),
+  bodyEn: text("bodyEn").notNull(),
+  startDate: varchar("startDate", { length: 10 }).notNull(),
+  endDate: varchar("endDate", { length: 10 }).notNull(),
+  isPublished: mysqlEnum("isPublished", ["yes", "no"]).default("no").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  index("announcements_period_idx").on(table.startDate, table.endDate),
+]);
 
 // Project-level scheduled jobs keep their platform task IDs here for later
 // inspection, pause, or deletion without relying on a sandbox session.

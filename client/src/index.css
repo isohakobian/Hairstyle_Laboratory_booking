@@ -195,6 +195,18 @@
 
 @layer components {
 
+  .hero-editorial-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  @media (min-width: 1024px) {
+    .hero-editorial-layout {
+      grid-template-columns: minmax(0, 1fr) minmax(18rem, 22rem);
+      gap: 4rem !important;
+    }
+  }
+
   /* ── Metallic text gradient ── */
   .text-metal {
     background: linear-gradient(

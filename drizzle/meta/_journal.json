@@ -71,6 +71,20 @@
       "when": 1786651362822,
       "tag": "0009_overconfident_grandmaster",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1786653742208,
+      "tag": "0010_light_switch",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "5",
+      "when": 1786653800670,
+      "tag": "0011_secret_tusk",
+      "breakpoints": true
     }
   ]
 }

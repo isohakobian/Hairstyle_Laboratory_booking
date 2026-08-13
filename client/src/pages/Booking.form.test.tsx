@@ -29,6 +29,14 @@ vi.mock("@/lib/trpc", () => ({
         useMutation: () => ({ mutateAsync, isPending: false }),
       },
     },
+    availability: {
+      dates: {
+        useQuery: () => ({ data: ["2099-12-30"], isLoading: false }),
+      },
+      slots: {
+        useQuery: () => ({ data: ["14:00"], isLoading: false }),
+      },
+    },
   },
 }));
 
@@ -55,8 +63,9 @@ describe("Booking form", () => {
     fireEvent.click(screen.getByRole("button", { name: /Моделирование бороды/i }));
     expect(screen.getByText('75 мин')).toBeTruthy();
     expect(screen.getByText('27,000 ֏')).toBeTruthy();
-    fireEvent.change(container.querySelector('input[type="date"]')!, { target: { value: "2099-12-30" } });
-    fireEvent.change(container.querySelector("select")!, { target: { value: "14:00" } });
+    const selects = container.querySelectorAll("select");
+    fireEvent.change(selects[0]!, { target: { value: "2099-12-30" } });
+    fireEvent.change(selects[1]!, { target: { value: "14:00" } });
     fireEvent.change(container.querySelector('input[type="text"]')!, { target: { value: "Client Name" } });
     fireEvent.change(container.querySelector('input[type="tel"]')!, { target: { value: "+37455000000" } });
     fireEvent.change(container.querySelector('input[type="email"]')!, { target: { value: "CLIENT@EXAMPLE.COM" } });

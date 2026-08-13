@@ -99,3 +99,21 @@
 - [x] Add loading, error, and empty states to the service selector
 - [x] Verify the complete multi-service booking flow in the client interface
 - [x] Remove duplicate Manus new-booking notification while keeping direct Gmail delivery
+- [x] Let admin select multiple calendar days to open or close booking availability in one action
+- [x] Let admin define custom working hours and available time slots for specific dates
+- [x] Show clients only dates and times that are explicitly available for booking
+- [x] Add an editable editorial news notice to the right side of the home page
+- [x] Publish a bilingual vacation notice for 31 October through 8 November
+- [x] Let admin reschedule a booking while retaining the original appointment history
+- [x] Add an admin client history view with contact details, visit count, last visit, and last services
+- [ ] Review accessible public Eclise scheduling patterns as inspiration without copying its proprietary interface
+- [x] Collect optional client profile fields: birthday and Instagram alongside name, phone, and email
+- [x] Create private client profiles with preferences for length, beard shape, styling, dislikes, skin sensitivity, and free-form notes
+- [x] Preserve per-visit history with date, services, duration, cost, photos before and after, and stylist comments
+- [x] Show last visit date and elapsed time since the last completed visit in each client profile
+- [x] Add private client metrics: total visits, total spend, average check, and popular services
+- [x] Show follow-up reminder status and manual review-request history in each client profile
+- [x] Present the client profile before a visit as an ideal-memory briefing for Isaac
+- [x] Show per-visit stylist comments and completion notes in the client memory timeline
+- [x] Render dated manual review-request history in each client profile
+- [x] Render repeat-booking follow-up status for each client visit
