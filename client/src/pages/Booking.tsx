@@ -147,12 +147,6 @@ const copy: Record<Lang, {
   },
 };
 
-const serviceCatalog = [
-  { nameEn: 'Haircut', nameKey: 'haircut' as const, priceAmd: 15000, priceMinAmd: null as number | null, priceMaxAmd: null as number | null, duration: 45, deposit: null as number | null },
-  { nameEn: 'Beard Modeling', nameKey: 'beard' as const, priceAmd: 12000, priceMinAmd: null as number | null, priceMaxAmd: null as number | null, duration: 30, deposit: null as number | null },
-  { nameEn: 'Bio Perm', nameKey: 'bioPerm' as const, priceAmd: null as number | null, priceMinAmd: 70000, priceMaxAmd: 110000, duration: 180, deposit: 35000 },
-];
-
 const inputStyle: React.CSSProperties = {
   width: '100%',
   padding: '0.875rem 0',
@@ -188,22 +182,11 @@ export default function Booking() {
 
   const createBookingMutation = trpc.bookings.create.useMutation();
   const { data: databaseServices, isLoading: servicesLoading, isError: servicesError } = trpc.services.list.useQuery();
-  const servicesList = serviceCatalog.flatMap((service) => {
-    const databaseService = databaseServices?.find((item) => item.nameEn === service.nameEn);
-    return databaseService ? [{
-      ...service,
-      id: databaseService.id,
-      duration: databaseService.durationMinutes,
-      priceAmd: databaseService.priceAmd,
-      priceMinAmd: databaseService.priceMinAmd,
-      priceMaxAmd: databaseService.priceMaxAmd,
-      deposit: databaseService.depositAmd,
-    }] : [];
-  });
+  const servicesList = databaseServices ?? [];
   const servicesReady = !servicesLoading && !servicesError && servicesList.length > 0;
 
   const selectedServices = servicesList.filter((service) => selectedServiceIds.includes(service.id));
-  const totalDuration = selectedServices.reduce((total, service) => total + service.duration, 0);
+  const totalDuration = selectedServices.reduce((total, service) => total + service.durationMinutes, 0);
   const availabilityInput = useMemo(() => ({
     date: bookingDate || '1970-01-01',
     durationMinutes: Math.max(totalDuration, 1),
@@ -223,15 +206,16 @@ export default function Booking() {
   };
 
   const formatPrice = (svc: typeof servicesList[number]) => {
-    if (svc.priceMinAmd) return `${svc.priceMinAmd.toLocaleString()} – ${svc.priceMaxAmd!.toLocaleString()} ֏`;
-    if (svc.priceAmd) return `${svc.priceAmd.toLocaleString()} ֏`;
-    return '—';
+    if (svc.priceMinAmd !== null && svc.priceMaxAmd !== null) return `${svc.priceMinAmd.toLocaleString()} – ${svc.priceMaxAmd.toLocaleString()} ֏`;
+    if (svc.priceAmd !== null) return `${svc.priceAmd.toLocaleString()} ֏`;
+    return language === 'ru' ? (svc.noteRu || 'По запросу') : (svc.noteEn || 'On request');
   };
+  const serviceName = (service: typeof servicesList[number]) => language === 'ru' ? service.nameRu : service.nameEn;
 
   const formatTotalPrice = () => {
     const fixedTotal = selectedServices.reduce((total, service) => total + (service.priceAmd ?? 0), 0);
     const rangedServices = selectedServices.filter((service) => service.priceMinAmd !== null && service.priceMaxAmd !== null);
-    const depositTotal = selectedServices.reduce((total, service) => total + (service.deposit ?? 0), 0);
+    const depositTotal = selectedServices.reduce((total, service) => total + (service.depositAmd ?? 0), 0);
 
     if (rangedServices.length > 0) {
       const min = fixedTotal + rangedServices.reduce((total, service) => total + (service.priceMinAmd ?? 0), 0);
@@ -270,7 +254,7 @@ export default function Booking() {
         setReferenceNumber(result.referenceNumber);
         setCalendarInvite({
           referenceNumber: result.referenceNumber,
-          serviceName: selectedServices.map((service) => c[service.nameKey]).join(' + '),
+          serviceName: selectedServices.map(serviceName).join(' + '),
           bookingDate,
           bookingTime,
           durationMinutes: totalDuration,
@@ -389,10 +373,10 @@ export default function Booking() {
                 >
                   <div style={{ textAlign: 'left' }}>
                     <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.25rem', fontWeight: 400, color: 'hsl(var(--foreground))', margin: 0 }}>
-                      {c[svc.nameKey]}
+                      {serviceName(svc)}
                     </p>
                     <p className="label-caps" style={{ marginTop: '0.25rem', fontSize: '0.625rem' }}>
-                      {svc.duration} {language === 'ru' ? 'мин' : 'min'}
+                      {svc.durationMinutes} {language === 'ru' ? 'мин' : 'min'}
                     </p>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -417,7 +401,7 @@ export default function Booking() {
               <div style={{ marginTop: '1.25rem', padding: '1.1rem 1.25rem', border: '1px solid hsl(var(--border))', backgroundColor: 'hsl(var(--card))' }}>
                 <p className="label-caps" style={{ margin: '0 0 0.65rem' }}>{c.selectionSummary}</p>
                 <p style={{ margin: '0 0 0.8rem', color: 'hsl(var(--foreground))', fontFamily: "'Cormorant Garamond', serif", fontSize: '1.25rem' }}>
-                  {selectedServices.map((service) => c[service.nameKey]).join(' + ')}
+                  {selectedServices.map(serviceName).join(' + ')}
                 </p>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', borderTop: '1px solid hsl(var(--border))', paddingTop: '0.8rem' }}>
                   <div>

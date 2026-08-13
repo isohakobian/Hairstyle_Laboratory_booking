@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, lt, lte, or } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, lt, lte, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, InsertBooking, InsertBookingService, users, services, bookings, bookingServices, reviewTokens } from "../drizzle/schema";
 import { ENV } from './_core/env';
@@ -90,17 +90,65 @@ export async function getUserByOpenId(openId: string) {
 }
 
 // Services queries
-export async function getAllServices() {
+export async function getAllServices(includeArchived = false) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(services).orderBy(services.id);
+  const query = db.select().from(services).orderBy(asc(services.displayOrder), asc(services.id));
+  return includeArchived ? query : query.where(eq(services.isActive, "yes"));
 }
 
-export async function getServiceById(id: number) {
+export async function getServiceById(id: number, includeArchived = false) {
   const db = await getDb();
   if (!db) return undefined;
-  const result = await db.select().from(services).where(eq(services.id, id)).limit(1);
+  const result = await db.select().from(services)
+    .where(includeArchived ? eq(services.id, id) : and(eq(services.id, id), eq(services.isActive, "yes")))
+    .limit(1);
   return result.length > 0 ? result[0] : undefined;
+}
+
+export type ManagedServiceInput = {
+  nameRu: string;
+  nameEn: string;
+  descriptionRu?: string | null;
+  descriptionEn?: string | null;
+  durationMinutes: number;
+  priceAmd?: number | null;
+  priceMinAmd?: number | null;
+  priceMaxAmd?: number | null;
+  depositAmd?: number | null;
+  noteRu?: string | null;
+  noteEn?: string | null;
+  isActive: "yes" | "no";
+  displayOrder: number;
+};
+
+export async function createManagedService(input: ManagedServiceInput) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(services).values({
+    ...input,
+    priceRub: null,
+    priceMinRub: null,
+    priceMaxRub: null,
+  });
+  return Number(result[0].insertId);
+}
+
+export async function updateManagedService(id: number, input: ManagedServiceInput) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(services).set({
+    ...input,
+    priceRub: null,
+    priceMinRub: null,
+    priceMaxRub: null,
+  }).where(eq(services.id, id));
+}
+
+export async function setServiceActive(id: number, isActive: "yes" | "no") {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(services).set({ isActive }).where(eq(services.id, id));
 }
 
 // Bookings queries

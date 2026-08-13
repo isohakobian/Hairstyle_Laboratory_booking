@@ -119,3 +119,10 @@
 - [x] Render repeat-booking follow-up status for each client visit
 - [x] Rewrite the active vacation announcement as a personal notice from Isaac without laboratory or barbershop framing
 - [x] Sync the complete current booking website codebase to the connected GitHub repository
+- [x] Add an admin workspace to create, edit, activate, and archive services with bilingual names, descriptions, durations, and AMD prices
+- [x] Let admin manage fixed prices, price ranges, deposits, and display order from the service workspace
+- [x] Replace the hardcoded homepage service list with live active services from the public catalog API
+- [x] Add loading, error, and empty states to the admin service-management workspace
+- [x] Verify in tests that service edits, archival, and display order are reflected in the client-facing catalog and booking flow
+- [x] Add a booking-form test that confirms archived services cannot be selected and active services respect catalog order
+- [x] Replace the booking form's static three-service mapping with the full live active service catalog from the API

@@ -16,9 +16,8 @@ vi.mock("@/lib/trpc", () => ({
       list: {
         useQuery: () => ({
           data: [
-            { id: 150001, nameEn: "Haircut", durationMinutes: 45, priceAmd: 15000, priceMinAmd: null, priceMaxAmd: null, depositAmd: null },
-            { id: 150002, nameEn: "Beard Modeling", durationMinutes: 30, priceAmd: 12000, priceMinAmd: null, priceMaxAmd: null, depositAmd: null },
-            { id: 150003, nameEn: "Bio Perm", durationMinutes: 180, priceAmd: null, priceMinAmd: 70000, priceMaxAmd: 110000, depositAmd: 35000 },
+            { id: 150002, nameRu: "Моделирование бороды", nameEn: "Beard Modeling", durationMinutes: 30, priceAmd: 12000, priceMinAmd: null, priceMaxAmd: null, depositAmd: null },
+            { id: 150001, nameRu: "Стрижка", nameEn: "Haircut", durationMinutes: 45, priceAmd: 15000, priceMinAmd: null, priceMaxAmd: null, depositAmd: null },
           ],
           isLoading: false,
         }),
@@ -58,6 +57,10 @@ describe("Booking form", () => {
 
   it("submits distinct selected services and the client email from the visible form", async () => {
     const { container } = render(<Booking />);
+
+    const catalogText = container.textContent ?? "";
+    expect(catalogText.indexOf("Моделирование бороды")).toBeLessThan(catalogText.indexOf("Стрижка"));
+    expect(screen.queryByRole("button", { name: /Bio Perm|Биохимическая завивка/i })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: /Стрижка/i }));
     fireEvent.click(screen.getByRole("button", { name: /Моделирование бороды/i }));

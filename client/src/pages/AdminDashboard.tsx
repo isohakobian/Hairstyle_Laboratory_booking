@@ -9,15 +9,16 @@ import ScheduleCalendar from '@/components/ScheduleCalendar';
 import BookingCalendar from '@/components/BookingCalendar';
 import ClientMemoryPanel from '@/components/ClientMemoryPanel';
 import AnnouncementManager from '@/components/AnnouncementManager';
+import ServiceManager from '@/components/ServiceManager';
 
-type Tab = 'bookings' | 'calendar' | 'schedule' | 'reviews' | 'clients' | 'news';
+type Tab = 'bookings' | 'calendar' | 'schedule' | 'services' | 'reviews' | 'clients' | 'news';
 type BookingStatusFilter = 'all' | 'pending' | 'confirmed' | 'declined';
 type BookingSort = 'appointmentAsc' | 'appointmentDesc' | 'newest' | 'statusAsc';
 
 function getInitialTab(): Tab {
   if (typeof window === 'undefined') return 'bookings';
   const tab = new URLSearchParams(window.location.search).get('section');
-  return tab === 'calendar' || tab === 'schedule' || tab === 'reviews' || tab === 'clients' || tab === 'news' ? tab : 'bookings';
+  return tab === 'calendar' || tab === 'schedule' || tab === 'services' || tab === 'reviews' || tab === 'clients' || tab === 'news' ? tab : 'bookings';
 }
 
 const labelStyle: React.CSSProperties = {
@@ -161,6 +162,7 @@ export default function AdminDashboard() {
     { id: 'bookings', label: language === 'ru' ? 'Заявки' : 'Bookings', description: language === 'ru' ? 'Новые и подтверждённые визиты' : 'New and confirmed visits', count: bookings?.length ?? 0 },
     { id: 'calendar', label: language === 'ru' ? 'Календарь' : 'Calendar', description: language === 'ru' ? 'Визиты по дням' : 'Visits by date', count: confirmed.length },
     { id: 'schedule', label: language === 'ru' ? 'Доступность' : 'Availability', description: language === 'ru' ? 'Открытые дни для записи' : 'Open days for booking' },
+    { id: 'services', label: language === 'ru' ? 'Услуги' : 'Services', description: language === 'ru' ? 'Прайс-лист и каталог' : 'Price list and catalog' },
     { id: 'reviews', label: language === 'ru' ? 'Отзывы' : 'Reviews', description: language === 'ru' ? 'Модерация обратной связи' : 'Feedback moderation', count: allReviews?.length ?? 0 },
     { id: 'clients', label: language === 'ru' ? 'Клиенты' : 'Clients', description: language === 'ru' ? 'Память о клиенте' : 'Client memory' },
     { id: 'news', label: language === 'ru' ? 'Новости' : 'Notices', description: language === 'ru' ? 'Новости и отпуск' : 'News and vacation' },
@@ -404,6 +406,16 @@ export default function AdminDashboard() {
                 : 'Select multiple days and open or close precise working hours in one action.'}
             </p>
             <ScheduleCalendar language={language as 'ru' | 'en'} />
+          </div>
+        )}
+
+        {activeTab === 'services' && (
+          <div>
+            <div style={{ marginBottom: '1.25rem' }}>
+              <p style={{ ...labelStyle, margin: '0 0 0.4rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Каталог и цены' : 'Catalog and prices'}</p>
+              <h3 style={{ margin: 0, fontStyle: 'italic' }}>{language === 'ru' ? 'Услуги и прайс-лист' : 'Services and price list'}</h3>
+            </div>
+            <ServiceManager language={language as 'ru' | 'en'} />
           </div>
         )}
 

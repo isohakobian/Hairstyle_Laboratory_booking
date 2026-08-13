@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { getLoginUrl } from '@/const';
@@ -73,13 +73,6 @@ const copy: Record<Lang, {
 
 };
 
-
-const services = [
-  { id: 1, nameKey: 'haircut' as const, descKey: 'haircutDesc' as const, duration: 45, priceAmd: 15000, deposit: null as number | null },
-  { id: 2, nameKey: 'beard' as const, descKey: 'beardDesc' as const, duration: 30, priceAmd: 12000, deposit: null as number | null },
-  { id: 3, nameKey: 'bioPerm' as const, descKey: 'bioPermDesc' as const, duration: 180, priceAmd: null as number | null, priceMinAmd: 70000, priceMaxAmd: 110000, deposit: 35000 },
-];
-
 const langs: Lang[] = ['ru', 'en'];
 
 export default function Home() {
@@ -90,6 +83,7 @@ export default function Home() {
   const [scrolled, setScrolled] = useState(false);
   const [hoveredService, setHoveredService] = useState<number | null>(null);
   const { data: activeAnnouncement } = trpc.announcements.active.useQuery();
+  const { data: publicServices, isLoading: servicesLoading, isError: servicesError } = trpc.services.list.useQuery();
 
   const c = copy[language] ?? copy.ru;
 
@@ -99,12 +93,12 @@ export default function Home() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const formatPrice = (svc: typeof services[number]) => {
-    if ('priceMinAmd' in svc && svc.priceMinAmd) {
+  const formatPrice = (svc: NonNullable<typeof publicServices>[number]) => {
+    if (svc.priceMinAmd !== null && svc.priceMaxAmd !== null) {
       return `${svc.priceMinAmd.toLocaleString()} – ${svc.priceMaxAmd!.toLocaleString()} ֏`;
     }
-    if (svc.priceAmd) return `${svc.priceAmd.toLocaleString()} ֏`;
-    return '—';
+    if (svc.priceAmd !== null) return `${svc.priceAmd.toLocaleString()} ֏`;
+    return language === 'ru' ? (svc.noteRu || 'По запросу') : (svc.noteEn || 'On request');
   };
 
   const navStyle: React.CSSProperties = {
@@ -419,7 +413,10 @@ export default function Home() {
         <div className="container">
           <p className="label-caps" style={{ marginBottom: '3rem' }}>{c.services.label}</p>
 
-          {services.map((svc) => (
+          {servicesLoading && <p style={{ color: 'hsl(var(--muted-foreground))' }}>{language === 'ru' ? 'Загружаю услуги...' : 'Loading services...'}</p>}
+          {servicesError && <p style={{ color: 'hsl(var(--destructive))' }}>{language === 'ru' ? 'Не удалось загрузить услуги. Попробуйте обновить страницу.' : 'Could not load services. Please refresh the page.'}</p>}
+          {!servicesLoading && !servicesError && (publicServices ?? []).length === 0 && <p style={{ color: 'hsl(var(--muted-foreground))' }}>{language === 'ru' ? 'Сейчас нет доступных услуг.' : 'No services are currently available.'}</p>}
+          {(publicServices ?? []).map((svc) => (
             <div
               key={svc.id}
               className="service-block"
@@ -437,10 +434,10 @@ export default function Home() {
                     fontSize: 'clamp(1.25rem, 3vw, 1.875rem)',
                   }}
                 >
-                  {c.services[svc.nameKey]}
+                  {language === 'ru' ? svc.nameRu : svc.nameEn}
                 </h3>
                 <p style={{ fontSize: '0.8125rem', margin: 0, letterSpacing: '0.03em' }}>
-                  {c.services[svc.descKey]} &nbsp;·&nbsp; {svc.duration} {c.services.duration}
+                  {(language === 'ru' ? svc.descriptionRu : svc.descriptionEn) || (language === 'ru' ? 'Персональный сервис' : 'Personal service')} &nbsp;·&nbsp; {svc.durationMinutes} {c.services.duration}
                 </p>
               </div>
               <div style={{ textAlign: 'right', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.375rem' }}>
@@ -454,9 +451,9 @@ export default function Home() {
                 }}>
                   {formatPrice(svc)}
                 </p>
-                {svc.deposit && (
+                {svc.depositAmd !== null && svc.depositAmd > 0 && (
                   <span className="label-caps" style={{ fontSize: '0.5625rem', color: 'var(--gold-mid)' }}>
-                    {c.services.deposit}: {svc.deposit.toLocaleString()} ֏
+                    {c.services.deposit}: {svc.depositAmd.toLocaleString()} ֏
                   </span>
                 )}
                 <span className="label-caps" style={{

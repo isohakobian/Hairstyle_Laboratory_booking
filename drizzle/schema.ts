@@ -41,6 +41,8 @@ export const services = mysqlTable("services", {
   depositAmd: int("depositAmd"),
   noteEn: text("noteEn"),
   noteRu: text("noteRu"),
+  isActive: mysqlEnum("isActive", ["yes", "no"]).default("yes").notNull(),
+  displayOrder: int("displayOrder").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 

@@ -8,7 +8,7 @@ import {
   getBookingsByEmail, getAllBookings, updateBookingStatus, isTimeSlotAvailable,
   getBlockedDates, blockDate, unblockDate, createReview, getReviewByBookingId, createReviewToken,
   getReviewTokenByHash, markReviewTokenUsed,
-  getPublishedReviews, getAllReviews, updateReviewPublished,
+  getPublishedReviews, getAllReviews, updateReviewPublished, createManagedService, setServiceActive, updateManagedService,
 } from "./db";
 import { TRPCError } from "@trpc/server";
 import { sendBookingEmails, sendConfirmedBookingEmail, sendReviewRequestEmail } from "./bookingEmail";
@@ -23,6 +23,35 @@ const adminMiddleware = protectedProcedure.use(async ({ ctx, next }) => {
     throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
   }
   return next({ ctx });
+});
+
+const managedServiceInput = z.object({
+  id: z.number().int().positive().optional(),
+  nameRu: z.string().trim().min(1).max(255),
+  nameEn: z.string().trim().min(1).max(255),
+  descriptionRu: z.string().trim().max(3000).nullable().optional(),
+  descriptionEn: z.string().trim().max(3000).nullable().optional(),
+  durationMinutes: z.number().int().min(5).max(720),
+  priceAmd: z.number().int().min(0).nullable().optional(),
+  priceMinAmd: z.number().int().min(0).nullable().optional(),
+  priceMaxAmd: z.number().int().min(0).nullable().optional(),
+  depositAmd: z.number().int().min(0).nullable().optional(),
+  noteRu: z.string().trim().max(1000).nullable().optional(),
+  noteEn: z.string().trim().max(1000).nullable().optional(),
+  isActive: z.enum(["yes", "no"]),
+  displayOrder: z.number().int().min(0).max(999),
+}).superRefine((input, ctx) => {
+  const hasMin = input.priceMinAmd !== null && input.priceMinAmd !== undefined;
+  const hasMax = input.priceMaxAmd !== null && input.priceMaxAmd !== undefined;
+  if (hasMin !== hasMax) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["priceMinAmd"], message: "Enter both minimum and maximum price" });
+  }
+  if (hasMin && hasMax && input.priceMinAmd! > input.priceMaxAmd!) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["priceMaxAmd"], message: "The maximum price must be at least the minimum price" });
+  }
+  if (input.priceAmd !== null && input.priceAmd !== undefined && hasMin) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["priceAmd"], message: "Choose either a fixed price or a price range" });
+  }
 });
 
 export const appRouter = router({
@@ -227,6 +256,33 @@ export const appRouter = router({
   admin: router({
     bookings: adminMiddleware.query(() => getAllBookings()),
     announcements: adminMiddleware.query(() => getAllAnnouncements()),
+    services: adminMiddleware.query(() => getAllServices(true)),
+
+    saveService: adminMiddleware
+      .input(managedServiceInput)
+      .mutation(async ({ input }) => {
+        const { id, ...service } = input;
+        const normalized = {
+          ...service,
+          descriptionRu: service.descriptionRu || null,
+          descriptionEn: service.descriptionEn || null,
+          priceAmd: service.priceAmd ?? null,
+          priceMinAmd: service.priceMinAmd ?? null,
+          priceMaxAmd: service.priceMaxAmd ?? null,
+          depositAmd: service.depositAmd ?? null,
+          noteRu: service.noteRu || null,
+          noteEn: service.noteEn || null,
+        };
+        if (id) {
+          await updateManagedService(id, normalized);
+          return { id };
+        }
+        return { id: await createManagedService(normalized) };
+      }),
+
+    setServiceActive: adminMiddleware
+      .input(z.object({ id: z.number().int().positive(), isActive: z.enum(["yes", "no"]) }))
+      .mutation(({ input }) => setServiceActive(input.id, input.isActive)),
 
     saveAnnouncement: adminMiddleware
       .input(z.object({
