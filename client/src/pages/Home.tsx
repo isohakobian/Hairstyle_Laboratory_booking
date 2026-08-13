@@ -145,7 +145,7 @@ export default function Home() {
           </button>
 
           {/* Desktop nav */}
-          <nav style={{ display: 'flex', alignItems: 'center', gap: '2rem' }} className="hidden md:flex">
+          <nav style={{ alignItems: 'center', gap: '2rem' }} className="hidden md:flex">
             {[
               { label: c.nav.booking, path: '/booking' },
               { label: c.nav.status, path: '/status' },
@@ -193,28 +193,65 @@ export default function Home() {
             </div>
           </nav>
 
-          {/* Mobile hamburger */}
-          <button
-            className="md:hidden"
-            onClick={() => setMenuOpen(!menuOpen)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem', color: 'hsl(var(--foreground))' }}
-            aria-label="Menu"
-          >
-            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-              {menuOpen ? (
-                <>
-                  <line x1="4" y1="4" x2="18" y2="18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                  <line x1="18" y1="4" x2="4" y2="18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                </>
-              ) : (
-                <>
-                  <line x1="3" y1="6" x2="19" y2="6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                  <line x1="3" y1="11" x2="19" y2="11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                  <line x1="3" y1="16" x2="19" y2="16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                </>
-              )}
-            </svg>
-          </button>
+          {/* Mobile actions — language is always visible, menu contains only navigation. */}
+          <div className="flex md:hidden" style={{ alignItems: 'center', gap: '0.5rem' }}>
+            <div
+              role="group"
+              aria-label="Language"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                border: '1px solid hsl(var(--border))',
+                padding: '0.125rem',
+              }}
+            >
+              {langs.map(l => (
+                <button
+                  key={l}
+                  onClick={() => setLanguage(l)}
+                  aria-pressed={language === l}
+                  style={{
+                    minWidth: '2rem',
+                    minHeight: '2rem',
+                    fontFamily: "'Inter', sans-serif",
+                    fontSize: '0.625rem',
+                    fontWeight: 700,
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                    padding: '0.375rem',
+                    background: language === l ? 'hsl(var(--secondary))' : 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: language === l ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))',
+                    transition: 'all 160ms cubic-bezier(0.23, 1, 0.32, 1)',
+                  }}
+                >
+                  {l.toUpperCase()}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setMenuOpen(!menuOpen)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem', color: 'hsl(var(--foreground))' }}
+              aria-label="Menu"
+              aria-expanded={menuOpen}
+            >
+              <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                {menuOpen ? (
+                  <>
+                    <line x1="4" y1="4" x2="18" y2="18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                    <line x1="18" y1="4" x2="4" y2="18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  </>
+                ) : (
+                  <>
+                    <line x1="3" y1="6" x2="19" y2="6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                    <line x1="3" y1="11" x2="19" y2="11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                    <line x1="3" y1="16" x2="19" y2="16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  </>
+                )}
+              </svg>
+            </button>
+          </div>
         </div>
 
         {/* Mobile menu */}
@@ -237,14 +274,6 @@ export default function Home() {
               ) : (
                 <button className="btn-ghost" style={{ justifyContent: 'flex-start', padding: '0.5rem 0' }} onClick={() => window.location.href = getLoginUrl()}>{c.nav.login}</button>
               )}
-              <div style={{ display: 'flex', gap: '0.5rem', paddingTop: '1rem', borderTop: '1px solid hsl(var(--border))' }}>
-                {langs.map(l => (
-                  <button key={l} onClick={() => { setLanguage(l); setMenuOpen(false); }}
-                    style={{ fontFamily: "'Inter', sans-serif", fontSize: '0.625rem', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0.375rem 0.625rem', background: language === l ? 'hsl(var(--secondary))' : 'none', border: 'none', cursor: 'pointer', color: language === l ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))' }}>
-                    {l.toUpperCase()}
-                  </button>
-                ))}
-              </div>
             </div>
           </div>
         )}

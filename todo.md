@@ -68,8 +68,12 @@
 - [x] Test all booking flows end-to-end
 
 ## Future Enhancements (Optional)
-- [ ] Email notifications for new bookings
+- [x] Owner push notifications for new bookings
+- [ ] Implement real Gmail email notifications for new bookings
 - [ ] Admin dashboard filters/sorting by status
 - [ ] SMS notifications
-- [ ] Calendar view for bookings
+- [x] Schedule calendar for opening and closing booking dates
+- [ ] Add a booking calendar that displays appointment entries
 - [ ] Recurring appointments
+- [x] Fix and verify RU/EN language switcher visibility on mobile header
+- [x] Stabilize booking tests when dates are blocked in the live calendar

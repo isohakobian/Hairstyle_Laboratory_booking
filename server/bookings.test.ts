@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { appRouter } from './routers';
 import type { TrpcContext } from './_core/context';
+import { createBooking, getBookingByReference } from './db';
 
 // Mock context for testing
 function createMockContext(userId: number = 1, role: 'user' | 'admin' = 'user'): TrpcContext {
@@ -55,10 +56,11 @@ describe('Bookings API', () => {
       
       expect(typeof service.nameEn).toBe('string');
       expect(typeof service.nameRu).toBe('string');
-      expect(typeof service.priceRub).toBe('number');
       expect(typeof service.durationMinutes).toBe('number');
-      expect(service.priceRub).toBeGreaterThanOrEqual(0);
       expect(service.durationMinutes).toBeGreaterThan(0);
+      expect(service.priceRub === null || typeof service.priceRub === 'number').toBe(true);
+      expect(typeof service.noteRu).toBe('string');
+      expect(service.noteRu?.length).toBeGreaterThan(0);
     });
   });
 
@@ -181,18 +183,22 @@ describe('Bookings API', () => {
       const adminCtx = createMockContext(1, 'admin');
       const adminCaller = appRouter.createCaller(adminCtx);
 
-      // Create a booking first
-      const bookingData = {
+      // Insert an isolated pending booking directly so the test does not depend
+      // on the owner's real blocked-date calendar.
+      const referenceNumber = `TC${Date.now().toString(36)}`.slice(0, 12).toUpperCase();
+      await createBooking({
+        referenceNumber,
         serviceId: 1,
-        serviceName: "Men's Haircut",
-        bookingDate: '2026-08-10',
+        serviceName: 'Haircut',
+        bookingDate: '2099-12-20',
         bookingTime: '09:00',
         clientName: 'Admin Test',
         clientPhone: '+1234567895',
         clientEmail: 'admin-test@example.com',
-      };
-
-      const created = await caller.bookings.create(bookingData);
+        status: 'pending',
+      });
+      const created = await getBookingByReference(referenceNumber);
+      if (!created) throw new Error('Test booking was not created');
 
       // Confirm it as admin
       const confirmed = await adminCaller.admin.confirmBooking({ id: created.id });
@@ -208,18 +214,22 @@ describe('Bookings API', () => {
       const adminCtx = createMockContext(1, 'admin');
       const adminCaller = appRouter.createCaller(adminCtx);
 
-      // Create a booking first
-      const bookingData = {
+      // Insert an isolated pending booking directly so the test does not depend
+      // on the owner's real blocked-date calendar.
+      const referenceNumber = `TD${Date.now().toString(36)}`.slice(0, 12).toUpperCase();
+      await createBooking({
+        referenceNumber,
         serviceId: 2,
         serviceName: 'Beard Modeling',
-        bookingDate: '2026-08-12',
+        bookingDate: '2099-12-21',
         bookingTime: '15:30',
         clientName: 'Decline Test',
         clientPhone: '+1234567896',
         clientEmail: 'decline-test@example.com',
-      };
-
-      const created = await caller.bookings.create(bookingData);
+        status: 'pending',
+      });
+      const created = await getBookingByReference(referenceNumber);
+      if (!created) throw new Error('Test booking was not created');
 
       // Decline it as admin
       const declined = await adminCaller.admin.declineBooking({ id: created.id });
