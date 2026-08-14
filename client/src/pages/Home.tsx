@@ -292,6 +292,11 @@ export default function Home() {
           background: 'radial-gradient(ellipse 80% 60% at 50% 0%, rgba(201,168,76,0.06) 0%, transparent 70%)',
           pointerEvents: 'none',
         }} />
+        <div className="hero-ambient" aria-hidden="true">
+          <span className="hero-ambient-orb hero-ambient-orb-a" />
+          <span className="hero-ambient-orb hero-ambient-orb-b" />
+          <span className="hero-ambient-grain" />
+        </div>
         {/* Vertical accent line */}
         <div style={{
           position: 'absolute',

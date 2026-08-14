@@ -8,7 +8,10 @@ vi.mock('@/const', () => ({ getLoginUrl: () => '/login' }));
 vi.mock('wouter', () => ({ useLocation: () => ['/', vi.fn()] }));
 vi.mock('@/lib/trpc', () => ({
   trpc: {
-    announcements: { active: { useQuery: () => ({ data: null }) } },
+    announcements: { active: { useQuery: () => ({ data: [
+      { id: 101, titleRu: 'Первая новость', titleEn: 'First notice', bodyRu: 'Первый текст', bodyEn: 'First text', startDate: '2026-08-01', endDate: '2026-08-31' },
+      { id: 102, titleRu: 'Вторая новость', titleEn: 'Second notice', bodyRu: 'Второй текст', bodyEn: 'Second text', startDate: '2026-08-01', endDate: '2026-08-31' },
+    ] }) } },
     services: { list: { useQuery: () => ({
       data: [
         { id: 11, nameRu: 'Первая услуга', nameEn: 'First service', descriptionRu: 'Первая в порядке', descriptionEn: 'First in order', durationMinutes: 30, priceAmd: 12000, priceMinAmd: null, priceMaxAmd: null, depositAmd: null },
@@ -31,5 +34,13 @@ describe('Home service catalog', () => {
     expect(screen.getByText('Предоплата: 10,000 ֏')).toBeTruthy();
     const text = container.textContent ?? '';
     expect(text.indexOf('Первая услуга')).toBeLessThan(text.indexOf('Вторая услуга'));
+  });
+
+  it('renders up to two active notices in API date-range order', () => {
+    const { container } = render(<Home />);
+    const text = container.textContent ?? '';
+    expect(text).toContain('Первая новость');
+    expect(text).toContain('Вторая новость');
+    expect(text.indexOf('Первая новость')).toBeLessThan(text.indexOf('Вторая новость'));
   });
 });

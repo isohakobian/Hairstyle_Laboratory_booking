@@ -144,3 +144,6 @@
 - [x] Add an editable bilingual review-request email template in the admin dashboard
 - [x] Show up to two active homepage notices with a minimal, accessible animation
 - [x] Add direct Client Memory search by name, phone, or email with regression coverage
+- [x] Verify the homepage notices block and its animation on desktop and mobile
+- [x] Add a subtle non-distracting animated background to the homepage hero
+- [ ] Verify that the real published homepage renders up to two active notices in date-range order and add regression coverage
