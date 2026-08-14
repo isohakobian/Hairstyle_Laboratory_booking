@@ -341,5 +341,38 @@ describe('Bookings API', () => {
         expect(booking).toHaveProperty('clientPhone');
       }
     });
+
+    it('should expose review-request statistics for admin', async () => {
+      const adminCaller = appRouter.createCaller(createMockContext(1, 'admin'));
+
+      const dashboard = await adminCaller.admin.reviewRequests();
+
+      expect(dashboard.stats.sent).toBeGreaterThanOrEqual(0);
+      expect(dashboard.stats.received).toBeGreaterThanOrEqual(0);
+      expect(dashboard.stats.awaiting).toBeGreaterThanOrEqual(0);
+      expect(dashboard.stats.sent).toBe(dashboard.stats.received + dashboard.stats.awaiting);
+      expect(Array.isArray(dashboard.items)).toBe(true);
+    });
+
+    it('should permanently delete an unnecessary booking as admin', async () => {
+      const adminCaller = appRouter.createCaller(createMockContext(1, 'admin'));
+      const referenceNumber = `TX${Date.now().toString(36)}`.slice(0, 12).toUpperCase();
+      await createBooking({
+        referenceNumber,
+        serviceId: 1,
+        serviceName: 'Haircut',
+        bookingDate: '2099-12-22',
+        bookingTime: '11:00',
+        clientName: 'Delete Test',
+        clientPhone: '+1234567897',
+        clientEmail: 'delete-test@example.com',
+        status: 'pending',
+      });
+      const created = await getBookingByReference(referenceNumber);
+      if (!created) throw new Error('Test booking was not created');
+
+      await expect(adminCaller.admin.deleteBooking({ id: created.id })).resolves.toMatchObject({ success: true });
+      await expect(caller.bookings.getByReference({ referenceNumber })).resolves.toBeUndefined();
+    });
   });
 });

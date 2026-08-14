@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, isNull, lt, lte, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, InsertBooking, InsertBookingService, users, services, bookings, bookingServices, reviewTokens, bookingStatusRecoveryTokens } from "../drizzle/schema";
+import { InsertUser, InsertBooking, InsertBookingService, users, services, bookings, bookingServices, reviewTokens, bookingStatusRecoveryTokens, bookingEvents, visitMedia, reviewRequestHistory, reviews, clients } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -269,6 +269,43 @@ export async function getAllBookings() {
   return db.select().from(bookings).orderBy(desc(bookings.createdAt));
 }
 
+export async function deleteBookingAndRelatedData(bookingId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db.transaction(async (tx) => {
+    const booking = (await tx.select({ id: bookings.id, clientId: bookings.clientId })
+      .from(bookings)
+      .where(eq(bookings.id, bookingId))
+      .limit(1))[0];
+    if (!booking) return { deleted: false, deletedClientProfile: false };
+
+    await tx.delete(reviews).where(eq(reviews.bookingId, bookingId));
+    await tx.delete(reviewTokens).where(eq(reviewTokens.bookingId, bookingId));
+    await tx.delete(reviewRequestHistory).where(eq(reviewRequestHistory.bookingId, bookingId));
+    await tx.delete(bookingEvents).where(eq(bookingEvents.bookingId, bookingId));
+    // The built-in storage layer intentionally exposes no physical-delete API.
+    // Removing the stored keys and metadata makes private media unreachable.
+    await tx.delete(visitMedia).where(eq(visitMedia.bookingId, bookingId));
+    await tx.delete(bookingServices).where(eq(bookingServices.bookingId, bookingId));
+    await tx.delete(bookings).where(eq(bookings.id, bookingId));
+
+    let deletedClientProfile = false;
+    if (booking.clientId) {
+      const remainingBooking = (await tx.select({ id: bookings.id })
+        .from(bookings)
+        .where(eq(bookings.clientId, booking.clientId))
+        .limit(1))[0];
+      if (!remainingBooking) {
+        await tx.delete(clients).where(eq(clients.id, booking.clientId));
+        deletedClientProfile = true;
+      }
+    }
+
+    return { deleted: true, deletedClientProfile };
+  });
+}
+
 export async function getBookingServices(bookingId: number) {
   const db = await getDb();
   if (!db) return [];
@@ -343,7 +380,7 @@ export async function isTimeSlotAvailable(date: string, time: string, durationMi
 }
 
 // ── Blocked Dates ──────────────────────────────────────────────────────────
-import { blockedDates, reviews, InsertBlockedDate, InsertReview } from "../drizzle/schema";
+import { blockedDates, InsertBlockedDate, InsertReview } from "../drizzle/schema";
 
 export async function getBlockedDates() {
   const db = await getDb();
@@ -387,6 +424,34 @@ export async function getAllReviews() {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(reviews).orderBy(desc(reviews.createdAt));
+}
+
+export async function getReviewRequestDashboard() {
+  const db = await getDb();
+  if (!db) return { items: [], stats: { sent: 0, received: 0, awaiting: 0 } };
+
+  const rows = await db.select({
+    request: reviewRequestHistory,
+    booking: bookings,
+    review: reviews,
+  }).from(reviewRequestHistory)
+    .innerJoin(bookings, eq(reviewRequestHistory.bookingId, bookings.id))
+    .leftJoin(reviews, eq(reviews.bookingId, bookings.id))
+    .orderBy(desc(reviewRequestHistory.sentAt));
+
+  const items = rows.map(({ request, booking, review }) => ({
+    id: request.id,
+    bookingId: booking.id,
+    referenceNumber: booking.referenceNumber,
+    clientName: booking.clientName,
+    recipientEmail: request.recipientEmail,
+    sentAt: request.sentAt,
+    status: review ? "received" as const : "awaiting" as const,
+    reviewCreatedAt: review?.createdAt ?? null,
+    rating: review?.rating ?? null,
+  }));
+  const received = items.filter((item) => item.status === "received").length;
+  return { items, stats: { sent: items.length, received, awaiting: items.length - received } };
 }
 
 export async function updateReviewPublished(id: number, isPublished: "yes" | "no") {

@@ -17,10 +17,12 @@ vi.mock("@/lib/trpc", () => ({
       reviews: { useQuery: () => ({ data: [], refetch: vi.fn() }) },
       confirmBooking: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       declineBooking: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+      deleteBooking: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       requestReview: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       publishReview: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       rescheduleBooking: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       completeBooking: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+      reviewRequests: { useQuery: () => ({ data: { items: [], stats: { sent: 0, received: 0, awaiting: 0 } }, isLoading: false, isError: false, refetch: vi.fn() }) },
     },
     availability: {
       dates: { useQuery: () => ({ data: ["2099-12-30"] }) },

@@ -135,3 +135,7 @@
 - [x] Retry the approved manual review-request email after Gmail's daily sending limit resets
 - [x] Show a clear admin-friendly message when Gmail temporarily rejects a review email because of its daily sending limit
 - [x] Allow manual review requests only after an admin marks the client visit as completed
+- [x] Add review-request filters and sorting by delivery status and creation date in the admin dashboard
+- [x] Add a visible review-request statistics panel for sent requests and received reviews
+- [x] Add clear loading and successful-delivery feedback for manual review-request emails
+- [x] Allow an admin to safely delete an unnecessary booking and its related private data

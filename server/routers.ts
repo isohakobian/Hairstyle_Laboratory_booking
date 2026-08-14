@@ -10,6 +10,7 @@ import {
   getReviewTokenByHash, markReviewTokenUsed,
   getPublishedReviews, getAllReviews, updateReviewPublished, createManagedService, setServiceActive, updateManagedService,
   createBookingStatusRecoveryToken, claimBookingStatusRecoveryToken, getSafeBookingStatusesByEmail,
+  deleteBookingAndRelatedData, getReviewRequestDashboard,
 } from "./db";
 import { TRPCError } from "@trpc/server";
 import { sendBookingEmails, sendBookingStatusRecoveryEmail, sendConfirmedBookingEmail, sendReviewRequestEmail } from "./bookingEmail";
@@ -369,6 +370,14 @@ export const appRouter = router({
         return { success: true };
       }),
 
+    deleteBooking: adminMiddleware
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        const result = await deleteBookingAndRelatedData(input.id);
+        if (!result.deleted) throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found" });
+        return { success: true, deletedClientProfile: result.deletedClientProfile };
+      }),
+
     requestReview: adminMiddleware
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
@@ -498,6 +507,7 @@ export const appRouter = router({
 
     // Reviews management
     reviews: adminMiddleware.query(() => getAllReviews()),
+    reviewRequests: adminMiddleware.query(() => getReviewRequestDashboard()),
 
     publishReview: adminMiddleware
       .input(z.object({ id: z.number(), publish: z.boolean() }))

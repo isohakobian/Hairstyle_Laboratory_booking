@@ -6,6 +6,7 @@ import { useLocation } from 'wouter';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { getLoginUrl } from '@/const';
 import { getReviewRequestErrorMessage } from '@/lib/emailDeliveryError';
+import { Loader2, Trash2 } from 'lucide-react';
 import ScheduleCalendar from '@/components/ScheduleCalendar';
 import BookingCalendar from '@/components/BookingCalendar';
 import ClientMemoryPanel from '@/components/ClientMemoryPanel';
@@ -15,6 +16,8 @@ import ServiceManager from '@/components/ServiceManager';
 type Tab = 'bookings' | 'calendar' | 'schedule' | 'services' | 'reviews' | 'clients' | 'news';
 type BookingStatusFilter = 'all' | 'pending' | 'confirmed' | 'declined';
 type BookingSort = 'appointmentAsc' | 'appointmentDesc' | 'newest' | 'statusAsc';
+type ReviewRequestStatusFilter = 'all' | 'awaiting' | 'received';
+type ReviewRequestSort = 'sentDesc' | 'sentAsc' | 'receivedDesc';
 
 function getInitialTab(): Tab {
   if (typeof window === 'undefined') return 'bookings';
@@ -51,6 +54,8 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<Tab>(getInitialTab);
   const [bookingStatusFilter, setBookingStatusFilter] = useState<BookingStatusFilter>('all');
   const [bookingSort, setBookingSort] = useState<BookingSort>('appointmentAsc');
+  const [reviewRequestStatusFilter, setReviewRequestStatusFilter] = useState<ReviewRequestStatusFilter>('all');
+  const [reviewRequestSort, setReviewRequestSort] = useState<ReviewRequestSort>('sentDesc');
   const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
   const [rescheduleBookingId, setRescheduleBookingId] = useState<number | null>(null);
   const [rescheduleDate, setRescheduleDate] = useState('');
@@ -59,10 +64,15 @@ export default function AdminDashboard() {
   const [completeBookingId, setCompleteBookingId] = useState<number | null>(null);
   const [finalPriceAmd, setFinalPriceAmd] = useState('');
   const [completionNote, setCompletionNote] = useState('');
+  const [deleteBookingId, setDeleteBookingId] = useState<number | null>(null);
+  const [lastReviewRequestBookingId, setLastReviewRequestBookingId] = useState<number | null>(null);
   const { data: bookings, isLoading: bookingsLoading, isError: bookingsError, refetch: refetchBookings } = trpc.admin.bookings.useQuery(undefined, {
     enabled: isAuthenticated && user?.role === 'admin',
   });
   const { data: allReviews, refetch: refetchReviews } = trpc.admin.reviews.useQuery(undefined, {
+    enabled: isAuthenticated && user?.role === 'admin',
+  });
+  const { data: reviewRequestDashboard, isLoading: reviewRequestsLoading, isError: reviewRequestsError, refetch: refetchReviewRequests } = trpc.admin.reviewRequests.useQuery(undefined, {
     enabled: isAuthenticated && user?.role === 'admin',
   });
   const { data: openDates } = trpc.availability.dates.useQuery();
@@ -84,7 +94,11 @@ export default function AdminDashboard() {
     onError: (e) => toast.error(e.message),
   });
   const requestReviewMutation = trpc.admin.requestReview.useMutation({
-    onSuccess: () => toast.success(language === 'ru' ? 'Письмо с просьбой оставить отзыв отправлено' : 'Review request email sent'),
+    onSuccess: (_data, variables) => {
+      setLastReviewRequestBookingId(variables.id);
+      toast.success(language === 'ru' ? 'Письмо с просьбой оставить отзыв отправлено' : 'Review request email sent');
+      refetchReviewRequests();
+    },
     onError: (e) => toast.error(getReviewRequestErrorMessage(e.message, language as 'ru' | 'en')),
   });
   const publishReviewMutation = trpc.admin.publishReview.useMutation({
@@ -102,6 +116,19 @@ export default function AdminDashboard() {
     onSuccess: () => {
       toast.success(language === 'ru' ? 'Визит отмечен как завершённый' : 'Visit marked as complete');
       setCompleteBookingId(null); setFinalPriceAmd(''); setCompletionNote(''); refetchBookings();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const deleteBookingMutation = trpc.admin.deleteBooking.useMutation({
+    onSuccess: (data) => {
+      setDeleteBookingId(null);
+      setSelectedClientId(null);
+      toast.success(language === 'ru'
+        ? (data.deletedClientProfile ? 'Запись и пустой профиль клиента удалены' : 'Запись удалена')
+        : (data.deletedClientProfile ? 'Booking and empty client profile deleted' : 'Booking deleted'));
+      refetchBookings();
+      refetchReviews();
+      refetchReviewRequests();
     },
     onError: (e) => toast.error(e.message),
   });
@@ -137,6 +164,20 @@ export default function AdminDashboard() {
       return bookingSort === 'appointmentAsc' ? comparison : -comparison;
     });
   }, [bookings, bookingSort, bookingStatusFilter]);
+
+  const visibleReviewRequests = useMemo(() => {
+    const filtered = (reviewRequestDashboard?.items ?? []).filter((request) => (
+      reviewRequestStatusFilter === 'all' || request.status === reviewRequestStatusFilter
+    ));
+
+    return [...filtered].sort((a, b) => {
+      if (reviewRequestSort === 'receivedDesc') {
+        return new Date(b.reviewCreatedAt ?? 0).getTime() - new Date(a.reviewCreatedAt ?? 0).getTime();
+      }
+      const comparison = new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime();
+      return reviewRequestSort === 'sentAsc' ? comparison : -comparison;
+    });
+  }, [reviewRequestDashboard?.items, reviewRequestSort, reviewRequestStatusFilter]);
 
   if (loading) return (
     <div style={{ minHeight: '100vh', backgroundColor: 'hsl(var(--background))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -343,10 +384,14 @@ export default function AdminDashboard() {
                             onClick={() => requestReviewMutation.mutate({ id: booking.id })}
                             disabled={requestReviewMutation.isPending}
                           >
-                            {language === 'ru' ? 'Отправить запрос на отзыв' : 'Send review request'}
+                            {requestReviewMutation.isPending
+                              ? <><Loader2 size={13} className="animate-spin" style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: '0.35rem' }} />{language === 'ru' ? 'Отправка...' : 'Sending...'}</>
+                              : (language === 'ru' ? 'Отправить запрос на отзыв' : 'Send review request')}
                           </button>
-                          <span style={{ ...labelStyle, fontSize: '0.5625rem' }}>
-                            {language === 'ru' ? 'Отправляй после визита' : 'Send after the visit'}
+                          <span aria-live="polite" style={{ ...labelStyle, fontSize: '0.5625rem', color: lastReviewRequestBookingId === booking.id ? statusColors.confirmed : 'hsl(var(--muted-foreground))' }}>
+                            {lastReviewRequestBookingId === booking.id
+                              ? (language === 'ru' ? 'Письмо отправлено' : 'Email sent')
+                              : (language === 'ru' ? 'Отправляй после визита' : 'Send after the visit')}
                           </span>
                         </div>
                       )}
@@ -385,6 +430,25 @@ export default function AdminDashboard() {
                           </div>
                         </div>
                       )}
+                      <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid hsl(var(--border))' }}>
+                        {deleteBookingId === booking.id ? (
+                          <div style={{ padding: '0.875rem', border: '1px solid hsl(0 60% 50% / 0.55)', background: 'hsl(0 60% 50% / 0.08)' }}>
+                            <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'hsl(var(--foreground))', lineHeight: 1.5 }}>
+                              {language === 'ru' ? 'Удалить эту запись навсегда? История визита, запросы на отзыв и связанные данные будут удалены.' : 'Delete this booking permanently? Its visit history, review requests, and related data will be removed.'}
+                            </p>
+                            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                              <button type="button" className="btn-outline" onClick={() => setDeleteBookingId(null)} disabled={deleteBookingMutation.isPending}>{language === 'ru' ? 'Отмена' : 'Cancel'}</button>
+                              <button type="button" className="btn-outline" onClick={() => deleteBookingMutation.mutate({ id: booking.id })} disabled={deleteBookingMutation.isPending} style={{ color: 'hsl(0, 60%, 50%)', borderColor: 'hsl(0, 60%, 50%)' }}>
+                                {deleteBookingMutation.isPending ? <><Loader2 size={13} className="animate-spin" style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: '0.35rem' }} />{language === 'ru' ? 'Удаление...' : 'Deleting...'}</> : (language === 'ru' ? 'Удалить навсегда' : 'Delete permanently')}
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button type="button" className="btn-ghost" onClick={() => setDeleteBookingId(booking.id)} style={{ color: 'hsl(0, 60%, 50%)', fontSize: '0.625rem', padding: 0 }}>
+                            <Trash2 size={13} style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: '0.35rem' }} />{language === 'ru' ? 'Удалить запись' : 'Delete booking'}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                     ))}
@@ -480,7 +544,70 @@ export default function AdminDashboard() {
               <p style={{ ...labelStyle, margin: '0 0 0.4rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Репутация' : 'Reputation'}</p>
               <h3 style={{ margin: 0, fontStyle: 'italic' }}>{language === 'ru' ? 'Отзывы клиентов' : 'Client reviews'}</h3>
             </div>
-            {!allReviews?.length ? <p style={labelStyle}>{language === 'ru' ? 'Нет отзывов' : 'No reviews yet'}</p> : (
+            {reviewRequestsLoading ? (
+              <div aria-live="polite" style={{ ...cardStyle, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <Loader2 size={18} className="animate-spin" color="var(--gold-mid)" />
+                <p style={{ ...labelStyle, margin: 0 }}>{language === 'ru' ? 'Загружаю историю запросов...' : 'Loading request history...'}</p>
+              </div>
+            ) : reviewRequestsError ? (
+              <p style={{ ...labelStyle, color: 'hsl(0, 60%, 50%)' }}>{language === 'ru' ? 'Не удалось загрузить историю запросов. Обновите страницу.' : 'Could not load request history. Refresh the page.'}</p>
+            ) : (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(10rem, 1fr))', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                  {[
+                    { label: language === 'ru' ? 'Отправлено' : 'Sent', value: reviewRequestDashboard?.stats.sent ?? 0, color: 'var(--gold-mid)' },
+                    { label: language === 'ru' ? 'Получено отзывов' : 'Reviews received', value: reviewRequestDashboard?.stats.received ?? 0, color: statusColors.confirmed },
+                    { label: language === 'ru' ? 'Ожидают ответа' : 'Awaiting response', value: reviewRequestDashboard?.stats.awaiting ?? 0, color: statusColors.pending },
+                  ].map(stat => (
+                    <div key={stat.label} style={{ ...cardStyle, padding: '1rem' }}>
+                      <p style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.85rem', color: stat.color, margin: '0 0 0.2rem' }}>{stat.value}</p>
+                      <p style={{ ...labelStyle, margin: 0, fontSize: '0.5625rem' }}>{stat.label}</p>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid hsl(var(--border))' }}>
+                  <div>
+                    <p style={{ ...labelStyle, margin: '0 0 0.5rem', fontSize: '0.5625rem' }}>{language === 'ru' ? 'Статус запроса' : 'Request status'}</p>
+                    <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap' }}>
+                      {([
+                        { id: 'all', label: language === 'ru' ? 'Все' : 'All' },
+                        { id: 'awaiting', label: language === 'ru' ? 'Ожидают' : 'Awaiting' },
+                        { id: 'received', label: language === 'ru' ? 'Получены' : 'Received' },
+                      ] as { id: ReviewRequestStatusFilter; label: string }[]).map(filter => (
+                        <button key={filter.id} onClick={() => setReviewRequestStatusFilter(filter.id)} aria-pressed={reviewRequestStatusFilter === filter.id} style={{ ...labelStyle, fontSize: '0.5625rem', padding: '0.5rem 0.625rem', color: reviewRequestStatusFilter === filter.id ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))', background: reviewRequestStatusFilter === filter.id ? 'hsl(var(--secondary))' : 'transparent', border: '1px solid hsl(var(--border))', cursor: 'pointer' }}>{filter.label}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', minWidth: '12rem' }}>
+                    <span style={{ ...labelStyle, fontSize: '0.5625rem' }}>{language === 'ru' ? 'Сортировка' : 'Sort'}</span>
+                    <select value={reviewRequestSort} onChange={event => setReviewRequestSort(event.target.value as ReviewRequestSort)} style={{ color: 'hsl(var(--foreground))', backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 0, padding: '0.625rem 0.75rem', fontFamily: "'Inter', sans-serif", fontSize: '0.75rem' }}>
+                      <option value="sentDesc">{language === 'ru' ? 'Сначала новые' : 'Newest sent first'}</option>
+                      <option value="sentAsc">{language === 'ru' ? 'Сначала ранние' : 'Oldest sent first'}</option>
+                      <option value="receivedDesc">{language === 'ru' ? 'Сначала полученные отзывы' : 'Received reviews first'}</option>
+                    </select>
+                  </label>
+                </div>
+                {visibleReviewRequests.length === 0 ? <p style={labelStyle}>{language === 'ru' ? 'Запросов с таким статусом пока нет' : 'No requests match this status yet'}</p> : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '2.5rem' }}>
+                    {visibleReviewRequests.map(request => (
+                      <div key={request.id} style={{ ...cardStyle, padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                        <div>
+                          <p style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, margin: '0 0 0.25rem', color: 'hsl(var(--foreground))' }}>{request.clientName}</p>
+                          <p style={{ ...labelStyle, margin: 0, fontSize: '0.5625rem' }}>{request.referenceNumber} · {new Date(request.sentAt).toLocaleDateString(language === 'ru' ? 'ru-RU' : 'en-US')}</p>
+                        </div>
+                        <span style={{ ...labelStyle, fontSize: '0.5625rem', color: request.status === 'received' ? statusColors.confirmed : statusColors.pending, border: `1px solid ${request.status === 'received' ? statusColors.confirmed : statusColors.pending}`, padding: '0.25rem 0.625rem' }}>
+                          {request.status === 'received' ? (language === 'ru' ? 'Отзыв получен' : 'Review received') : (language === 'ru' ? 'Ожидает ответа' : 'Awaiting response')}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+            <div style={{ marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px solid hsl(var(--border))' }}>
+              <p style={{ ...labelStyle, margin: '0 0 0.4rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Модерация' : 'Moderation'}</p>
+              <h4 style={{ margin: '0 0 1rem', fontStyle: 'italic' }}>{language === 'ru' ? 'Полученные отзывы' : 'Received reviews'}</h4>
+              {!allReviews?.length ? <p style={labelStyle}>{language === 'ru' ? 'Нет отзывов' : 'No reviews yet'}</p> : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {allReviews.map(review => (
                   <div key={review.id} style={{ ...cardStyle }}>
@@ -504,6 +631,7 @@ export default function AdminDashboard() {
                 ))}
               </div>
             )}
+            </div>
           </div>
         )}
       </div>
