@@ -128,7 +128,7 @@
 - [x] Add a booking-form test that confirms archived services cannot be selected and active services respect catalog order
 - [x] Replace the booking form's static three-service mapping with the full live active service catalog from the API
 - [x] Block the complete combined service duration so overlapping bookings cannot be created or offered as available slots
-- [x] Add a secure booking-status recovery flow using a client's verified email or phone number
+- [x] Add a secure booking-status recovery flow using a client's verified email address
 - [x] Make the booking reference and status link easy to copy and save after a successful booking
 - [x] Send a one-time email recovery link before revealing booking references or status details
 - [x] Add expiry, one-time use, and automated coverage for verified booking-status recovery tokens
