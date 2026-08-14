@@ -27,3 +27,11 @@ The administrator dashboard remained accessible in the active session while navi
 The final owner-approved send attempt was activated from the confirmed booking card. The delivery response is checked immediately after this action.
 
 Gmail again rejected the final attempt with SMTP 550 5.4.5 because the daily outbound sending limit remains active. No delivery confirmation is available. Further retries are paused to avoid unnecessary duplicate requests until Gmail resets the quota.
+
+After the completion-only protection was published, the review-request action remained available on the live card that had already been marked as completed. This confirms the interface preserves the legitimate post-visit action while withholding it from incomplete bookings.
+
+The live administrative page remained authenticated and displayed the confirmed booking and review-request action during the next owner-approved delivery check.
+
+The owner-approved real delivery check was activated from the completed booking card. The Gmail response is checked immediately after the action.
+
+Gmail accepted the delivery check successfully. The published admin panel displayed the confirmation message for the review-request email, confirming that the daily sending limit had been lifted and the real client email was accepted for delivery.
