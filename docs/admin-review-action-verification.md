@@ -13,3 +13,9 @@ The **Send Review Request** action was activated in the published administrator 
 The verification attempt reached Gmail, but Gmail rejected delivery because the configured mailbox had reached its daily sending limit (SMTP 550 5.4.5). No confirmation of client delivery is available yet. The approved email should be retried only after Gmail accepts outgoing mail again.
 
 The **Open Client Memory** control was also manually verified on the published site. It routed from the real booking card to the corresponding private client-memory profile and loaded that profile's visit history and preferences section successfully.
+
+Before the owner-approved retry, SMTP authentication was rechecked successfully without sending email. The retry result is recorded separately after the actual send attempt.
+
+The owner-approved retry was activated from the live booking card. Delivery status is checked immediately after the send attempt.
+
+The retry was again rejected by Gmail with SMTP 550 5.4.5 (daily user sending limit exceeded). SMTP authentication is valid, but Gmail has not reset the outbound sending quota. No delivery confirmation is available, and no further retry should be attempted until the quota reset is confirmed.
