@@ -89,7 +89,8 @@
 - [x] Test rejection of an expired review token
 - [x] Rewrite the review request email in Isaac's warm first-person voice
 - [x] Verify the real authenticated calendar, availability, and reviews sections on desktop and mobile
-- [ ] Test real booking-card navigation and review-request action when a client booking is available
+- [x] Test real booking-card navigation and review-request action when a client booking is available
+- [x] Manually verify that Open Client Memory from a real booking card reaches the correct client profile
 - [x] Support direct links to admin sections for verification and daily use
 - [x] Prevent automated tests from leaving booking reviews in the live admin panel
 - [x] Evaluate and implement direct Gmail delivery for new form submissions without a custom domain
@@ -131,3 +132,4 @@
 - [x] Make the booking reference and status link easy to copy and save after a successful booking
 - [x] Send a one-time email recovery link before revealing booking references or status details
 - [x] Add expiry, one-time use, and automated coverage for verified booking-status recovery tokens
+- [ ] Retry the approved manual review-request email after Gmail's daily sending limit resets
