@@ -9,10 +9,11 @@ import {
   getBlockedDates, blockDate, unblockDate, createReview, getReviewByBookingId, createReviewToken,
   getReviewTokenByHash, markReviewTokenUsed,
   getPublishedReviews, getAllReviews, updateReviewPublished, createManagedService, setServiceActive, updateManagedService,
+  createBookingStatusRecoveryToken, claimBookingStatusRecoveryToken, getSafeBookingStatusesByEmail,
 } from "./db";
 import { TRPCError } from "@trpc/server";
-import { sendBookingEmails, sendConfirmedBookingEmail, sendReviewRequestEmail } from "./bookingEmail";
-import { createReviewTokenValue, getReviewTokenExpiry, hashReviewToken } from "./reviewToken";
+import { sendBookingEmails, sendBookingStatusRecoveryEmail, sendConfirmedBookingEmail, sendReviewRequestEmail } from "./bookingEmail";
+import { createReviewTokenValue, getBookingStatusRecoveryExpiry, getReviewTokenExpiry, hashReviewToken } from "./reviewToken";
 import { blockDates, getAvailabilityWindows, getAvailableSlots, getPublicAvailableDates, setAvailabilityForDates } from "./availability";
 import { completeBooking, createBookingEvent, findOrCreateClient, getClientMemory, getSignedVisitMediaUrl, recordReviewRequest, rescheduleBooking, updateClientProfile, uploadVisitMedia } from "./clientMemory";
 import { getActiveAnnouncement, getAllAnnouncements, saveAnnouncement, setAnnouncementPublished } from "./announcements";
@@ -203,9 +204,34 @@ export const appRouter = router({
       .input(z.object({ referenceNumber: z.string() }))
       .query(({ input }) => getBookingByReference(input.referenceNumber)),
 
-    getByEmail: publicProcedure
-      .input(z.object({ email: z.string().email() }))
-      .query(({ input }) => getBookingsByEmail(input.email)),
+    requestStatusRecovery: publicProcedure
+      .input(z.object({ clientEmail: z.string().trim().email() }))
+      .mutation(async ({ input }) => {
+        const clientEmail = input.clientEmail.toLowerCase();
+        const existingBookings = await getBookingsByEmail(clientEmail);
+        if (existingBookings.length > 0) {
+          const token = createReviewTokenValue();
+          await createBookingStatusRecoveryToken(clientEmail, hashReviewToken(token), getBookingStatusRecoveryExpiry());
+          const recoveryUrl = `https://isaacbarber-axczkyb2.manus.space/status?recovery=${encodeURIComponent(token)}`;
+          try {
+            await sendBookingStatusRecoveryEmail(clientEmail, recoveryUrl);
+          } catch (error) {
+            console.error("[Booking recovery] Failed to send recovery email:", error);
+          }
+        }
+        // A generic response avoids confirming whether a specific email has bookings.
+        return { success: true };
+      }),
+
+    recoverStatus: publicProcedure
+      .input(z.object({ token: z.string().min(32).max(255) }))
+      .mutation(async ({ input }) => {
+        const recoveryToken = await claimBookingStatusRecoveryToken(hashReviewToken(input.token));
+        if (!recoveryToken) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "This recovery link is invalid, expired, or already used" });
+        }
+        return getSafeBookingStatusesByEmail(recoveryToken.clientEmail);
+      }),
 
     // Public: get blocked dates so booking form can disable them
     blockedDates: publicProcedure.query(() => getBlockedDates()),

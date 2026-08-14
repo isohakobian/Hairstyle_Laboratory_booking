@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { trpc } from '@/lib/trpc';
 import { useLocation } from 'wouter';
@@ -11,6 +11,8 @@ const copy: Record<Language, any> = {
     notFound: 'Заявка не найдена. Проверьте номер.', statusLabel: 'Статус',
     service: 'Услуга', date: 'Дата', time: 'Время', name: 'Имя',
     pending: 'Ожидание', confirmed: 'Подтверждено', declined: 'Отклонено', bookAnother: 'Записаться снова',
+    forgot: 'Не помните номер заявки?', recoveryHint: 'Введите email, указанный при записи. На него придёт одноразовая ссылка для просмотра статуса.',
+    recover: 'Отправить ссылку', phone: 'Телефон', email: 'Email', recoveryTitle: 'Ваши записи', recoveryEmpty: 'Записей с такими данными не найдено.', open: 'Открыть', recoverySent: 'Если этот email есть в записи, ссылка уже отправлена. Проверьте входящие.', recoveryInvalid: 'Ссылка недействительна, истекла или уже была использована.',
   },
   en: {
     title: 'Booking Status', sub: 'Enter your reference number', label: 'Reference number',
@@ -18,6 +20,8 @@ const copy: Record<Language, any> = {
     notFound: 'Booking not found. Check your reference number.', statusLabel: 'Status',
     service: 'Service', date: 'Date', time: 'Time', name: 'Name',
     pending: 'Pending', confirmed: 'Confirmed', declined: 'Declined',     bookAnother: 'Book again',
+    forgot: 'Forgot your reference number?', recoveryHint: 'Enter the email used for your booking. A one-time link to view your status will be sent there.',
+    recover: 'Send link', phone: 'Phone', email: 'Email', recoveryTitle: 'Your bookings', recoveryEmpty: 'No bookings were found with these details.', open: 'Open', recoverySent: 'If this email is attached to a booking, a link has been sent. Check your inbox.', recoveryInvalid: 'This link is invalid, expired, or has already been used.',
   },
 };
 
@@ -31,20 +35,54 @@ export default function BookingStatus() {
   const { language } = useLanguage() as { language: Language };
   const [, setLocation] = useLocation();
   const c = copy[language] ?? copy.ru;
-  const [referenceInput, setReferenceInput] = useState('');
-  const [searchRef, setSearchRef] = useState('');
-  const [searched, setSearched] = useState(false);
+  const initialReference = typeof window === 'undefined' ? '' : new URLSearchParams(window.location.search).get('ref')?.toUpperCase() ?? '';
+  const [referenceInput, setReferenceInput] = useState(initialReference);
+  const [searchRef, setSearchRef] = useState(initialReference);
+  const [searched, setSearched] = useState(Boolean(initialReference));
+  const [showRecovery, setShowRecovery] = useState(false);
+  const [recoveryEmail, setRecoveryEmail] = useState('');
+  const initialRecoveryToken = typeof window === 'undefined' ? '' : new URLSearchParams(window.location.search).get('recovery') ?? '';
+  const [recoverySent, setRecoverySent] = useState(false);
+  const [recoveredBookings, setRecoveredBookings] = useState<{ referenceNumber: string; serviceSummary: string; serviceName: string; bookingDate: string; bookingTime: string; status: string }[]>([]);
+  const [recoveryError, setRecoveryError] = useState(false);
 
   const { data: booking, isLoading } = trpc.bookings.getByReference.useQuery(
     { referenceNumber: searchRef.toUpperCase() },
     { enabled: !!searchRef }
   );
+  const requestRecoveryMutation = trpc.bookings.requestStatusRecovery.useMutation();
+  const redeemRecoveryMutation = trpc.bookings.recoverStatus.useMutation();
+
+  useEffect(() => {
+    if (!initialRecoveryToken) return;
+    redeemRecoveryMutation.mutate({ token: initialRecoveryToken }, {
+      onSuccess: (data) => setRecoveredBookings(data),
+      onError: () => setRecoveryError(true),
+    });
+  // The token comes from the initial URL and must only be redeemed once per page load.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialRecoveryToken]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (!referenceInput.trim()) return;
     setSearchRef(referenceInput.trim());
     setSearched(true);
+  };
+
+  const handleRecovery = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!recoveryEmail.trim()) return;
+    requestRecoveryMutation.mutate({ clientEmail: recoveryEmail.trim().toLowerCase() }, {
+      onSuccess: () => setRecoverySent(true),
+    });
+  };
+
+  const openRecoveredBooking = (referenceNumber: string) => {
+    setReferenceInput(referenceNumber);
+    setSearchRef(referenceNumber);
+    setSearched(true);
+    setShowRecovery(false);
   };
 
   const statusLabel = (s: string) => ({ pending: c.pending, confirmed: c.confirmed, declined: c.declined }[s] ?? s);
@@ -78,6 +116,33 @@ export default function BookingStatus() {
             {c.search}
           </button>
         </form>
+        <div style={{ borderTop: '1px solid hsl(var(--border))', paddingTop: '1.25rem', marginBottom: '3rem' }}>
+          <button type="button" onClick={() => setShowRecovery((open) => !open)} style={{ padding: 0, background: 'none', border: 'none', color: 'var(--gold-mid)', fontFamily: "'Inter', sans-serif", fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer' }}>
+            {c.forgot}
+          </button>
+          {showRecovery && (
+            <form onSubmit={handleRecovery} style={{ marginTop: '1rem', padding: '1.25rem', border: '1px solid hsl(var(--border))' }}>
+              <p style={{ margin: '0 0 1rem', color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem', lineHeight: 1.5 }}>{c.recoveryHint}</p>
+              <input value={recoveryEmail} onChange={(e) => setRecoveryEmail(e.target.value)} placeholder={c.email} style={{ ...inputStyle, marginBottom: '1rem' }} autoComplete="email" />
+              <button type="submit" style={{ width: '100%', padding: '0.75rem 1rem', background: 'transparent', border: '1px solid hsl(var(--foreground))', color: 'hsl(var(--foreground))', cursor: 'pointer', fontFamily: "'Inter', sans-serif", fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>{c.recover}</button>
+              {requestRecoveryMutation.isPending && <p style={{ margin: '1rem 0 0', color: 'hsl(var(--muted-foreground))' }}>...</p>}
+              {recoverySent && <p style={{ margin: '1rem 0 0', color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem', lineHeight: 1.5 }}>{c.recoverySent}</p>}
+            </form>
+          )}
+        </div>
+        {initialRecoveryToken && redeemRecoveryMutation.isPending && <p style={{ color: 'hsl(var(--muted-foreground))', textAlign: 'center' }}>...</p>}
+        {recoveryError && <p style={{ color: 'hsl(var(--muted-foreground))', textAlign: 'center', marginBottom: '2rem' }}>{c.recoveryInvalid}</p>}
+        {recoveredBookings.length > 0 && (
+          <div style={{ borderTop: '1px solid hsl(var(--border))', paddingTop: '1.5rem', marginBottom: '3rem' }}>
+            <p className="label-caps" style={{ marginBottom: '1rem' }}>{c.recoveryTitle}</p>
+            {recoveredBookings.map((item) => (
+              <button key={item.referenceNumber} type="button" onClick={() => openRecoveredBooking(item.referenceNumber)} style={{ width: '100%', textAlign: 'left', display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'center', padding: '0.875rem 0', background: 'none', border: 'none', borderBottom: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))', cursor: 'pointer' }}>
+                <span><strong style={{ display: 'block', fontSize: '0.875rem' }}>{item.serviceSummary || item.serviceName}</strong><span style={{ fontSize: '0.75rem', color: 'hsl(var(--muted-foreground))' }}>{item.bookingDate} · {item.bookingTime}</span></span>
+                <span className="label-caps" style={{ color: 'var(--gold-mid)' }}>{c.open}</span>
+              </button>
+            ))}
+          </div>
+        )}
         {isLoading && <p style={{ color: 'hsl(var(--muted-foreground))', textAlign: 'center' }}>...</p>}
         {searched && !isLoading && !booking && (
           <div style={{ borderTop: '1px solid hsl(var(--border))', paddingTop: '2rem', textAlign: 'center' }}>

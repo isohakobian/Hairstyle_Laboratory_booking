@@ -1,9 +1,18 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { vi } from 'vitest';
 import { appRouter } from './routers';
 import type { TrpcContext } from './_core/context';
-import { createBooking, getBookingByReference } from './db';
+import { createBooking, createBookingStatusRecoveryToken, getBookingByReference } from './db';
 import { clearExampleTestBookings } from './testCleanup';
 import { setAvailabilityForDates } from './availability';
+import { createReviewTokenValue, hashReviewToken } from './reviewToken';
+
+const sendBookingStatusRecoveryEmailMock = vi.hoisted(() => vi.fn());
+
+vi.mock('./bookingEmail', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./bookingEmail')>();
+  return { ...actual, sendBookingStatusRecoveryEmail: sendBookingStatusRecoveryEmailMock };
+});
 
 // Mock context for testing
 function createMockContext(userId: number = 1, role: 'user' | 'admin' = 'user'): TrpcContext {
@@ -157,32 +166,37 @@ describe('Bookings API', () => {
     });
   });
 
-  describe('bookings.getByEmail', () => {
-    it('should retrieve bookings by email', async () => {
-      const email = 'test-user@example.com';
-      const bookingData = {
-        serviceIds: [haircutServiceId],
-        bookingDate: '2099-12-17',
-        bookingTime: '11:00',
-        clientName: 'Test User',
-        clientPhone: '+1234567894',
-        clientEmail: email,
-      };
-
-      await caller.bookings.create(bookingData);
-      const results = await caller.bookings.getByEmail({ email });
-
-      expect(Array.isArray(results)).toBe(true);
-      expect(results.length).toBeGreaterThan(0);
-      expect(results.some(b => b.clientEmail === email)).toBe(true);
-    });
-
-    it('should return empty array for non-existent email', async () => {
-      const results = await caller.bookings.getByEmail({
-        email: 'nonexistent@example.com',
+  describe('bookings.recoverStatus', () => {
+    it('sends a one-time email link and reveals only safe booking fields when that link is redeemed', async () => {
+      const email = 'recovery-client@example.com';
+      await createBooking({
+        referenceNumber: 'RECOVER01', serviceId: haircutServiceId, serviceName: 'Haircut', serviceSummary: 'Haircut',
+        totalDurationMinutes: 60, totalPriceSummary: '15,000 ֏', bookingDate: '2099-12-21', bookingTime: '11:00',
+        clientName: 'Recovery Client', clientPhone: '+37455000123', clientEmail: email, status: 'pending',
       });
 
-      expect(Array.isArray(results)).toBe(true);
+      sendBookingStatusRecoveryEmailMock.mockClear();
+      await expect(caller.bookings.requestStatusRecovery({ clientEmail: email })).resolves.toEqual({ success: true });
+      expect(sendBookingStatusRecoveryEmailMock).toHaveBeenCalledTimes(1);
+      const recoveryUrl = sendBookingStatusRecoveryEmailMock.mock.calls[0]?.[1] as string;
+      const token = new URL(recoveryUrl).searchParams.get('recovery');
+      expect(token).toBeTruthy();
+
+      const recovered = await caller.bookings.recoverStatus({ token: token! });
+      expect(recovered).toEqual(expect.arrayContaining([expect.objectContaining({ referenceNumber: 'RECOVER01' })]));
+      expect(recovered[0]).not.toHaveProperty('clientEmail');
+      expect(recovered[0]).not.toHaveProperty('clientPhone');
+      await expect(caller.bookings.recoverStatus({ token: token! })).rejects.toThrow(/invalid, expired, or already used/i);
+    });
+
+    it('always returns a generic response and rejects expired tokens', async () => {
+      sendBookingStatusRecoveryEmailMock.mockClear();
+      await expect(caller.bookings.requestStatusRecovery({ clientEmail: 'no-booking@example.com' })).resolves.toEqual({ success: true });
+      expect(sendBookingStatusRecoveryEmailMock).not.toHaveBeenCalled();
+
+      const expiredToken = createReviewTokenValue();
+      await createBookingStatusRecoveryToken('recovery-client@example.com', hashReviewToken(expiredToken), new Date(Date.now() - 60_000));
+      await expect(caller.bookings.recoverStatus({ token: expiredToken })).rejects.toThrow(/invalid, expired, or already used/i);
     });
   });
 

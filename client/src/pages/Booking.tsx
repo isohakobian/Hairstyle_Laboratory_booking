@@ -38,6 +38,10 @@ const copy: Record<Lang, {
   checkStatus: string;
   backHome: string;
   addToCalendar: string;
+  copyReference: string;
+  copyStatusLink: string;
+  saved: string;
+  copyFailed: string;
   haircut: string;
   beard: string;
   bioPerm: string;
@@ -84,6 +88,10 @@ const copy: Record<Lang, {
     checkStatus: 'Проверить статус',
     backHome: 'На главную',
     addToCalendar: 'Добавить в календарь',
+    copyReference: 'Скопировать номер заявки',
+    copyStatusLink: 'Скопировать ссылку на статус',
+    saved: 'Сохранено',
+    copyFailed: 'Не удалось скопировать. Сохраните номер заявки вручную.',
     haircut: 'Стрижка',
     beard: 'Моделирование бороды',
     bioPerm: 'Биохимическая завивка',
@@ -130,6 +138,10 @@ const copy: Record<Lang, {
     checkStatus: 'Check status',
     backHome: 'Back to home',
     addToCalendar: 'Add to calendar',
+    copyReference: 'Copy reference number',
+    copyStatusLink: 'Copy status link',
+    saved: 'Saved',
+    copyFailed: 'Could not copy. Please save the reference number manually.',
     haircut: 'Haircut',
     beard: 'Beard modeling',
     bioPerm: 'Bio Perm',
@@ -269,6 +281,15 @@ export default function Booking() {
     }
   };
 
+  const copyToClipboard = async (value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      toast.success(c.saved);
+    } catch {
+      toast.error(c.copyFailed);
+    }
+  };
+
   const minDate = new Date().toISOString().split('T')[0];
   const maxDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
@@ -293,6 +314,13 @@ export default function Booking() {
               <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '2rem', fontWeight: 400, color: 'hsl(var(--foreground))', letterSpacing: '0.1em', margin: 0 }}>
                 {referenceNumber}
               </p>
+              <p style={{ margin: '0.875rem 0 0', color: 'hsl(var(--muted-foreground))', fontSize: '0.8125rem', lineHeight: 1.5 }}>
+                {language === 'ru' ? 'Сохраните номер или ссылку — по ним можно в любой момент проверить статус записи.' : 'Save the number or link to check your booking status at any time.'}
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.625rem', marginTop: '1rem' }}>
+                <button className="btn-outline" onClick={() => copyToClipboard(referenceNumber)} style={{ padding: '0.7rem 0.5rem', fontSize: '0.625rem' }}>{c.copyReference}</button>
+                <button className="btn-outline" onClick={() => copyToClipboard(`${window.location.origin}/status?ref=${encodeURIComponent(referenceNumber)}`)} style={{ padding: '0.7rem 0.5rem', fontSize: '0.625rem' }}>{c.copyStatusLink}</button>
+              </div>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -301,7 +329,7 @@ export default function Booking() {
                   {c.addToCalendar}
                 </button>
               )}
-              <button className="btn-primary" onClick={() => setLocation('/status')}>
+              <button className="btn-primary" onClick={() => setLocation(`/status?ref=${encodeURIComponent(referenceNumber)}`)}>
                 {c.checkStatus}
               </button>
               <button className="btn-ghost" onClick={() => setLocation('/')}>

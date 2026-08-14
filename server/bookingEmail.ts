@@ -114,6 +114,28 @@ export function buildClientConfirmationEmail(details: BookingEmailDetails): Emai
   };
 }
 
+export function buildBookingStatusRecoveryEmail(recoveryUrl: string): EmailMessage {
+  const safeUrl = escapeHtml(recoveryUrl);
+  return {
+    subject: "Your booking status link — Isaac",
+    text: [
+      "You requested access to your booking status.",
+      `Open your booking status: ${recoveryUrl}`,
+      "This private link can be used once and expires in 15 minutes.",
+      "",
+      "Вы запросили доступ к статусу вашей записи.",
+      `Открыть статус записи: ${recoveryUrl}`,
+      "Эта приватная ссылка работает один раз и действует 15 минут.",
+      "",
+      "If you did not request this link, you can ignore this email.",
+      "Если вы не запрашивали ссылку, просто проигнорируйте это письмо.",
+      "",
+      "Isaac",
+    ].join("\n"),
+    html: `<!doctype html><html><body style="margin:0;background:#F7F5F1;font-family:Arial,sans-serif;color:#17191E;"><div style="max-width:600px;margin:0 auto;padding:36px 24px;"><p style="margin:0 0 8px;color:#A17A2C;font-size:11px;font-weight:700;letter-spacing:2px;">ISAAC HAKOBIAN</p><h1 style="margin:0 0 18px;font-family:Georgia,serif;font-size:32px;line-height:1.1;">Your booking status</h1><p style="margin:0 0 8px;font-size:15px;line-height:1.6;">You requested access to your booking status. Use the private link below.</p><p style="margin:0 0 24px;font-size:15px;line-height:1.6;">Вы запросили доступ к статусу вашей записи. Откройте её по приватной ссылке ниже.</p><a href="${safeUrl}" style="display:inline-block;background:#17191E;color:#FFFFFF;text-decoration:none;padding:14px 20px;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">Open booking status / Открыть статус</a><p style="margin:24px 0 0;color:#6B7280;font-size:12px;line-height:1.6;">This link works once and expires in 15 minutes. If you did not request it, you can ignore this email.<br>Ссылка работает один раз и действует 15 минут. Если вы её не запрашивали, просто проигнорируйте письмо.</p><p style="margin:20px 0 0;font-size:15px;line-height:1.6;">Isaac</p></div></body></html>`,
+  };
+}
+
 export function buildReviewRequestEmail(details: BookingEmailDetails, reviewUrl: string): EmailMessage {
   const safeName = escapeHtml(details.clientName);
   const safeUrl = escapeHtml(reviewUrl);
@@ -246,6 +268,21 @@ export async function sendConfirmedBookingEmail(details: BookingEmailDetails) {
       content: buildCalendarInvite(details),
       contentType: "text/calendar; charset=utf-8; method=PUBLISH",
     }],
+  });
+}
+
+export async function sendBookingStatusRecoveryEmail(clientEmail: string, recoveryUrl: string) {
+  if (process.env.NODE_ENV === "test") return { skipped: true } as const;
+  const config = getMailTransport();
+  if (!config) return { skipped: true } as const;
+  const email = buildBookingStatusRecoveryEmail(recoveryUrl);
+  return config.transport.sendMail({
+    from: `Isaac Hakobian <${config.user}>`,
+    to: clientEmail,
+    replyTo: config.user,
+    subject: email.subject,
+    text: email.text,
+    html: email.html,
   });
 }
 

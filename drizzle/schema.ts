@@ -215,6 +215,22 @@ export const reviewTokens = mysqlTable("reviewTokens", {
 export type ReviewToken = typeof reviewTokens.$inferSelect;
 export type InsertReviewToken = typeof reviewTokens.$inferInsert;
 
+// A recovery link is sent only to the email originally supplied with a booking.
+// The plain token never reaches the database; it is SHA-256 hashed before storage.
+export const bookingStatusRecoveryTokens = mysqlTable("bookingStatusRecoveryTokens", {
+  id: int("id").autoincrement().primaryKey(),
+  clientEmail: varchar("clientEmail", { length: 320 }).notNull(),
+  tokenHash: varchar("tokenHash", { length: 64 }).notNull().unique(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  usedAt: timestamp("usedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [
+  index("bookingStatusRecoveryTokens_email_idx").on(table.clientEmail),
+]);
+
+export type BookingStatusRecoveryToken = typeof bookingStatusRecoveryTokens.$inferSelect;
+export type InsertBookingStatusRecoveryToken = typeof bookingStatusRecoveryTokens.$inferInsert;
+
 // Schedule management: admin can block specific dates
 export const blockedDates = mysqlTable("blockedDates", {
   id: int("id").autoincrement().primaryKey(),

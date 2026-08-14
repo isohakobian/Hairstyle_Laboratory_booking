@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, isNull, lt, lte, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, InsertBooking, InsertBookingService, users, services, bookings, bookingServices, reviewTokens } from "../drizzle/schema";
+import { InsertUser, InsertBooking, InsertBookingService, users, services, bookings, bookingServices, reviewTokens, bookingStatusRecoveryTokens } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -225,6 +225,42 @@ export async function getBookingsByEmail(email: string) {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(bookings).where(eq(bookings.clientEmail, email));
+}
+
+export async function createBookingStatusRecoveryToken(clientEmail: string, tokenHash: string, expiresAt: Date) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.insert(bookingStatusRecoveryTokens).values({ clientEmail, tokenHash, expiresAt });
+}
+
+export async function claimBookingStatusRecoveryToken(tokenHash: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const token = (await db.select().from(bookingStatusRecoveryTokens).where(eq(bookingStatusRecoveryTokens.tokenHash, tokenHash)).limit(1))[0];
+  if (!token || token.usedAt || token.expiresAt.getTime() < Date.now()) return undefined;
+
+  const update = await db.update(bookingStatusRecoveryTokens)
+    .set({ usedAt: new Date() })
+    .where(and(eq(bookingStatusRecoveryTokens.id, token.id), isNull(bookingStatusRecoveryTokens.usedAt)));
+  const affectedRows = Number(
+    (update as { affectedRows?: number }).affectedRows
+      ?? (update as unknown as [{ affectedRows?: number }])[0]?.affectedRows
+      ?? 0,
+  );
+  return affectedRows === 1 ? token : undefined;
+}
+
+export async function getSafeBookingStatusesByEmail(email: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({
+    referenceNumber: bookings.referenceNumber,
+    serviceSummary: bookings.serviceSummary,
+    serviceName: bookings.serviceName,
+    bookingDate: bookings.bookingDate,
+    bookingTime: bookings.bookingTime,
+    status: bookings.status,
+  }).from(bookings).where(eq(bookings.clientEmail, email)).orderBy(desc(bookings.bookingDate), desc(bookings.bookingTime));
 }
 
 export async function getAllBookings() {

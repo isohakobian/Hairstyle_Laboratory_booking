@@ -31,6 +31,7 @@ export async function clearExampleTestBookings() {
     INNER JOIN bookings AS b ON b.id = rrh.bookingId
     WHERE b.clientEmail LIKE '%@example.com'
   `);
+  await db.execute(sql`DELETE FROM bookingStatusRecoveryTokens WHERE clientEmail LIKE '%@example.com'`);
   await db.execute(sql`
     DELETE bs FROM bookingServices AS bs
     INNER JOIN bookings AS b ON b.id = bs.bookingId
