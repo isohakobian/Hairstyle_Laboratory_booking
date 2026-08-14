@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { getLoginUrl } from '@/const';
+import { getReviewRequestErrorMessage } from '@/lib/emailDeliveryError';
 import ScheduleCalendar from '@/components/ScheduleCalendar';
 import BookingCalendar from '@/components/BookingCalendar';
 import ClientMemoryPanel from '@/components/ClientMemoryPanel';
@@ -84,7 +85,7 @@ export default function AdminDashboard() {
   });
   const requestReviewMutation = trpc.admin.requestReview.useMutation({
     onSuccess: () => toast.success(language === 'ru' ? 'Письмо с просьбой оставить отзыв отправлено' : 'Review request email sent'),
-    onError: (e) => toast.error(e.message),
+    onError: (e) => toast.error(getReviewRequestErrorMessage(e.message, language as 'ru' | 'en')),
   });
   const publishReviewMutation = trpc.admin.publishReview.useMutation({
     onSuccess: () => { toast.success(language === 'ru' ? 'Обновлено' : 'Updated'); refetchReviews(); },
