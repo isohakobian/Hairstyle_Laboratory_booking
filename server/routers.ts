@@ -4,7 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import {
-  getAllServices, getServiceById, createBookingWithServices, getBookingByReference, getBookingById,
+  getAllServices, getServiceById, createBookingWithServices, getBookingByReference, getBookingById, BookingIntervalConflictError,
   getBookingsByEmail, getAllBookings, updateBookingStatus, isTimeSlotAvailable,
   getBlockedDates, blockDate, unblockDate, createReview, getReviewByBookingId, createReviewToken,
   getReviewTokenByHash, markReviewTokenUsed,
@@ -138,28 +138,35 @@ export const appRouter = router({
           instagram: input.instagram?.trim().replace(/^@/, "") || undefined,
         });
 
-        await createBookingWithServices({
-          referenceNumber,
-          // Kept as legacy fields so existing admin views and bookings remain compatible.
-          serviceId: services[0].id,
-          serviceName: serviceSummary,
-          serviceSummary,
-          totalDurationMinutes,
-          totalPriceSummary,
-          bookingDate: input.bookingDate,
-          bookingTime: input.bookingTime,
-          clientName: input.clientName,
-          clientPhone: input.clientPhone,
-          clientEmail: input.clientEmail,
-          clientId: client.id,
-          comment: input.comment,
-          status: "pending",
-        }, services.map((service) => ({
-          serviceId: service.id,
-          serviceName: service.nameEn,
-          durationMinutes: service.durationMinutes,
-          priceSummary: formatServicePrice(service),
-        })));
+        try {
+          await createBookingWithServices({
+            referenceNumber,
+            // Kept as legacy fields so existing admin views and bookings remain compatible.
+            serviceId: services[0].id,
+            serviceName: serviceSummary,
+            serviceSummary,
+            totalDurationMinutes,
+            totalPriceSummary,
+            bookingDate: input.bookingDate,
+            bookingTime: input.bookingTime,
+            clientName: input.clientName,
+            clientPhone: input.clientPhone,
+            clientEmail: input.clientEmail,
+            clientId: client.id,
+            comment: input.comment,
+            status: "pending",
+          }, services.map((service) => ({
+            serviceId: service.id,
+            serviceName: service.nameEn,
+            durationMinutes: service.durationMinutes,
+            priceSummary: formatServicePrice(service),
+          })));
+        } catch (error) {
+          if (error instanceof BookingIntervalConflictError) {
+            throw new TRPCError({ code: "CONFLICT", message: "This date or time slot is no longer available" });
+          }
+          throw error;
+        }
 
         const booking = await getBookingByReference(referenceNumber);
         if (booking) {

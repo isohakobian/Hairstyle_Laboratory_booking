@@ -161,12 +161,40 @@ export async function createBooking(booking: InsertBooking) {
 
 export type BookingServiceSelection = Omit<InsertBookingService, "id" | "bookingId" | "createdAt">;
 
+export class BookingIntervalConflictError extends Error {
+  constructor() {
+    super("This time overlaps an existing booking");
+    this.name = "BookingIntervalConflictError";
+  }
+}
+
+function bookingIntervalsOverlap(startTime: string, durationMinutes: number, existingStartTime: string, existingDurationMinutes: number) {
+  const requestedStart = toMinutes(startTime);
+  const requestedEnd = requestedStart + durationMinutes;
+  const existingStart = toMinutes(existingStartTime);
+  const existingEnd = existingStart + existingDurationMinutes;
+  return requestedStart < existingEnd && requestedEnd > existingStart;
+}
+
 export async function createBookingWithServices(booking: InsertBooking, selectedServices: BookingServiceSelection[]) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   if (selectedServices.length === 0) throw new Error("At least one service is required");
+  if (!booking.totalDurationMinutes || booking.totalDurationMinutes <= 0) throw new Error("Booking duration is required");
 
   return db.transaction(async (tx) => {
+    const sameDayBookings = await tx.select().from(bookings).where(and(
+      eq(bookings.bookingDate, booking.bookingDate),
+      or(eq(bookings.status, "pending"), eq(bookings.status, "confirmed")),
+    )).for("update");
+    const overlapsExisting = sameDayBookings.some((existing) => bookingIntervalsOverlap(
+      booking.bookingTime,
+      booking.totalDurationMinutes!,
+      existing.bookingTime,
+      existing.totalDurationMinutes || 30,
+    ));
+    if (overlapsExisting) throw new BookingIntervalConflictError();
+
     const result = await tx.insert(bookings).values(booking);
     const bookingId = Number(result[0].insertId);
 
@@ -269,22 +297,13 @@ export async function isTimeSlotAvailable(date: string, time: string, durationMi
   const query = db.select().from(bookings)
     .where(and(
       eq(bookings.bookingDate, date),
-      eq(bookings.bookingTime, time),
-      eq(bookings.status, "confirmed")
+      or(eq(bookings.status, "pending"), eq(bookings.status, "confirmed")),
     ));
   
   const results = await query;
-  const newStart = toMinutes(time);
-  const newEnd = newStart + durationMinutes;
-
   return results
     .filter((booking) => booking.id !== excludeBookingId)
-    .every((booking) => {
-      const existingStart = toMinutes(booking.bookingTime);
-      // Historical bookings predate totalDurationMinutes. Treat them as one 30-minute slot.
-      const existingEnd = existingStart + (booking.totalDurationMinutes || 30);
-      return newEnd <= existingStart || newStart >= existingEnd;
-    });
+    .every((booking) => !bookingIntervalsOverlap(time, durationMinutes, booking.bookingTime, booking.totalDurationMinutes || 30));
 }
 
 // ── Blocked Dates ──────────────────────────────────────────────────────────

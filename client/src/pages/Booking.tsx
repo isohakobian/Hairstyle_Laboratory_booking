@@ -263,7 +263,8 @@ export default function Booking() {
         setSubmitted(true);
       }
     } catch (error: any) {
-      const msg = error?.message?.includes('already booked') ? c.errors.conflict : c.errors.generic;
+      const errorText = String(error?.message ?? '').toLowerCase();
+      const msg = /already booked|not available|overlap|conflict/.test(errorText) ? c.errors.conflict : c.errors.generic;
       toast.error(msg);
     }
   };

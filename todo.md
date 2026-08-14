@@ -126,3 +126,4 @@
 - [x] Verify in tests that service edits, archival, and display order are reflected in the client-facing catalog and booking flow
 - [x] Add a booking-form test that confirms archived services cannot be selected and active services respect catalog order
 - [x] Replace the booking form's static three-service mapping with the full live active service catalog from the API
+- [x] Block the complete combined service duration so overlapping bookings cannot be created or offered as available slots

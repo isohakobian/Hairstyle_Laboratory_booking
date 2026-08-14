@@ -217,6 +217,32 @@ describe('Bookings API', () => {
         clientEmail: 'duplicate-service@example.com',
       })).rejects.toThrow('Each service can only be selected once');
     });
+
+    it('blocks every overlapping slot for the complete duration of a combined visit', async () => {
+      const date = '2099-12-20';
+      const combined = await caller.bookings.create({
+        serviceIds: [haircutServiceId, beardServiceId],
+        bookingDate: date,
+        bookingTime: '10:00',
+        clientName: 'Interval Client',
+        clientPhone: '+37455000003',
+        clientEmail: 'interval-client@example.com',
+      });
+      expect(combined.totalDurationMinutes).toBeGreaterThan(60);
+
+      await expect(caller.bookings.create({
+        serviceIds: [haircutServiceId],
+        bookingDate: date,
+        bookingTime: '10:30',
+        clientName: 'Overlapping Client',
+        clientPhone: '+37455000004',
+        clientEmail: 'overlap-client@example.com',
+      })).rejects.toThrow(/not available/i);
+
+      const remainingSlots = await caller.availability.slots({ date, durationMinutes: 30 });
+      expect(remainingSlots).not.toContain('10:30');
+      expect(remainingSlots).toContain('12:00');
+    });
   });
 
   describe('Admin procedures', () => {
