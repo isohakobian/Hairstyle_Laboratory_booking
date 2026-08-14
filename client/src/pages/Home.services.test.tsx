@@ -9,7 +9,7 @@ vi.mock('wouter', () => ({ useLocation: () => ['/', vi.fn()] }));
 vi.mock('@/lib/trpc', () => ({
   trpc: {
     announcements: { active: { useQuery: () => ({ data: [
-      { id: 101, titleRu: 'Первая новость', titleEn: 'First notice', bodyRu: 'Первый текст', bodyEn: 'First text', startDate: '2026-08-01', endDate: '2026-08-31' },
+      { id: 101, titleRu: 'Первая новость', titleEn: 'First notice', bodyRu: 'Первый текст', bodyEn: 'First text', imageUrl: 'https://example.com/notice-image.webp', startDate: '2026-08-01', endDate: '2026-08-31' },
       { id: 102, titleRu: 'Вторая новость', titleEn: 'Second notice', bodyRu: 'Второй текст', bodyEn: 'Second text', startDate: '2026-08-01', endDate: '2026-08-31' },
     ] }) } },
     services: { list: { useQuery: () => ({
@@ -42,5 +42,13 @@ describe('Home service catalog', () => {
     expect(text).toContain('Первая новость');
     expect(text).toContain('Вторая новость');
     expect(text.indexOf('Первая новость')).toBeLessThan(text.indexOf('Вторая новость'));
+  });
+
+  it('renders an optional notice image as a compact visual accent', () => {
+    const { container } = render(<Home />);
+    const image = container.querySelector('img[alt="Иллюстрация: Первая новость"]') as HTMLImageElement | null;
+    expect(image).not.toBeNull();
+    if (!image) throw new Error('Notice image was not rendered');
+    expect(image.src).toBe('https://example.com/notice-image.webp');
   });
 });

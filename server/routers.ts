@@ -10,14 +10,14 @@ import {
   getReviewTokenByHash, markReviewTokenUsed,
   getPublishedReviews, getAllReviews, updateReviewPublished, createManagedService, setServiceActive, updateManagedService,
   createBookingStatusRecoveryToken, claimBookingStatusRecoveryToken, getSafeBookingStatusesByEmail,
-  deleteBookingAndRelatedData, getClientDirectory, getReviewRequestDashboard, getReviewRequestEmailTemplate, saveReviewRequestEmailTemplate,
+  deleteBookingAndRelatedData, getClientDirectory, getBookingPage, getReviewRequestDashboard, getReviewRequestEmailTemplate, getReviewRequestPage, getReviewRequestStats, saveReviewRequestEmailTemplate,
 } from "./db";
 import { TRPCError } from "@trpc/server";
 import { sendBookingEmails, sendBookingStatusRecoveryEmail, sendConfirmedBookingEmail, sendReviewRequestEmail } from "./bookingEmail";
 import { createReviewTokenValue, getBookingStatusRecoveryExpiry, getReviewTokenExpiry, hashReviewToken } from "./reviewToken";
 import { blockDates, getAvailabilityWindows, getAvailableSlots, getPublicAvailableDates, setAvailabilityForDates } from "./availability";
 import { completeBooking, createBookingEvent, findOrCreateClient, getClientMemory, getSignedVisitMediaUrl, recordReviewRequest, rescheduleBooking, updateClientProfile, uploadVisitMedia } from "./clientMemory";
-import { getActiveAnnouncements, getAllAnnouncements, saveAnnouncement, setAnnouncementPublished } from "./announcements";
+import { getActiveAnnouncements, getAllAnnouncements, saveAnnouncement, setAnnouncementPublished, uploadAnnouncementImage } from "./announcements";
 
 // Admin middleware
 const adminMiddleware = protectedProcedure.use(async ({ ctx, next }) => {
@@ -289,6 +289,15 @@ export const appRouter = router({
 
   admin: router({
     bookings: adminMiddleware.query(() => getAllBookings()),
+    bookingPage: adminMiddleware
+      .input(z.object({
+        page: z.number().int().min(1),
+        pageSize: z.number().int().min(1).max(50),
+        status: z.enum(["all", "pending", "confirmed", "declined"]).optional(),
+        search: z.string().trim().max(160).optional(),
+        sort: z.enum(["appointmentAsc", "appointmentDesc", "newest", "statusAsc"]).optional(),
+      }))
+      .query(({ input }) => getBookingPage(input)),
     announcements: adminMiddleware.query(() => getAllAnnouncements()),
     services: adminMiddleware.query(() => getAllServices(true)),
 
@@ -325,11 +334,20 @@ export const appRouter = router({
         titleEn: z.string().min(1).max(255),
         bodyRu: z.string().min(1).max(5000),
         bodyEn: z.string().min(1).max(5000),
+        imageUrl: z.string().max(1000).nullable().optional(),
         startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
         endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
         isPublished: z.enum(["yes", "no"]),
       }))
       .mutation(({ input }) => saveAnnouncement(input)),
+
+    uploadAnnouncementImage: adminMiddleware
+      .input(z.object({
+        fileName: z.string().min(1).max(255),
+        mimeType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+        base64Data: z.string().min(1).max(1_700_000),
+      }))
+      .mutation(({ input }) => uploadAnnouncementImage(input)),
 
     setAnnouncementPublished: adminMiddleware
       .input(z.object({ id: z.number().int().positive(), isPublished: z.enum(["yes", "no"]) }))
@@ -510,6 +528,15 @@ export const appRouter = router({
     // Reviews management
     reviews: adminMiddleware.query(() => getAllReviews()),
     reviewRequests: adminMiddleware.query(() => getReviewRequestDashboard()),
+    reviewRequestPage: adminMiddleware
+      .input(z.object({
+        page: z.number().int().min(1),
+        pageSize: z.number().int().min(1).max(50),
+        status: z.enum(["all", "awaiting", "received"]).optional(),
+        sort: z.enum(["sentDesc", "sentAsc", "receivedDesc"]).optional(),
+      }))
+      .query(({ input }) => getReviewRequestPage(input)),
+    reviewRequestStats: adminMiddleware.query(() => getReviewRequestStats()),
     reviewRequestTemplate: adminMiddleware.query(() => getReviewRequestEmailTemplate()),
 
     saveReviewRequestTemplate: adminMiddleware

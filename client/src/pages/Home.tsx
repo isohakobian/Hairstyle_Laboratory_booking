@@ -350,7 +350,10 @@ export default function Home() {
               {(activeAnnouncements ?? []).slice(0, 2).map((announcement, index) => (
                 <article key={announcement.id} className="notice-card" style={{ '--notice-delay': `${index * 90}ms` } as React.CSSProperties}>
                   <div style={{ position: 'absolute', top: 0, left: '1.5rem', right: '1.5rem', height: '2px', background: 'linear-gradient(90deg, transparent, var(--gold-mid), transparent)' }} />
-                  <p className="label-caps" style={{ margin: '0 0 0.75rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Новости' : 'Notice'}</p>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                    <p className="label-caps" style={{ margin: 0, color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Новости' : 'Notice'}</p>
+                    {announcement.imageUrl && <img src={announcement.imageUrl} alt={language === 'ru' ? `Иллюстрация: ${announcement.titleRu}` : `Illustration: ${announcement.titleEn}`} style={{ width: '3rem', height: '3rem', flex: '0 0 auto', objectFit: 'cover', border: '1px solid hsl(var(--border))' }} />}
+                  </div>
                   <h3 style={{ margin: '0 0 0.55rem', fontStyle: 'italic', fontSize: '1.4rem', lineHeight: 1.08 }}>
                     {language === 'ru' ? announcement.titleRu : announcement.titleEn}
                   </h3>

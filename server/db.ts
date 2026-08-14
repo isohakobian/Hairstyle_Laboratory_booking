@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, isNull, lt, lte, or } from "drizzle-orm";
+import { and, asc, count, desc, eq, isNotNull, isNull, like, lt, lte, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, InsertBooking, InsertBookingService, users, services, bookings, bookingServices, reviewTokens, bookingStatusRecoveryTokens, bookingEvents, visitMedia, reviewRequestHistory, reviews, clients, emailTemplates } from "../drizzle/schema";
 import { ENV } from './_core/env';
@@ -269,6 +269,40 @@ export async function getAllBookings() {
   return db.select().from(bookings).orderBy(desc(bookings.createdAt));
 }
 
+export type BookingPageInput = {
+  page: number;
+  pageSize: number;
+  status?: "all" | "pending" | "confirmed" | "declined";
+  search?: string;
+  sort?: "appointmentAsc" | "appointmentDesc" | "newest" | "statusAsc";
+};
+
+export async function getBookingPage(input: BookingPageInput) {
+  const db = await getDb();
+  if (!db) return { items: [], total: 0, page: input.page, pageSize: input.pageSize };
+  const page = Math.max(1, input.page);
+  const pageSize = Math.min(Math.max(1, input.pageSize), 50);
+  const normalizedSearch = input.search?.trim() ?? "";
+  const conditions = [
+    input.status && input.status !== "all" ? eq(bookings.status, input.status) : undefined,
+    normalizedSearch ? or(
+      like(bookings.clientName, `%${normalizedSearch}%`),
+      like(bookings.clientPhone, `%${normalizedSearch}%`),
+      like(bookings.clientEmail, `%${normalizedSearch}%`),
+    ) : undefined,
+  ].filter(Boolean);
+  const where = conditions.length ? and(...conditions) : undefined;
+  const ordering = input.sort === "newest" ? [desc(bookings.createdAt)]
+    : input.sort === "statusAsc" ? [asc(bookings.status), asc(bookings.bookingDate), asc(bookings.bookingTime)]
+    : input.sort === "appointmentDesc" ? [desc(bookings.bookingDate), desc(bookings.bookingTime)]
+    : [asc(bookings.bookingDate), asc(bookings.bookingTime)];
+  const [items, totalResult] = await Promise.all([
+    db.select().from(bookings).where(where).orderBy(...ordering).limit(pageSize).offset((page - 1) * pageSize),
+    db.select({ total: count() }).from(bookings).where(where),
+  ]);
+  return { items, total: Number(totalResult[0]?.total ?? 0), page, pageSize };
+}
+
 export async function getClientDirectory() {
   const db = await getDb();
   if (!db) return [];
@@ -464,6 +498,66 @@ export async function getReviewRequestDashboard() {
   }));
   const received = items.filter((item) => item.status === "received").length;
   return { items, stats: { sent: items.length, received, awaiting: items.length - received } };
+}
+
+export type ReviewRequestPageInput = {
+  page: number;
+  pageSize: number;
+  status?: "all" | "awaiting" | "received";
+  sort?: "sentDesc" | "sentAsc" | "receivedDesc";
+};
+
+export async function getReviewRequestPage(input: ReviewRequestPageInput) {
+  const db = await getDb();
+  if (!db) return { items: [], total: 0, page: input.page, pageSize: input.pageSize };
+  const page = Math.max(1, input.page);
+  const pageSize = Math.min(Math.max(1, input.pageSize), 50);
+  const statusCondition = input.status === "awaiting" ? isNull(reviews.id)
+    : input.status === "received" ? isNotNull(reviews.id)
+    : undefined;
+  const ordering = input.sort === "sentAsc" ? [asc(reviewRequestHistory.sentAt)]
+    : input.sort === "receivedDesc" ? [desc(reviews.createdAt), desc(reviewRequestHistory.sentAt)]
+    : [desc(reviewRequestHistory.sentAt)];
+  const [rows, totalResult] = await Promise.all([
+    db.select({ request: reviewRequestHistory, booking: bookings, review: reviews })
+      .from(reviewRequestHistory)
+      .innerJoin(bookings, eq(reviewRequestHistory.bookingId, bookings.id))
+      .leftJoin(reviews, eq(reviews.bookingId, bookings.id))
+      .where(statusCondition)
+      .orderBy(...ordering)
+      .limit(pageSize)
+      .offset((page - 1) * pageSize),
+    db.select({ total: count() })
+      .from(reviewRequestHistory)
+      .innerJoin(bookings, eq(reviewRequestHistory.bookingId, bookings.id))
+      .leftJoin(reviews, eq(reviews.bookingId, bookings.id))
+      .where(statusCondition),
+  ]);
+  const items = rows.map(({ request, booking, review }) => ({
+    id: request.id,
+    bookingId: booking.id,
+    referenceNumber: booking.referenceNumber,
+    clientName: booking.clientName,
+    recipientEmail: request.recipientEmail,
+    sentAt: request.sentAt,
+    status: review ? "received" as const : "awaiting" as const,
+    reviewCreatedAt: review?.createdAt ?? null,
+    rating: review?.rating ?? null,
+  }));
+  return { items, total: Number(totalResult[0]?.total ?? 0), page, pageSize };
+}
+
+export async function getReviewRequestStats() {
+  const db = await getDb();
+  if (!db) return { sent: 0, received: 0, awaiting: 0 };
+  const [sentResult, receivedResult] = await Promise.all([
+    db.select({ total: count() }).from(reviewRequestHistory),
+    db.select({ total: count() }).from(reviewRequestHistory)
+      .innerJoin(reviews, eq(reviews.bookingId, reviewRequestHistory.bookingId)),
+  ]);
+  const sent = Number(sentResult[0]?.total ?? 0);
+  const received = Number(receivedResult[0]?.total ?? 0);
+  return { sent, received, awaiting: Math.max(0, sent - received) };
 }
 
 export const REVIEW_REQUEST_TEMPLATE_KEY = "review-request";

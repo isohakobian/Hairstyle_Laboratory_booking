@@ -165,6 +165,7 @@ export const announcements = mysqlTable("announcements", {
   titleEn: varchar("titleEn", { length: 255 }).notNull(),
   bodyRu: text("bodyRu").notNull(),
   bodyEn: text("bodyEn").notNull(),
+  imageUrl: varchar("imageUrl", { length: 1000 }),
   startDate: varchar("startDate", { length: 10 }).notNull(),
   endDate: varchar("endDate", { length: 10 }).notNull(),
   isPublished: mysqlEnum("isPublished", ["yes", "no"]).default("no").notNull(),

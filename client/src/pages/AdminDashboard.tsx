@@ -14,6 +14,7 @@ import ClientMemoryPanel from '@/components/ClientMemoryPanel';
 import AnnouncementManager from '@/components/AnnouncementManager';
 import ServiceManager from '@/components/ServiceManager';
 import ReviewRequestTemplateEditor from '@/components/ReviewRequestTemplateEditor';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink } from '@/components/ui/pagination';
 
 type Tab = 'bookings' | 'calendar' | 'schedule' | 'services' | 'reviews' | 'clients' | 'news';
 type BookingStatusFilter = 'all' | 'pending' | 'confirmed' | 'declined';
@@ -57,8 +58,10 @@ export default function AdminDashboard() {
   const [bookingStatusFilter, setBookingStatusFilter] = useState<BookingStatusFilter>('all');
   const [bookingSort, setBookingSort] = useState<BookingSort>('appointmentAsc');
   const [bookingSearch, setBookingSearch] = useState('');
+  const [bookingPage, setBookingPage] = useState(1);
   const [reviewRequestStatusFilter, setReviewRequestStatusFilter] = useState<ReviewRequestStatusFilter>('all');
   const [reviewRequestSort, setReviewRequestSort] = useState<ReviewRequestSort>('sentDesc');
+  const [reviewRequestPage, setReviewRequestPage] = useState(1);
   const [clientSearch, setClientSearch] = useState('');
   const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
   const [rescheduleBookingId, setRescheduleBookingId] = useState<number | null>(null);
@@ -70,13 +73,31 @@ export default function AdminDashboard() {
   const [completionNote, setCompletionNote] = useState('');
   const [deleteBookingId, setDeleteBookingId] = useState<number | null>(null);
   const [lastReviewRequestBookingId, setLastReviewRequestBookingId] = useState<number | null>(null);
+  const utils = trpc.useUtils();
   const { data: bookings, isLoading: bookingsLoading, isError: bookingsError, refetch: refetchBookings } = trpc.admin.bookings.useQuery(undefined, {
+    enabled: isAuthenticated && user?.role === 'admin',
+  });
+  const { data: bookingPageData, isLoading: bookingPageLoading, isError: bookingPageError } = trpc.admin.bookingPage.useQuery({
+    page: bookingPage,
+    pageSize: 15,
+    status: bookingStatusFilter,
+    search: bookingSearch.trim() || undefined,
+    sort: bookingSort,
+  }, {
     enabled: isAuthenticated && user?.role === 'admin',
   });
   const { data: allReviews, refetch: refetchReviews } = trpc.admin.reviews.useQuery(undefined, {
     enabled: isAuthenticated && user?.role === 'admin',
   });
-  const { data: reviewRequestDashboard, isLoading: reviewRequestsLoading, isError: reviewRequestsError, refetch: refetchReviewRequests } = trpc.admin.reviewRequests.useQuery(undefined, {
+  const { data: reviewRequestPageData, isLoading: reviewRequestsLoading, isError: reviewRequestsError } = trpc.admin.reviewRequestPage.useQuery({
+    page: reviewRequestPage,
+    pageSize: 15,
+    status: reviewRequestStatusFilter,
+    sort: reviewRequestSort,
+  }, {
+    enabled: isAuthenticated && user?.role === 'admin',
+  });
+  const { data: reviewRequestStats } = trpc.admin.reviewRequestStats.useQuery(undefined, {
     enabled: isAuthenticated && user?.role === 'admin',
   });
   const { data: clientDirectory, isLoading: clientDirectoryLoading } = trpc.admin.clientDirectory.useQuery(undefined, {
@@ -91,20 +112,28 @@ export default function AdminDashboard() {
   const { data: rescheduleSlots } = trpc.availability.slots.useQuery(rescheduleSlotsInput, {
     enabled: Boolean(rescheduleTarget && rescheduleDate),
   });
+  const refreshBookingLists = () => {
+    void refetchBookings();
+    void utils.admin.bookingPage.invalidate();
+  };
+  const refreshReviewRequests = () => {
+    void utils.admin.reviewRequestPage.invalidate();
+    void utils.admin.reviewRequestStats.invalidate();
+  };
 
   const confirmMutation = trpc.admin.confirmBooking.useMutation({
-    onSuccess: () => { toast.success(language === 'ru' ? 'Подтверждено' : 'Confirmed'); refetchBookings(); },
+    onSuccess: () => { toast.success(language === 'ru' ? 'Подтверждено' : 'Confirmed'); refreshBookingLists(); },
     onError: (e) => toast.error(e.message),
   });
   const declineMutation = trpc.admin.declineBooking.useMutation({
-    onSuccess: () => { toast.success(language === 'ru' ? 'Отклонено' : 'Declined'); refetchBookings(); },
+    onSuccess: () => { toast.success(language === 'ru' ? 'Отклонено' : 'Declined'); refreshBookingLists(); },
     onError: (e) => toast.error(e.message),
   });
   const requestReviewMutation = trpc.admin.requestReview.useMutation({
     onSuccess: (_data, variables) => {
       setLastReviewRequestBookingId(variables.id);
       toast.success(language === 'ru' ? 'Письмо с просьбой оставить отзыв отправлено' : 'Review request email sent');
-      refetchReviewRequests();
+      refreshReviewRequests();
     },
     onError: (e) => toast.error(getReviewRequestErrorMessage(e.message, language as 'ru' | 'en')),
   });
@@ -115,14 +144,14 @@ export default function AdminDashboard() {
   const rescheduleMutation = trpc.admin.rescheduleBooking.useMutation({
     onSuccess: () => {
       toast.success(language === 'ru' ? 'Визит перенесён, история сохранена' : 'Visit rescheduled and history saved');
-      setRescheduleBookingId(null); setRescheduleDate(''); setRescheduleTime(''); setRescheduleNote(''); refetchBookings();
+      setRescheduleBookingId(null); setRescheduleDate(''); setRescheduleTime(''); setRescheduleNote(''); refreshBookingLists();
     },
     onError: (e) => toast.error(e.message),
   });
   const completeMutation = trpc.admin.completeBooking.useMutation({
     onSuccess: () => {
       toast.success(language === 'ru' ? 'Визит отмечен как завершённый' : 'Visit marked as complete');
-      setCompleteBookingId(null); setFinalPriceAmd(''); setCompletionNote(''); refetchBookings();
+      setCompleteBookingId(null); setFinalPriceAmd(''); setCompletionNote(''); refreshBookingLists();
     },
     onError: (e) => toast.error(e.message),
   });
@@ -133,9 +162,9 @@ export default function AdminDashboard() {
       toast.success(language === 'ru'
         ? (data.deletedClientProfile ? 'Запись и пустой профиль клиента удалены' : 'Запись удалена')
         : (data.deletedClientProfile ? 'Booking and empty client profile deleted' : 'Booking deleted'));
-      refetchBookings();
+      refreshBookingLists();
       refetchReviews();
-      refetchReviewRequests();
+      refreshReviewRequests();
     },
     onError: (e) => toast.error(e.message),
   });
@@ -151,30 +180,20 @@ export default function AdminDashboard() {
     if (!loading && (!isAuthenticated || user?.role !== 'admin')) setLocation('/');
   }, [isAuthenticated, user, loading, setLocation]);
 
-  const visibleBookings = useMemo(() => {
-    const normalizedSearch = bookingSearch.trim().toLocaleLowerCase();
-    const filtered = (bookings ?? []).filter(booking => {
-      const matchesStatus = bookingStatusFilter === 'all' || booking.status === bookingStatusFilter;
-      const matchesSearch = !normalizedSearch || [booking.clientName, booking.clientPhone, booking.clientEmail ?? '']
-        .some(value => value.toLocaleLowerCase().includes(normalizedSearch));
-      return matchesStatus && matchesSearch;
-    });
+  useEffect(() => setBookingPage(1), [bookingStatusFilter, bookingSort, bookingSearch]);
+  useEffect(() => setReviewRequestPage(1), [reviewRequestStatusFilter, reviewRequestSort]);
 
-    return [...filtered].sort((a, b) => {
-      if (bookingSort === 'newest') {
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      }
+  const visibleBookings = bookingPageData?.items ?? [];
+  const visibleReviewRequests = reviewRequestPageData?.items ?? [];
+  const bookingPageCount = Math.max(1, Math.ceil((bookingPageData?.total ?? 0) / (bookingPageData?.pageSize ?? 15)));
+  const reviewRequestPageCount = Math.max(1, Math.ceil((reviewRequestPageData?.total ?? 0) / (reviewRequestPageData?.pageSize ?? 15)));
 
-      if (bookingSort === 'statusAsc') {
-        const statusOrder = { pending: 0, confirmed: 1, declined: 2 } as const;
-        const statusComparison = statusOrder[a.status] - statusOrder[b.status];
-        if (statusComparison !== 0) return statusComparison;
-      }
-
-      const comparison = `${a.bookingDate}T${a.bookingTime}`.localeCompare(`${b.bookingDate}T${b.bookingTime}`);
-      return bookingSort === 'appointmentAsc' ? comparison : -comparison;
-    });
-  }, [bookings, bookingSearch, bookingSort, bookingStatusFilter]);
+  useEffect(() => {
+    if (bookingPage > bookingPageCount) setBookingPage(bookingPageCount);
+  }, [bookingPage, bookingPageCount]);
+  useEffect(() => {
+    if (reviewRequestPage > reviewRequestPageCount) setReviewRequestPage(reviewRequestPageCount);
+  }, [reviewRequestPage, reviewRequestPageCount]);
 
   const exportBookingsCsv = () => {
     downloadCsv('hairstyle-laboratory-bookings.csv', visibleBookings.map(booking => ({
@@ -194,7 +213,7 @@ export default function AdminDashboard() {
   };
 
   const exportReviewRequestsCsv = () => {
-    const stats = reviewRequestDashboard?.stats ?? { sent: 0, received: 0, awaiting: 0 };
+    const stats = reviewRequestStats ?? { sent: 0, received: 0, awaiting: 0 };
     downloadCsv('hairstyle-laboratory-review-requests.csv', [
       { report_type: 'summary', sent: stats.sent, received: stats.received, awaiting: stats.awaiting },
       ...visibleReviewRequests.map(request => ({
@@ -210,20 +229,6 @@ export default function AdminDashboard() {
     ]);
     toast.success(language === 'ru' ? 'CSV-файл со статистикой скачан' : 'Review statistics CSV downloaded');
   };
-
-  const visibleReviewRequests = useMemo(() => {
-    const filtered = (reviewRequestDashboard?.items ?? []).filter((request) => (
-      reviewRequestStatusFilter === 'all' || request.status === reviewRequestStatusFilter
-    ));
-
-    return [...filtered].sort((a, b) => {
-      if (reviewRequestSort === 'receivedDesc') {
-        return new Date(b.reviewCreatedAt ?? 0).getTime() - new Date(a.reviewCreatedAt ?? 0).getTime();
-      }
-      const comparison = new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime();
-      return reviewRequestSort === 'sentAsc' ? comparison : -comparison;
-    });
-  }, [reviewRequestDashboard?.items, reviewRequestSort, reviewRequestStatusFilter]);
 
   const visibleClientDirectory = useMemo(() => {
     const normalizedSearch = clientSearch.trim().toLocaleLowerCase();
@@ -323,8 +328,9 @@ export default function AdminDashboard() {
               <p style={{ ...labelStyle, margin: '0 0 0.4rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Рабочая очередь' : 'Work queue'}</p>
               <h3 style={{ margin: 0, fontStyle: 'italic' }}>{language === 'ru' ? 'Заявки клиентов' : 'Client bookings'}</h3>
             </div>
-            {bookingsLoading ? <p style={labelStyle}>{language === 'ru' ? 'Загрузка...' : 'Loading...'}</p>
-            : !bookings?.length ? <p style={labelStyle}>{language === 'ru' ? 'Нет заявок' : 'No bookings yet'}</p>
+            {bookingPageLoading ? <p style={labelStyle}>{language === 'ru' ? 'Загрузка...' : 'Loading...'}</p>
+            : bookingPageError ? <p style={{ ...labelStyle, color: 'hsl(0, 60%, 50%)' }}>{language === 'ru' ? 'Не удалось загрузить заявки. Обновите страницу.' : 'Bookings could not be loaded. Refresh the page.'}</p>
+            : (bookingPageData?.total ?? 0) === 0 ? <p style={labelStyle}>{language === 'ru' ? 'Нет заявок' : 'No bookings yet'}</p>
             : (
               <>
                 <p style={{ margin: '0 0 1.5rem', padding: '0.875rem 1rem', borderLeft: '2px solid var(--gold-mid)', backgroundColor: 'hsl(var(--secondary))', color: 'hsl(var(--muted-foreground))', fontSize: '0.8125rem', lineHeight: 1.5 }}>
@@ -514,6 +520,32 @@ export default function AdminDashboard() {
                     ))}
                   </div>
                 )}
+                {(bookingPageData?.total ?? 0) > 0 && (
+                  <div style={{ marginTop: '1.25rem', display: 'grid', gap: '0.6rem', justifyItems: 'center' }}>
+                    <p data-testid="booking-page-summary" aria-live="polite" style={{ ...labelStyle, margin: 0, fontSize: '0.5625rem' }}>
+                      {language === 'ru'
+                        ? `Страница ${bookingPage} из ${bookingPageCount} · всего ${bookingPageData?.total ?? 0}`
+                        : `Page ${bookingPage} of ${bookingPageCount} · ${bookingPageData?.total ?? 0} total`}
+                    </p>
+                    <Pagination aria-label={language === 'ru' ? 'Страницы заявок' : 'Booking pages'}>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationLink href="#bookings" size="default" aria-label={language === 'ru' ? 'Предыдущая страница заявок' : 'Previous booking page'} aria-disabled={bookingPage === 1} className={bookingPage === 1 ? 'pointer-events-none opacity-40' : ''} onClick={(event) => { event.preventDefault(); if (bookingPage > 1) setBookingPage(bookingPage - 1); }}>
+                            {language === 'ru' ? 'Назад' : 'Previous'}
+                          </PaginationLink>
+                        </PaginationItem>
+                        <PaginationItem>
+                          <PaginationLink href="#bookings" isActive size="default" onClick={(event) => event.preventDefault()}>{bookingPage}</PaginationLink>
+                        </PaginationItem>
+                        <PaginationItem>
+                          <PaginationLink href="#bookings" size="default" aria-label={language === 'ru' ? 'Следующая страница заявок' : 'Next booking page'} aria-disabled={bookingPage >= bookingPageCount} className={bookingPage >= bookingPageCount ? 'pointer-events-none opacity-40' : ''} onClick={(event) => { event.preventDefault(); if (bookingPage < bookingPageCount) setBookingPage(bookingPage + 1); }}>
+                            {language === 'ru' ? 'Вперёд' : 'Next'}
+                          </PaginationLink>
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -623,9 +655,9 @@ export default function AdminDashboard() {
               <>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(10rem, 1fr))', gap: '0.75rem', marginBottom: '1.5rem' }}>
                   {[
-                    { label: language === 'ru' ? 'Отправлено' : 'Sent', value: reviewRequestDashboard?.stats.sent ?? 0, color: 'var(--gold-mid)' },
-                    { label: language === 'ru' ? 'Получено отзывов' : 'Reviews received', value: reviewRequestDashboard?.stats.received ?? 0, color: statusColors.confirmed },
-                    { label: language === 'ru' ? 'Ожидают ответа' : 'Awaiting response', value: reviewRequestDashboard?.stats.awaiting ?? 0, color: statusColors.pending },
+                    { label: language === 'ru' ? 'Отправлено' : 'Sent', value: reviewRequestStats?.sent ?? 0, color: 'var(--gold-mid)' },
+                    { label: language === 'ru' ? 'Получено отзывов' : 'Reviews received', value: reviewRequestStats?.received ?? 0, color: statusColors.confirmed },
+                    { label: language === 'ru' ? 'Ожидают ответа' : 'Awaiting response', value: reviewRequestStats?.awaiting ?? 0, color: statusColors.pending },
                   ].map(stat => (
                     <div key={stat.label} style={{ ...cardStyle, padding: '1rem' }}>
                       <p style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.85rem', color: stat.color, margin: '0 0 0.2rem' }}>{stat.value}</p>
@@ -671,6 +703,32 @@ export default function AdminDashboard() {
                         </span>
                       </div>
                     ))}
+                  </div>
+                )}
+                {(reviewRequestPageData?.total ?? 0) > 0 && (
+                  <div style={{ display: 'grid', gap: '0.6rem', justifyItems: 'center', marginTop: '-1.5rem', marginBottom: '1rem' }}>
+                    <p aria-live="polite" style={{ ...labelStyle, margin: 0, fontSize: '0.5625rem' }}>
+                      {language === 'ru'
+                        ? `Страница ${reviewRequestPage} из ${reviewRequestPageCount} · всего ${reviewRequestPageData?.total ?? 0}`
+                        : `Page ${reviewRequestPage} of ${reviewRequestPageCount} · ${reviewRequestPageData?.total ?? 0} total`}
+                    </p>
+                    <Pagination aria-label={language === 'ru' ? 'Страницы запросов на отзыв' : 'Review request pages'}>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationLink href="#reviews" size="default" aria-label={language === 'ru' ? 'Предыдущая страница запросов на отзыв' : 'Previous review request page'} aria-disabled={reviewRequestPage === 1} className={reviewRequestPage === 1 ? 'pointer-events-none opacity-40' : ''} onClick={(event) => { event.preventDefault(); if (reviewRequestPage > 1) setReviewRequestPage(reviewRequestPage - 1); }}>
+                            {language === 'ru' ? 'Назад' : 'Previous'}
+                          </PaginationLink>
+                        </PaginationItem>
+                        <PaginationItem>
+                          <PaginationLink href="#reviews" isActive size="default" onClick={(event) => event.preventDefault()}>{reviewRequestPage}</PaginationLink>
+                        </PaginationItem>
+                        <PaginationItem>
+                          <PaginationLink href="#reviews" size="default" aria-label={language === 'ru' ? 'Следующая страница запросов на отзыв' : 'Next review request page'} aria-disabled={reviewRequestPage >= reviewRequestPageCount} className={reviewRequestPage >= reviewRequestPageCount ? 'pointer-events-none opacity-40' : ''} onClick={(event) => { event.preventDefault(); if (reviewRequestPage < reviewRequestPageCount) setReviewRequestPage(reviewRequestPage + 1); }}>
+                            {language === 'ru' ? 'Вперёд' : 'Next'}
+                          </PaginationLink>
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
                   </div>
                 )}
               </>

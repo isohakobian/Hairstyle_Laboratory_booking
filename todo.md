@@ -148,3 +148,6 @@
 - [x] Add a subtle non-distracting animated background to the homepage hero
 - [x] Verify that the real published homepage renders up to two active notices in date-range order and add regression coverage
 - [x] Reconfirm the published two-notice block after deployment propagation on desktop and mobile
+- [x] Add paginated admin lists for bookings and review requests with accessible page controls
+- [x] Allow admins to upload a small image or icon for a homepage notice using secure storage
+- [x] Render an optional notice image or icon responsively on the homepage without compromising layout

@@ -1,6 +1,8 @@
 import { and, desc, eq } from "drizzle-orm";
+import { randomUUID } from "crypto";
 import { announcements } from "../drizzle/schema";
 import { getDb } from "./db";
+import { storagePut } from "./storage";
 
 function yerevanDate() {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -38,10 +40,38 @@ export type AnnouncementInput = {
   titleEn: string;
   bodyRu: string;
   bodyEn: string;
+  imageUrl?: string | null;
   startDate: string;
   endDate: string;
   isPublished: "yes" | "no";
 };
+
+function getAnnouncementImageExtension(mimeType: string) {
+  const extensions: Record<string, string> = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+  };
+  const extension = extensions[mimeType];
+  if (!extension) throw new Error("Only JPEG, PNG, and WebP images are supported");
+  return extension;
+}
+
+export async function uploadAnnouncementImage(input: {
+  fileName: string;
+  mimeType: string;
+  base64Data: string;
+}) {
+  const extension = getAnnouncementImageExtension(input.mimeType);
+  const data = Buffer.from(input.base64Data, "base64");
+  const maxBytes = 1_200_000;
+  if (data.length === 0 || data.length > maxBytes) throw new Error("Notice image must be smaller than 1.2 MB");
+  return storagePut(
+    `public/announcement-media/${Date.now()}-${randomUUID()}.${extension}`,
+    data,
+    input.mimeType,
+  );
+}
 
 export async function saveAnnouncement(input: AnnouncementInput & { id?: number }) {
   const db = await getDb();
