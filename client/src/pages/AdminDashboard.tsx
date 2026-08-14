@@ -6,12 +6,14 @@ import { useLocation } from 'wouter';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { getLoginUrl } from '@/const';
 import { getReviewRequestErrorMessage } from '@/lib/emailDeliveryError';
+import { downloadCsv } from '@/lib/csvExport';
 import { Loader2, Trash2 } from 'lucide-react';
 import ScheduleCalendar from '@/components/ScheduleCalendar';
 import BookingCalendar from '@/components/BookingCalendar';
 import ClientMemoryPanel from '@/components/ClientMemoryPanel';
 import AnnouncementManager from '@/components/AnnouncementManager';
 import ServiceManager from '@/components/ServiceManager';
+import ReviewRequestTemplateEditor from '@/components/ReviewRequestTemplateEditor';
 
 type Tab = 'bookings' | 'calendar' | 'schedule' | 'services' | 'reviews' | 'clients' | 'news';
 type BookingStatusFilter = 'all' | 'pending' | 'confirmed' | 'declined';
@@ -54,8 +56,10 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<Tab>(getInitialTab);
   const [bookingStatusFilter, setBookingStatusFilter] = useState<BookingStatusFilter>('all');
   const [bookingSort, setBookingSort] = useState<BookingSort>('appointmentAsc');
+  const [bookingSearch, setBookingSearch] = useState('');
   const [reviewRequestStatusFilter, setReviewRequestStatusFilter] = useState<ReviewRequestStatusFilter>('all');
   const [reviewRequestSort, setReviewRequestSort] = useState<ReviewRequestSort>('sentDesc');
+  const [clientSearch, setClientSearch] = useState('');
   const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
   const [rescheduleBookingId, setRescheduleBookingId] = useState<number | null>(null);
   const [rescheduleDate, setRescheduleDate] = useState('');
@@ -73,6 +77,9 @@ export default function AdminDashboard() {
     enabled: isAuthenticated && user?.role === 'admin',
   });
   const { data: reviewRequestDashboard, isLoading: reviewRequestsLoading, isError: reviewRequestsError, refetch: refetchReviewRequests } = trpc.admin.reviewRequests.useQuery(undefined, {
+    enabled: isAuthenticated && user?.role === 'admin',
+  });
+  const { data: clientDirectory, isLoading: clientDirectoryLoading } = trpc.admin.clientDirectory.useQuery(undefined, {
     enabled: isAuthenticated && user?.role === 'admin',
   });
   const { data: openDates } = trpc.availability.dates.useQuery();
@@ -145,9 +152,13 @@ export default function AdminDashboard() {
   }, [isAuthenticated, user, loading, setLocation]);
 
   const visibleBookings = useMemo(() => {
-    const filtered = (bookings ?? []).filter(booking => (
-      bookingStatusFilter === 'all' || booking.status === bookingStatusFilter
-    ));
+    const normalizedSearch = bookingSearch.trim().toLocaleLowerCase();
+    const filtered = (bookings ?? []).filter(booking => {
+      const matchesStatus = bookingStatusFilter === 'all' || booking.status === bookingStatusFilter;
+      const matchesSearch = !normalizedSearch || [booking.clientName, booking.clientPhone, booking.clientEmail ?? '']
+        .some(value => value.toLocaleLowerCase().includes(normalizedSearch));
+      return matchesStatus && matchesSearch;
+    });
 
     return [...filtered].sort((a, b) => {
       if (bookingSort === 'newest') {
@@ -163,7 +174,42 @@ export default function AdminDashboard() {
       const comparison = `${a.bookingDate}T${a.bookingTime}`.localeCompare(`${b.bookingDate}T${b.bookingTime}`);
       return bookingSort === 'appointmentAsc' ? comparison : -comparison;
     });
-  }, [bookings, bookingSort, bookingStatusFilter]);
+  }, [bookings, bookingSearch, bookingSort, bookingStatusFilter]);
+
+  const exportBookingsCsv = () => {
+    downloadCsv('hairstyle-laboratory-bookings.csv', visibleBookings.map(booking => ({
+      reference: booking.referenceNumber,
+      client_name: booking.clientName,
+      phone: booking.clientPhone,
+      email: booking.clientEmail,
+      services: booking.serviceSummary || booking.serviceName,
+      booking_date: booking.bookingDate,
+      booking_time: booking.bookingTime,
+      duration_minutes: booking.totalDurationMinutes,
+      price_amd: booking.totalPriceSummary,
+      status: booking.status,
+      created_at: new Date(booking.createdAt).toISOString(),
+    })));
+    toast.success(language === 'ru' ? 'CSV-файл с заявками скачан' : 'Bookings CSV downloaded');
+  };
+
+  const exportReviewRequestsCsv = () => {
+    const stats = reviewRequestDashboard?.stats ?? { sent: 0, received: 0, awaiting: 0 };
+    downloadCsv('hairstyle-laboratory-review-requests.csv', [
+      { report_type: 'summary', sent: stats.sent, received: stats.received, awaiting: stats.awaiting },
+      ...visibleReviewRequests.map(request => ({
+        report_type: 'review_request',
+        reference: request.referenceNumber,
+        client_name: request.clientName,
+        email: request.recipientEmail,
+        sent_at: new Date(request.sentAt).toISOString(),
+        status: request.status,
+        review_received_at: request.reviewCreatedAt ? new Date(request.reviewCreatedAt).toISOString() : '',
+        rating: request.rating ?? '',
+      })),
+    ]);
+    toast.success(language === 'ru' ? 'CSV-файл со статистикой скачан' : 'Review statistics CSV downloaded');
+  };
 
   const visibleReviewRequests = useMemo(() => {
     const filtered = (reviewRequestDashboard?.items ?? []).filter((request) => (
@@ -178,6 +224,13 @@ export default function AdminDashboard() {
       return reviewRequestSort === 'sentAsc' ? comparison : -comparison;
     });
   }, [reviewRequestDashboard?.items, reviewRequestSort, reviewRequestStatusFilter]);
+
+  const visibleClientDirectory = useMemo(() => {
+    const normalizedSearch = clientSearch.trim().toLocaleLowerCase();
+    if (!normalizedSearch) return clientDirectory ?? [];
+    return (clientDirectory ?? []).filter(client => [client.name, client.phone, client.email ?? '']
+      .some(value => value.toLocaleLowerCase().includes(normalizedSearch)));
+  }, [clientDirectory, clientSearch]);
 
   if (loading) return (
     <div style={{ minHeight: '100vh', backgroundColor: 'hsl(var(--background))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -280,6 +333,10 @@ export default function AdminDashboard() {
                     : 'Handle new requests first. After a completed visit, open the confirmed booking and send the client a personal review request.'}
                 </p>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid hsl(var(--border))' }}>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem', minWidth: 'min(100%, 16rem)', flex: '1 1 15rem' }}>
+                    <span style={{ ...labelStyle, fontSize: '0.5625rem' }}>{language === 'ru' ? 'Поиск клиента или заявки' : 'Search clients or bookings'}</span>
+                    <input value={bookingSearch} onChange={event => setBookingSearch(event.target.value)} placeholder={language === 'ru' ? 'Имя, телефон или email' : 'Name, phone, or email'} style={{ ...inputStyle, border: '1px solid hsl(var(--border))', padding: '0.625rem 0.75rem' }} />
+                  </label>
                   <div>
                     <p style={{ ...labelStyle, margin: '0 0 0.625rem', fontSize: '0.5625rem' }}>{language === 'ru' ? 'Статус' : 'Status'}</p>
                     <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap' }}>
@@ -321,6 +378,9 @@ export default function AdminDashboard() {
                       <option value="statusAsc">{language === 'ru' ? 'По статусу' : 'By status'}</option>
                     </select>
                   </label>
+                  <button type="button" className="btn-outline" onClick={exportBookingsCsv} disabled={visibleBookings.length === 0} style={{ fontSize: '0.5625rem', padding: '0.625rem 0.9rem' }}>
+                    {language === 'ru' ? 'Скачать CSV' : 'Download CSV'}
+                  </button>
                 </div>
                 {visibleBookings.length === 0 ? (
                   <p style={labelStyle}>{language === 'ru' ? 'Заявок с таким статусом нет' : 'No bookings match this status'}</p>
@@ -511,15 +571,23 @@ export default function AdminDashboard() {
               <p style={{ ...labelStyle, margin: '0 0 0.4rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Рабочая память' : 'Working memory'}</p>
               <h3 style={{ margin: 0, fontStyle: 'italic' }}>{language === 'ru' ? 'Клиенты' : 'Clients'}</h3>
             </div>
-            {!selectedClientId ? (
-              <p style={{ maxWidth: '38rem', padding: '1rem', borderLeft: '2px solid var(--gold-mid)', background: 'hsl(var(--secondary))', color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem', lineHeight: 1.6 }}>
-                {language === 'ru'
-                  ? 'Откройте любую запись в разделе «Заявки» и нажмите «Открыть память о клиенте». Здесь будут предпочтения, заметки, история визитов, фото и статистика перед следующим визитом.'
-                  : 'Open any booking in “Bookings” and choose “Open client memory”. This workspace shows preferences, notes, visit history, photos, and useful metrics before the next visit.'}
-              </p>
-            ) : (
-              <ClientMemoryPanel clientId={selectedClientId} language={language as 'ru' | 'en'} onClose={() => setSelectedClientId(null)} />
-            )}
+            <div style={{ marginBottom: '1.5rem', padding: '1rem', border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))' }}>
+              <label style={{ display: 'grid', gap: '0.55rem' }}>
+                <span style={{ ...labelStyle, fontSize: '0.5625rem' }}>{language === 'ru' ? 'Найти клиента' : 'Find a client'}</span>
+                <input value={clientSearch} onChange={event => setClientSearch(event.target.value)} placeholder={language === 'ru' ? 'Имя, телефон или email' : 'Name, phone, or email'} style={{ ...inputStyle, border: '1px solid hsl(var(--border))', padding: '0.625rem 0.75rem' }} />
+              </label>
+              {clientDirectoryLoading ? <p style={{ ...labelStyle, margin: '0.85rem 0 0', fontSize: '0.5625rem' }}>{language === 'ru' ? 'Загружаю клиентов...' : 'Loading clients...'}</p> : visibleClientDirectory.length === 0 ? <p style={{ ...labelStyle, margin: '0.85rem 0 0', fontSize: '0.5625rem' }}>{language === 'ru' ? 'Клиенты не найдены' : 'No clients found'}</p> : (
+                <div style={{ display: 'grid', gap: '0.5rem', marginTop: '0.85rem', maxHeight: '16rem', overflowY: 'auto' }}>
+                  {visibleClientDirectory.map(client => <button key={client.id} type="button" onClick={() => setSelectedClientId(client.id)} style={{ textAlign: 'left', padding: '0.7rem 0.75rem', background: selectedClientId === client.id ? 'hsl(var(--secondary))' : 'transparent', color: 'hsl(var(--foreground))', border: '1px solid hsl(var(--border))', cursor: 'pointer' }}>
+                    <span style={{ display: 'block', fontFamily: "'Playfair Display', serif", fontWeight: 700 }}>{client.name}</span>
+                    <span style={{ ...labelStyle, display: 'block', marginTop: '0.2rem', fontSize: '0.5625rem' }}>{client.phone}{client.email ? ` · ${client.email}` : ''}</span>
+                  </button>)}
+                </div>
+              )}
+            </div>
+            {!selectedClientId ? <p style={{ maxWidth: '38rem', padding: '1rem', borderLeft: '2px solid var(--gold-mid)', background: 'hsl(var(--secondary))', color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem', lineHeight: 1.6 }}>
+              {language === 'ru' ? 'Выберите клиента выше или откройте его из карточки заявки. Здесь будут предпочтения, заметки, история визитов, фото и статистика перед следующим визитом.' : 'Choose a client above or open one from a booking card. This workspace shows preferences, notes, visit history, photos, and useful metrics before the next visit.'}
+            </p> : <ClientMemoryPanel clientId={selectedClientId} language={language as 'ru' | 'en'} onClose={() => setSelectedClientId(null)} />}
           </div>
         )}
 
@@ -586,6 +654,9 @@ export default function AdminDashboard() {
                       <option value="receivedDesc">{language === 'ru' ? 'Сначала полученные отзывы' : 'Received reviews first'}</option>
                     </select>
                   </label>
+                  <button type="button" className="btn-outline" onClick={exportReviewRequestsCsv} disabled={visibleReviewRequests.length === 0} style={{ fontSize: '0.5625rem', padding: '0.625rem 0.9rem' }}>
+                    {language === 'ru' ? 'Скачать CSV' : 'Download CSV'}
+                  </button>
                 </div>
                 {visibleReviewRequests.length === 0 ? <p style={labelStyle}>{language === 'ru' ? 'Запросов с таким статусом пока нет' : 'No requests match this status yet'}</p> : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '2.5rem' }}>
@@ -632,6 +703,7 @@ export default function AdminDashboard() {
               </div>
             )}
             </div>
+            <ReviewRequestTemplateEditor language={language as 'ru' | 'en'} />
           </div>
         )}
       </div>

@@ -10,14 +10,14 @@ import {
   getReviewTokenByHash, markReviewTokenUsed,
   getPublishedReviews, getAllReviews, updateReviewPublished, createManagedService, setServiceActive, updateManagedService,
   createBookingStatusRecoveryToken, claimBookingStatusRecoveryToken, getSafeBookingStatusesByEmail,
-  deleteBookingAndRelatedData, getReviewRequestDashboard,
+  deleteBookingAndRelatedData, getClientDirectory, getReviewRequestDashboard, getReviewRequestEmailTemplate, saveReviewRequestEmailTemplate,
 } from "./db";
 import { TRPCError } from "@trpc/server";
 import { sendBookingEmails, sendBookingStatusRecoveryEmail, sendConfirmedBookingEmail, sendReviewRequestEmail } from "./bookingEmail";
 import { createReviewTokenValue, getBookingStatusRecoveryExpiry, getReviewTokenExpiry, hashReviewToken } from "./reviewToken";
 import { blockDates, getAvailabilityWindows, getAvailableSlots, getPublicAvailableDates, setAvailabilityForDates } from "./availability";
 import { completeBooking, createBookingEvent, findOrCreateClient, getClientMemory, getSignedVisitMediaUrl, recordReviewRequest, rescheduleBooking, updateClientProfile, uploadVisitMedia } from "./clientMemory";
-import { getActiveAnnouncement, getAllAnnouncements, saveAnnouncement, setAnnouncementPublished } from "./announcements";
+import { getActiveAnnouncements, getAllAnnouncements, saveAnnouncement, setAnnouncementPublished } from "./announcements";
 
 // Admin middleware
 const adminMiddleware = protectedProcedure.use(async ({ ctx, next }) => {
@@ -68,7 +68,7 @@ export const appRouter = router({
   }),
 
   announcements: router({
-    active: publicProcedure.query(() => getActiveAnnouncement()),
+    active: publicProcedure.query(() => getActiveAnnouncements(2)),
   }),
 
   services: router({
@@ -472,6 +472,8 @@ export const appRouter = router({
       .input(z.object({ clientId: z.number().int().positive() }))
       .query(({ input }) => getClientMemory(input.clientId)),
 
+    clientDirectory: adminMiddleware.query(() => getClientDirectory()),
+
     updateClientMemory: adminMiddleware
       .input(z.object({
         clientId: z.number().int().positive(),
@@ -508,6 +510,16 @@ export const appRouter = router({
     // Reviews management
     reviews: adminMiddleware.query(() => getAllReviews()),
     reviewRequests: adminMiddleware.query(() => getReviewRequestDashboard()),
+    reviewRequestTemplate: adminMiddleware.query(() => getReviewRequestEmailTemplate()),
+
+    saveReviewRequestTemplate: adminMiddleware
+      .input(z.object({
+        subjectRu: z.string().trim().min(1).max(255),
+        subjectEn: z.string().trim().min(1).max(255),
+        bodyRu: z.string().trim().min(1).max(6000),
+        bodyEn: z.string().trim().min(1).max(6000),
+      }))
+      .mutation(({ input }) => saveReviewRequestEmailTemplate(input)),
 
     publishReview: adminMiddleware
       .input(z.object({ id: z.number(), publish: z.boolean() }))

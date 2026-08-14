@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, isNull, lt, lte, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, InsertBooking, InsertBookingService, users, services, bookings, bookingServices, reviewTokens, bookingStatusRecoveryTokens, bookingEvents, visitMedia, reviewRequestHistory, reviews, clients } from "../drizzle/schema";
+import { InsertUser, InsertBooking, InsertBookingService, users, services, bookings, bookingServices, reviewTokens, bookingStatusRecoveryTokens, bookingEvents, visitMedia, reviewRequestHistory, reviews, clients, emailTemplates } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -269,6 +269,18 @@ export async function getAllBookings() {
   return db.select().from(bookings).orderBy(desc(bookings.createdAt));
 }
 
+export async function getClientDirectory() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({
+    id: clients.id,
+    name: clients.name,
+    phone: clients.phone,
+    email: clients.email,
+    updatedAt: clients.updatedAt,
+  }).from(clients).orderBy(desc(clients.updatedAt));
+}
+
 export async function deleteBookingAndRelatedData(bookingId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -452,6 +464,43 @@ export async function getReviewRequestDashboard() {
   }));
   const received = items.filter((item) => item.status === "received").length;
   return { items, stats: { sent: items.length, received, awaiting: items.length - received } };
+}
+
+export const REVIEW_REQUEST_TEMPLATE_KEY = "review-request";
+
+export type ReviewRequestEmailTemplateInput = {
+  subjectRu: string;
+  subjectEn: string;
+  bodyRu: string;
+  bodyEn: string;
+};
+
+export const defaultReviewRequestEmailTemplate: ReviewRequestEmailTemplateInput = {
+  subjectRu: "Спасибо за визит — Isaac",
+  subjectEn: "Thank you for your visit — Isaac",
+  bodyRu: "Привет, {{clientName}}.\n\nСпасибо за доверие и за ваш визит. Если у вас найдётся минута, буду рад честному отзыву. Это правда помогает мне.\n\nОставить отзыв: {{reviewUrl}}\n\nЕщё раз спасибо,\nIsaac",
+  bodyEn: "Hi, {{clientName}}.\n\nThank you for trusting me with your appointment. If you have a minute, I’d love your honest feedback. It really helps me.\n\nLeave your feedback: {{reviewUrl}}\n\nThank you again,\nIsaac",
+};
+
+export async function getReviewRequestEmailTemplate() {
+  const db = await getDb();
+  if (!db) return defaultReviewRequestEmailTemplate;
+  const saved = (await db.select().from(emailTemplates)
+    .where(eq(emailTemplates.key, REVIEW_REQUEST_TEMPLATE_KEY))
+    .limit(1))[0];
+  return saved ? {
+    subjectRu: saved.subjectRu,
+    subjectEn: saved.subjectEn,
+    bodyRu: saved.bodyRu,
+    bodyEn: saved.bodyEn,
+  } : defaultReviewRequestEmailTemplate;
+}
+
+export async function saveReviewRequestEmailTemplate(input: ReviewRequestEmailTemplateInput) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(emailTemplates).values({ key: REVIEW_REQUEST_TEMPLATE_KEY, ...input }).onDuplicateKeyUpdate({ set: input });
+  return getReviewRequestEmailTemplate();
 }
 
 export async function updateReviewPublished(id: number, isPublished: "yes" | "no") {

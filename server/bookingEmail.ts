@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import { buildCalendarInvite } from "./calendarInvite";
+import { getReviewRequestEmailTemplate, type ReviewRequestEmailTemplateInput } from "./db";
 
 export type BookingEmailDetails = {
   referenceNumber: string;
@@ -162,6 +163,37 @@ export function buildReviewRequestEmail(details: BookingEmailDetails, reviewUrl:
   };
 }
 
+function renderReviewTemplate(value: string, details: BookingEmailDetails, reviewUrl: string) {
+  return value
+    .replaceAll("{{clientName}}", details.clientName)
+    .replaceAll("{{serviceName}}", details.serviceName)
+    .replaceAll("{{bookingDate}}", details.bookingDate)
+    .replaceAll("{{bookingTime}}", details.bookingTime)
+    .replaceAll("{{reviewUrl}}", reviewUrl);
+}
+
+function reviewTemplateHtml(value: string) {
+  return escapeHtml(value).replace(/\n/g, "<br>");
+}
+
+export function buildConfiguredReviewRequestEmail(
+  details: BookingEmailDetails,
+  reviewUrl: string,
+  template: ReviewRequestEmailTemplateInput,
+): EmailMessage {
+  const subjectEn = renderReviewTemplate(template.subjectEn, details, reviewUrl).trim();
+  const subjectRu = renderReviewTemplate(template.subjectRu, details, reviewUrl).trim();
+  const bodyEn = renderReviewTemplate(template.bodyEn, details, reviewUrl);
+  const bodyRu = renderReviewTemplate(template.bodyRu, details, reviewUrl);
+  const safeUrl = escapeHtml(reviewUrl);
+
+  return {
+    subject: subjectEn || subjectRu || "Thank you for your visit — Isaac",
+    text: [bodyEn, bodyRu].filter(Boolean).join("\n\n— — —\n\n"),
+    html: `<!doctype html><html><body style="margin:0;background:#F7F5F1;font-family:Arial,sans-serif;color:#17191E;"><div style="max-width:600px;margin:0 auto;padding:36px 24px;"><p style="margin:0 0 8px;color:#A17A2C;font-size:11px;font-weight:700;letter-spacing:2px;">ISAAC HAKOBIAN</p><h1 style="margin:0 0 18px;font-family:Georgia,serif;font-size:28px;line-height:1.15;">${escapeHtml(subjectEn || subjectRu)}</h1><p style="margin:0 0 16px;font-size:15px;line-height:1.7;">${reviewTemplateHtml(bodyEn)}</p><p style="margin:0 0 24px;font-size:15px;line-height:1.7;">${reviewTemplateHtml(bodyRu)}</p><a href="${safeUrl}" style="display:inline-block;background:#17191E;color:#FFFFFF;text-decoration:none;padding:14px 20px;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">Leave feedback / Оставить отзыв</a></div></body></html>`,
+  };
+}
+
 export function buildRepeatFollowUpEmail(details: BookingEmailDetails, bookingUrl: string): EmailMessage {
   const safeName = escapeHtml(details.clientName);
   const safeUrl = escapeHtml(bookingUrl);
@@ -291,7 +323,8 @@ export async function sendReviewRequestEmail(details: BookingEmailDetails, revie
   const config = getMailTransport();
   if (!config) return { skipped: true } as const;
 
-  const email = buildReviewRequestEmail(details, reviewUrl);
+  const template = await getReviewRequestEmailTemplate();
+  const email = buildConfiguredReviewRequestEmail(details, reviewUrl, template);
   return config.transport.sendMail({
     from: `Hairstyle Laboratory <${config.user}>`,
     to: details.clientEmail,

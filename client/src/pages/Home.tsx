@@ -82,7 +82,7 @@ export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [hoveredService, setHoveredService] = useState<number | null>(null);
-  const { data: activeAnnouncement } = trpc.announcements.active.useQuery();
+  const { data: activeAnnouncements } = trpc.announcements.active.useQuery();
   const { data: publicServices, isLoading: servicesLoading, isError: servicesError } = trpc.services.list.useQuery();
 
   const c = copy[language] ?? copy.ru;
@@ -340,17 +340,21 @@ export default function Home() {
               </button>
             </div>
           </div>
-          {activeAnnouncement && (
-            <aside className="fade-up fade-up-delay-3" style={{ position: 'relative', padding: '1.5rem', border: '1px solid hsl(var(--border))', background: 'linear-gradient(145deg, hsl(var(--card)), hsl(var(--secondary)))', boxShadow: '0 18px 45px rgba(0, 0, 0, 0.08)' }}>
-              <div style={{ position: 'absolute', top: 0, left: '1.5rem', right: '1.5rem', height: '2px', background: 'linear-gradient(90deg, transparent, var(--gold-mid), transparent)' }} />
-              <p className="label-caps" style={{ margin: '0 0 1rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Новости' : 'Notice'}</p>
-              <h3 style={{ margin: '0 0 0.75rem', fontStyle: 'italic', fontSize: '1.65rem', lineHeight: 1.08 }}>
-                {language === 'ru' ? activeAnnouncement.titleRu : activeAnnouncement.titleEn}
-              </h3>
-              <p style={{ margin: '0 0 1.25rem', color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem', lineHeight: 1.6 }}>
-                {language === 'ru' ? activeAnnouncement.bodyRu : activeAnnouncement.bodyEn}
-              </p>
-              <p style={{ fontFamily: "'Inter', sans-serif", margin: 0, color: 'hsl(var(--muted-foreground))', fontSize: '0.625rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}>{activeAnnouncement.startDate} — {activeAnnouncement.endDate}</p>
+          {(activeAnnouncements ?? []).length > 0 && (
+            <aside className="fade-up fade-up-delay-3" style={{ display: 'grid', gap: '0.75rem' }} aria-label={language === 'ru' ? 'Новости' : 'Notices'}>
+              {(activeAnnouncements ?? []).slice(0, 2).map((announcement, index) => (
+                <article key={announcement.id} className="notice-card" style={{ '--notice-delay': `${index * 90}ms` } as React.CSSProperties}>
+                  <div style={{ position: 'absolute', top: 0, left: '1.5rem', right: '1.5rem', height: '2px', background: 'linear-gradient(90deg, transparent, var(--gold-mid), transparent)' }} />
+                  <p className="label-caps" style={{ margin: '0 0 0.75rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Новости' : 'Notice'}</p>
+                  <h3 style={{ margin: '0 0 0.55rem', fontStyle: 'italic', fontSize: '1.4rem', lineHeight: 1.08 }}>
+                    {language === 'ru' ? announcement.titleRu : announcement.titleEn}
+                  </h3>
+                  <p style={{ margin: '0 0 1rem', color: 'hsl(var(--muted-foreground))', fontSize: '0.8125rem', lineHeight: 1.55 }}>
+                    {language === 'ru' ? announcement.bodyRu : announcement.bodyEn}
+                  </p>
+                  <p style={{ fontFamily: "'Inter', sans-serif", margin: 0, color: 'hsl(var(--muted-foreground))', fontSize: '0.5625rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}>{announcement.startDate} — {announcement.endDate}</p>
+                </article>
+              ))}
             </aside>
           )}
           </div>

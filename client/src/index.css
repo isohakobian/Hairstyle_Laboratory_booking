@@ -200,6 +200,26 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .notice-card {
+    position: relative;
+    padding: 1.25rem 1.5rem;
+    border: 1px solid hsl(var(--border));
+    background: linear-gradient(145deg, hsl(var(--card)), hsl(var(--secondary)));
+    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.08);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .notice-card {
+      animation: notice-arrival 440ms cubic-bezier(0.23, 1, 0.32, 1) both;
+      animation-delay: var(--notice-delay, 0ms);
+    }
+  }
+
+  @keyframes notice-arrival {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
   @media (min-width: 1024px) {
     .hero-editorial-layout {
       grid-template-columns: minmax(0, 1fr) minmax(18rem, 22rem);

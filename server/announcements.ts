@@ -13,14 +13,18 @@ function yerevanDate() {
   return `${part("year")}-${part("month")}-${part("day")}`;
 }
 
-export async function getActiveAnnouncement() {
+export async function getActiveAnnouncements(limit = 2) {
   const db = await getDb();
-  if (!db) return undefined;
+  if (!db) return [];
   const today = yerevanDate();
   const published = await db.select().from(announcements)
     .where(eq(announcements.isPublished, "yes"))
     .orderBy(desc(announcements.startDate));
-  return published.find(item => item.startDate <= today && item.endDate >= today) ?? null;
+  return published.filter(item => item.startDate <= today && item.endDate >= today).slice(0, limit);
+}
+
+export async function getActiveAnnouncement() {
+  return (await getActiveAnnouncements(1))[0] ?? null;
 }
 
 export async function getAllAnnouncements() {

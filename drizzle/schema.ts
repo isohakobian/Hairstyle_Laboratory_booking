@@ -256,3 +256,18 @@ export const reviews = mysqlTable("reviews", {
 
 export type Review = typeof reviews.$inferSelect;
 export type InsertReview = typeof reviews.$inferInsert;
+
+// Admin-managed email copy. Template values support safe placeholder replacement
+// immediately before a message is delivered to a client.
+export const emailTemplates = mysqlTable("emailTemplates", {
+  key: varchar("key", { length: 100 }).primaryKey(),
+  subjectRu: varchar("subjectRu", { length: 255 }).notNull(),
+  subjectEn: varchar("subjectEn", { length: 255 }).notNull(),
+  bodyRu: text("bodyRu").notNull(),
+  bodyEn: text("bodyEn").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type EmailTemplate = typeof emailTemplates.$inferSelect;
+export type InsertEmailTemplate = typeof emailTemplates.$inferInsert;

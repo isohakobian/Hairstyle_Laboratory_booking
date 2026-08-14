@@ -139,3 +139,8 @@
 - [x] Add a visible review-request statistics panel for sent requests and received reviews
 - [x] Add clear loading and successful-delivery feedback for manual review-request emails
 - [x] Allow an admin to safely delete an unnecessary booking and its related private data
+- [x] Add admin search for bookings and client memory by name, phone, or email
+- [x] Add CSV export for booking lists and review-request statistics
+- [x] Add an editable bilingual review-request email template in the admin dashboard
+- [x] Show up to two active homepage notices with a minimal, accessible animation
+- [x] Add direct Client Memory search by name, phone, or email with regression coverage

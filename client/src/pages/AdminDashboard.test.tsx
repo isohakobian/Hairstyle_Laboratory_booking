@@ -23,6 +23,9 @@ vi.mock("@/lib/trpc", () => ({
       rescheduleBooking: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       completeBooking: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       reviewRequests: { useQuery: () => ({ data: { items: [], stats: { sent: 0, received: 0, awaiting: 0 } }, isLoading: false, isError: false, refetch: vi.fn() }) },
+      reviewRequestTemplate: { useQuery: () => ({ data: { subjectRu: 'Спасибо за визит — Isaac', subjectEn: 'Thank you for your visit — Isaac', bodyRu: 'Привет, {{clientName}}', bodyEn: 'Hi, {{clientName}}' }, isLoading: false, refetch: vi.fn() }) },
+      saveReviewRequestTemplate: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+      clientDirectory: { useQuery: () => ({ data: [{ id: 7, name: 'Alex', phone: '+37455000000', email: 'alex@example.com', updatedAt: new Date() }], isLoading: false }) },
     },
     availability: {
       dates: { useQuery: () => ({ data: ["2099-12-30"] }) },
@@ -48,5 +51,14 @@ describe("AdminDashboard navigation", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Отзывы/i }));
     expect(screen.getByText("Отзывы клиентов")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /Клиенты/i }));
+    const clientSearch = screen.getByPlaceholderText("Имя, телефон или email");
+    fireEvent.change(clientSearch, { target: { value: "Alex" } });
+    expect(screen.getByText("Alex")).toBeTruthy();
+    fireEvent.change(clientSearch, { target: { value: "+37455000000" } });
+    expect(screen.getByText("Alex")).toBeTruthy();
+    fireEvent.change(clientSearch, { target: { value: "alex@example.com" } });
+    expect(screen.getByText("Alex")).toBeTruthy();
   });
 });
