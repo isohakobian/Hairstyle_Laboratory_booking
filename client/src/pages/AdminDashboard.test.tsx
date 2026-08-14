@@ -13,7 +13,7 @@ vi.mock("@/components/BookingCalendar", () => ({ default: () => <div>Booking cal
 vi.mock("@/lib/trpc", () => ({
   trpc: {
     admin: {
-      bookings: { useQuery: () => ({ data: [{ id: 1, status: "confirmed", clientName: "Alex", referenceNumber: "REF001", serviceName: "Haircut", serviceSummary: "Haircut", totalDurationMinutes: 45, totalPriceSummary: "15,000 ֏", bookingDate: "2099-12-30", bookingTime: "14:00", clientPhone: "+37455000000", clientEmail: "alex@example.com", comment: null, createdAt: new Date() }], isLoading: false, isError: false, refetch: vi.fn() }) },
+      bookings: { useQuery: () => ({ data: [{ id: 1, status: "confirmed", clientName: "Alex", referenceNumber: "REF001", serviceName: "Haircut", serviceSummary: "Haircut", totalDurationMinutes: 45, totalPriceSummary: "15,000 ֏", bookingDate: "2099-12-30", bookingTime: "14:00", clientPhone: "+37455000000", clientEmail: "alex@example.com", comment: null, createdAt: new Date(), completedAt: new Date() }], isLoading: false, isError: false, refetch: vi.fn() }) },
       reviews: { useQuery: () => ({ data: [], refetch: vi.fn() }) },
       confirmBooking: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       declineBooking: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },

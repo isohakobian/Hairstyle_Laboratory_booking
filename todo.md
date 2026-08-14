@@ -134,3 +134,4 @@
 - [x] Add expiry, one-time use, and automated coverage for verified booking-status recovery tokens
 - [ ] Retry the approved manual review-request email after Gmail's daily sending limit resets
 - [x] Show a clear admin-friendly message when Gmail temporarily rejects a review email because of its daily sending limit
+- [x] Allow manual review requests only after an admin marks the client visit as completed

@@ -377,6 +377,9 @@ export const appRouter = router({
         if (booking.status !== "confirmed") {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Reviews can only be requested for confirmed bookings" });
         }
+        if (!booking.completedAt) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Reviews can only be requested after the visit is completed" });
+        }
         if (!booking.clientEmail) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "This booking does not have a client email" });
         }

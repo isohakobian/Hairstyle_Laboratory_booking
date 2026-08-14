@@ -72,6 +72,9 @@ describe("booking lifecycle emails", () => {
       totalDurationMinutes: booking.totalDurationMinutes,
     }));
 
+    await expect(adminCaller.admin.requestReview({ id: booking.id })).rejects.toThrow(/completed/i);
+    await adminCaller.admin.completeBooking({ id: booking.id });
+
     await adminCaller.admin.requestReview({ id: booking.id });
     expect(sendReviewRequestEmail).toHaveBeenCalledWith(
       expect.objectContaining({ referenceNumber: booking.referenceNumber }),
