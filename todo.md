@@ -177,4 +177,4 @@
 - [x] Send each client one bilingual Gmail reminder approximately 24 hours before an active appointment
 - [x] Prevent duplicate client reminders when a scheduled task retries or runs more than once
 - [x] Send Isaac a weekly Gmail summary of new, cancelled, pending, confirmed, and completed bookings
-- [ ] Add secure scheduled handlers, regression coverage, and production Heartbeat schedules for reminders and weekly summaries
+- [x] Add secure scheduled handlers, regression coverage, and production Heartbeat schedules for reminders and weekly summaries
