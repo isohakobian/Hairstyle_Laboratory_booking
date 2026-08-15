@@ -192,6 +192,10 @@ describe("booking lifecycle emails", () => {
       bookingId: booking.id, recipientEmail: "batch-resend@example.com", notificationType: "booking-request", deliveryStatus: "failed", errorMessage: "SMTP unavailable",
     });
     const adminCaller = appRouter.createCaller(context("admin"));
+    const errorReport = await adminCaller.admin.emailDeliveryErrors();
+    expect(errorReport).toEqual(expect.arrayContaining([
+      expect.objectContaining({ bookingId: booking.id, clientEmail: "batch-resend@example.com", notificationType: "booking-request", errorMessage: "SMTP unavailable" }),
+    ]));
 
     const result = await adminCaller.admin.batchResendEmailFailures();
 

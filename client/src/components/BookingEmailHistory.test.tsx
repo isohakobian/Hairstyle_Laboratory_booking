@@ -9,7 +9,7 @@ const history = [
   { id: 3, notificationType: 'booking-rescheduled', recipientEmail: 'alex@example.com', deliveryStatus: 'sent' as const, errorMessage: null, isManualResend: 'no' as const, createdAt: new Date() },
   { id: 4, notificationType: 'booking-declined', recipientEmail: 'alex@example.com', deliveryStatus: 'sent' as const, errorMessage: null, isManualResend: 'no' as const, createdAt: new Date() },
   { id: 5, notificationType: 'booking-request', recipientEmail: 'alex@example.com', deliveryStatus: 'sent' as const, errorMessage: null, emailSubject: 'Booking request received', emailText: 'Hello Alex. I received your booking request.', isManualResend: 'no' as const, createdAt: new Date() },
-  { id: 6, notificationType: 'appointment-reminder-120', recipientEmail: 'alex@example.com', deliveryStatus: 'failed' as const, errorMessage: 'SMTP unavailable', emailSubject: 'Reminder: your visit is in 2 hours', emailText: 'Hello Alex. Your visit is in 2 hours.', isManualResend: 'no' as const, createdAt: new Date() },
+  { id: 6, notificationType: 'appointment-reminder-120', recipientEmail: 'alex@example.com', deliveryStatus: 'failed' as const, errorMessage: '550 5.1.1 User unknown', emailSubject: 'Reminder: your visit is in 2 hours', emailText: 'Hello Alex. Your visit is in 2 hours.', isManualResend: 'no' as const, createdAt: new Date() },
 ];
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock('@/lib/trpc', () => ({ trpc: { admin: {
@@ -32,7 +32,7 @@ describe('BookingEmailHistory', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Показать все (6)' }));
     expect(screen.getByText(/appointment-reminder-120/)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Ошибки' }));
-    expect(screen.getByText(/SMTP unavailable/)).toBeTruthy();
+    expect(screen.getByText(/Неверный или недоступный адрес/)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Напоминания' }));
     expect(screen.getByText(/appointment-reminder-120/)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Все' }));

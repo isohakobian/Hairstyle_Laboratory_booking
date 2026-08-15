@@ -6,6 +6,7 @@ import { useLocation } from 'wouter';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { getLoginUrl } from '@/const';
 import { getReviewRequestErrorMessage } from '@/lib/emailDeliveryError';
+import { getDeliveryErrorDetails } from '@/lib/emailDeliveryError';
 import { downloadCsv } from '@/lib/csvExport';
 import { Loader2, Trash2 } from 'lucide-react';
 import ScheduleCalendar from '@/components/ScheduleCalendar';
@@ -106,6 +107,9 @@ export default function AdminDashboard() {
   const { data: weeklyBookingStats } = trpc.admin.weeklyBookingStats.useQuery(undefined, {
     enabled: isAuthenticated && user?.role === 'admin',
   });
+  const { data: emailDeliveryErrors } = trpc.admin.emailDeliveryErrors.useQuery(undefined, {
+    enabled: isAuthenticated && user?.role === 'admin',
+  });
   const { data: bookingPageData, isLoading: bookingPageLoading, isError: bookingPageError } = trpc.admin.bookingPage.useQuery({
     page: bookingPage,
     pageSize: 15,
@@ -146,6 +150,7 @@ export default function AdminDashboard() {
     void utils.admin.bookingPage.invalidate();
     void utils.admin.today.invalidate();
     void utils.admin.weeklyBookingStats.invalidate();
+    void utils.admin.emailDeliveryErrors.invalidate();
   };
   const refreshReviewRequests = () => {
     void utils.admin.reviewRequestPage.invalidate();
@@ -284,6 +289,32 @@ export default function AdminDashboard() {
     toast.success(language === 'ru' ? 'CSV-файл со статистикой скачан' : 'Review statistics CSV downloaded');
   };
 
+  const exportEmailErrorsCsv = () => {
+    const rows = emailDeliveryErrors ?? [];
+    if (rows.length === 0) {
+      toast.message(language === 'ru' ? 'Неразрешённых ошибок email сейчас нет.' : 'There are no unresolved email errors right now.');
+      return;
+    }
+    downloadCsv('hairstyle-laboratory-email-errors.csv', rows.map(error => {
+      const details = getDeliveryErrorDetails(error.errorMessage, language as 'ru' | 'en');
+      return {
+        reference: error.referenceNumber,
+        client_name: error.clientName,
+        client_email: error.clientEmail,
+        booking_date: error.bookingDate,
+        booking_time: error.bookingTime,
+        services: error.services,
+        notification_type: error.notificationType,
+        error_category: details.category,
+        error_reason: details.title,
+        error_explanation: details.description,
+        technical_error: error.errorMessage,
+        failed_at: new Date(error.failedAt).toISOString(),
+      };
+    }));
+    toast.success(language === 'ru' ? 'CSV-файл с ошибками email скачан' : 'Email errors CSV downloaded');
+  };
+
   const visibleClientDirectory = useMemo(() => {
     const normalizedSearch = clientSearch.trim().toLocaleLowerCase();
     if (!normalizedSearch) return clientDirectory ?? [];
@@ -386,7 +417,7 @@ export default function AdminDashboard() {
         <section style={{ ...cardStyle, marginBottom: '2rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: '1rem' }}>
             <div><p style={{ ...labelStyle, margin: '0 0 0.35rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Недельная динамика' : 'Weekly activity'}</p><h3 style={{ margin: 0, fontStyle: 'italic' }}>{language === 'ru' ? 'Последние 7 дней' : 'Last 7 days'}</h3></div>
-            <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}><p style={{ ...labelStyle, margin: 0, fontSize: '0.5625rem' }}>{language === 'ru' ? 'Живые данные по записям' : 'Live booking data'}</p>{(weeklyBookingStats?.emailDeliveryErrors ?? 0) > 0 && <button type="button" className="btn-outline" onClick={() => batchResendEmailFailuresMutation.mutate()} disabled={batchResendEmailFailuresMutation.isPending} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.45rem 0.6rem', fontSize: '0.5rem', borderColor: 'hsl(0 60% 50%)', color: 'hsl(0 60% 42%)' }}>{batchResendEmailFailuresMutation.isPending && <Loader2 size={11} className="animate-spin" />}{batchResendEmailFailuresMutation.isPending ? (language === 'ru' ? 'Отправка...' : 'Sending...') : (language === 'ru' ? 'Повторить ошибки email' : 'Resend email errors')}</button>}</div>
+            <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}><p style={{ ...labelStyle, margin: 0, fontSize: '0.5625rem' }}>{language === 'ru' ? 'Живые данные по записям' : 'Live booking data'}</p>{(weeklyBookingStats?.emailDeliveryErrors ?? 0) > 0 && <><button type="button" className="btn-outline" onClick={() => batchResendEmailFailuresMutation.mutate()} disabled={batchResendEmailFailuresMutation.isPending} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.45rem 0.6rem', fontSize: '0.5rem', borderColor: 'hsl(0 60% 50%)', color: 'hsl(0 60% 42%)' }}>{batchResendEmailFailuresMutation.isPending && <Loader2 size={11} className="animate-spin" />}{batchResendEmailFailuresMutation.isPending ? (language === 'ru' ? 'Отправка...' : 'Sending...') : (language === 'ru' ? 'Повторить ошибки email' : 'Resend email errors')}</button><button type="button" className="btn-outline" onClick={exportEmailErrorsCsv} style={{ padding: '0.45rem 0.6rem', fontSize: '0.5rem' }}>{language === 'ru' ? 'Экспорт ошибок CSV' : 'Export errors CSV'}</button></>}</div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(8.5rem, 1fr))', gap: '0.75rem' }}>
             {[
@@ -398,6 +429,7 @@ export default function AdminDashboard() {
               { label: language === 'ru' ? 'Ошибки email' : 'Email errors', value: weeklyBookingStats?.emailDeliveryErrors ?? 0, color: 'hsl(0 60% 50%)' },
             ].map(stat => <div key={stat.label} style={{ padding: '0.9rem', background: 'hsl(var(--secondary))', borderTop: `2px solid ${stat.color}` }}><p style={{ margin: 0, color: stat.color, fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: '1.75rem' }}>{stat.value}</p><p style={{ ...labelStyle, margin: '0.2rem 0 0', fontSize: '0.5rem' }}>{stat.label}</p></div>)}
           </div>
+          {(emailDeliveryErrors ?? []).length > 0 && <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid hsl(var(--border))' }}><p style={{ ...labelStyle, margin: '0 0 0.65rem', color: 'hsl(0 60% 42%)' }}>{language === 'ru' ? 'Причины последних ошибок доставки' : 'Latest delivery error reasons'}</p><div style={{ display: 'grid', gap: '0.5rem' }}>{(emailDeliveryErrors ?? []).slice(0, 3).map(error => { const details = getDeliveryErrorDetails(error.errorMessage, language as 'ru' | 'en'); return <div key={error.bookingId} title={error.errorMessage ?? undefined} style={{ padding: '0.65rem 0.75rem', background: 'hsl(var(--secondary))', borderLeft: '2px solid hsl(0 60% 50%)', fontSize: '0.75rem', lineHeight: 1.45 }}><strong>{error.clientName}</strong> · {error.clientEmail}<span style={{ display: 'block', marginTop: '0.15rem', color: 'hsl(0 60% 42%)' }}><strong>{details.title}.</strong> {details.description}</span></div>; })}</div></div>}
         </section>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(9rem, 1fr))', gap: '0.75rem', marginBottom: '2rem' }}>

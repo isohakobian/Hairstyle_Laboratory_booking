@@ -323,6 +323,47 @@ export async function getBookingsWithUnresolvedEmailFailures(limit = 50) {
   return { bookings: matchingBookings, totalUnresolved: unresolvedBookingIds.length };
 }
 
+export async function getUnresolvedEmailDeliveryErrors() {
+  const db = await getDb();
+  if (!db) return [];
+  const attempts = await db.select().from(clientEmailDeliveries)
+    .orderBy(desc(clientEmailDeliveries.createdAt), desc(clientEmailDeliveries.id));
+  const latestAttemptByBooking = new Map<number, typeof attempts[number]>();
+  attempts.forEach(attempt => {
+    if (!latestAttemptByBooking.has(attempt.bookingId)) latestAttemptByBooking.set(attempt.bookingId, attempt);
+  });
+  const failedAttempts = Array.from(latestAttemptByBooking.values()).filter(attempt => attempt.deliveryStatus === "failed");
+  if (!failedAttempts.length) return [];
+  const bookingIds = failedAttempts.map(attempt => attempt.bookingId);
+  const bookingRows = await db.select({
+    id: bookings.id,
+    referenceNumber: bookings.referenceNumber,
+    clientName: bookings.clientName,
+    clientEmail: bookings.clientEmail,
+    bookingDate: bookings.bookingDate,
+    bookingTime: bookings.bookingTime,
+    serviceSummary: bookings.serviceSummary,
+    serviceName: bookings.serviceName,
+  }).from(bookings).where(inArray(bookings.id, bookingIds));
+  const bookingById = new Map(bookingRows.map(booking => [booking.id, booking]));
+  return failedAttempts.flatMap(attempt => {
+    const booking = bookingById.get(attempt.bookingId);
+    if (!booking) return [];
+    return [{
+      bookingId: booking.id,
+      referenceNumber: booking.referenceNumber,
+      clientName: booking.clientName,
+      clientEmail: attempt.recipientEmail || booking.clientEmail,
+      bookingDate: booking.bookingDate,
+      bookingTime: booking.bookingTime,
+      services: booking.serviceSummary || booking.serviceName,
+      notificationType: attempt.notificationType,
+      errorMessage: attempt.errorMessage,
+      failedAt: attempt.createdAt,
+    }];
+  });
+}
+
 export async function getClientDirectory() {
   const db = await getDb();
   if (!db) return [];

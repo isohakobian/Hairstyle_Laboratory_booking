@@ -204,3 +204,6 @@
 - [x] Show per-action loading state and clear success feedback for manual email resend
 - [x] Add regression coverage for the error counter, batch resend, and manual resend feedback
 - [x] Make the safe 50-email batch limit explicit and show when another protected batch is needed for remaining errors
+- [x] Export unresolved email delivery errors to a CSV file with booking and delivery details
+- [x] Show clear, detailed email delivery error reasons in the admin dashboard
+- [x] Add regression coverage for email-error CSV export and error-reason display
