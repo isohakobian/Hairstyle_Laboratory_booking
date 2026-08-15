@@ -2,8 +2,9 @@ import React from "react";
 import { fireEvent, render, screen, waitFor, cleanup } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const { mutateAsync } = vi.hoisted(() => ({
+const { mutateAsync, slotsUseQuery } = vi.hoisted(() => ({
   mutateAsync: vi.fn().mockResolvedValue({ referenceNumber: "BOOKING1" }),
+  slotsUseQuery: vi.fn(),
 }));
 
 vi.mock("@/contexts/LanguageContext", () => ({
@@ -33,7 +34,10 @@ vi.mock("@/lib/trpc", () => ({
         useQuery: () => ({ data: ["2099-12-30"], isLoading: false }),
       },
       slots: {
-        useQuery: () => ({ data: ["14:00"], isLoading: false }),
+        useQuery: (...args: unknown[]) => {
+          slotsUseQuery(...args);
+          return { data: ["14:00"], isLoading: false };
+        },
       },
     },
   },
@@ -53,6 +57,8 @@ describe("Booking form", () => {
   afterEach(() => {
     cleanup();
     mutateAsync.mockClear();
+    slotsUseQuery.mockClear();
+    window.sessionStorage.clear();
   });
 
   it("submits distinct selected services and the client email from the visible form", async () => {
@@ -83,5 +89,33 @@ describe("Booking form", () => {
         clientPhone: "+37455000000",
       }));
     });
+  });
+
+  it('uses a one-time private repeat-booking draft to prefill past services and client details', () => {
+    window.sessionStorage.setItem('hairstyle-laboratory.repeat-booking-draft', JSON.stringify({
+      serviceIds: [150001, 150002],
+      clientName: 'Repeat Client',
+      clientPhone: '+37455000123',
+      clientEmail: 'repeat@example.com',
+      clientBirthday: '1990-03-14',
+      clientInstagram: 'repeat.client',
+    }));
+
+    const { container } = render(<Booking />);
+
+    expect(screen.getByText('Повторная запись: данные клиента и прошлые услуги подставлены. Проверьте их и выберите дату и время.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Стрижка/i }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('button', { name: /Моделирование бороды/i }).getAttribute('aria-pressed')).toBe('true');
+    expect(container.querySelector('input[type="text"]')?.getAttribute('value')).toBe('Repeat Client');
+    expect(container.querySelector('input[type="tel"]')?.getAttribute('value')).toBe('+37455000123');
+    expect(container.querySelector('input[type="email"]')?.getAttribute('value')).toBe('repeat@example.com');
+    expect(window.sessionStorage.getItem('hairstyle-laboratory.repeat-booking-draft')).toBeNull();
+
+    const selects = container.querySelectorAll('select');
+    fireEvent.change(selects[0]!, { target: { value: '2099-12-30' } });
+    expect(slotsUseQuery).toHaveBeenLastCalledWith(
+      { date: '2099-12-30', durationMinutes: 75 },
+      expect.objectContaining({ enabled: true }),
+    );
   });
 });

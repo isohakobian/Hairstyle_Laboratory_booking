@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
+import { useLocation } from 'wouter';
 
 type Language = 'ru' | 'en';
 
@@ -9,6 +10,8 @@ type Props = {
   language: Language;
   onClose: () => void;
 };
+
+const REPEAT_BOOKING_DRAFT_KEY = 'hairstyle-laboratory.repeat-booking-draft';
 
 const labelStyle: React.CSSProperties = {
   fontFamily: "'Inter', sans-serif",
@@ -45,6 +48,7 @@ function readFileAsBase64(file: File) {
 
 export default function ClientMemoryPanel({ clientId, language, onClose }: Props) {
   const ru = language === 'ru';
+  const [, setLocation] = useLocation();
   const { data: memory, isLoading, refetch } = trpc.admin.clientMemory.useQuery({ clientId });
   const [values, setValues] = useState({
     birthday: '', instagram: '', preferredHairLength: '', preferredBeardShape: '', preferredStyling: '', dislikes: '', skinSensitivity: '', stylistNotes: '',
@@ -103,6 +107,25 @@ export default function ClientMemoryPanel({ clientId, language, onClose }: Props
   if (isLoading || !memory) return <div style={{ padding: '2rem 0' }}><p style={labelStyle}>{ru ? 'Загружаем память о клиенте...' : 'Loading client memory...'}</p></div>;
 
   const { profile, metrics } = memory;
+  const repeatBooking = (visit: typeof memory.visits[number]) => {
+    if (visit.serviceIds.length === 0) {
+      toast.error(ru ? 'Не удалось определить услуги прошлого визита' : 'The previous visit services could not be identified');
+      return;
+    }
+    try {
+      window.sessionStorage.setItem(REPEAT_BOOKING_DRAFT_KEY, JSON.stringify({
+        serviceIds: visit.serviceIds,
+        clientName: profile.name,
+        clientPhone: profile.phone,
+        clientEmail: profile.email ?? '',
+        clientBirthday: profile.birthday ?? '',
+        clientInstagram: profile.instagram ?? '',
+      }));
+      setLocation('/booking');
+    } catch {
+      toast.error(ru ? 'Не удалось подготовить повторную запись' : 'Could not prepare the repeat booking');
+    }
+  };
   return (
     <section style={{ marginTop: '2rem', padding: '1.5rem', border: '1px solid var(--gold-mid)', background: 'hsl(var(--card))' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
@@ -161,6 +184,7 @@ export default function ClientMemoryPanel({ clientId, language, onClose }: Props
                 <div><p style={{ margin: 0, fontFamily: "'Playfair Display', serif", fontWeight: 700 }}>{visit.bookingDate} · {visit.bookingTime}</p><p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: 'hsl(var(--muted-foreground))' }}>{visit.serviceSummary || visit.serviceName} · {visit.totalDurationMinutes} {ru ? 'мин' : 'min'} · {visit.finalPriceAmd ? formatAmd(visit.finalPriceAmd) : visit.totalPriceSummary}</p></div>
                 <span style={{ ...labelStyle, color: visit.completedAt ? 'hsl(142 50% 40%)' : 'hsl(var(--muted-foreground))' }}>{visit.completedAt ? (ru ? 'Завершён' : 'Completed') : (ru ? 'В процессе' : 'In progress')}</span>
               </div>
+              {visit.completedAt && visit.serviceIds.length > 0 && <button type="button" className="btn-outline" onClick={() => repeatBooking(visit)} style={{ marginTop: '0.85rem', padding: '0.55rem 0.8rem', fontSize: '0.625rem' }}>{ru ? 'Запланировать повтор' : 'Plan a repeat visit'}</button>}
               <p style={{ margin: '0.85rem 0 0', padding: '0.65rem 0.75rem', background: 'hsl(var(--secondary))', color: 'hsl(var(--muted-foreground))', fontSize: '0.75rem', lineHeight: 1.45 }}>{repeatStatus}</p>
               {visitNotes.length > 0 && <div style={{ marginTop: '0.85rem' }}><p style={{ ...labelStyle, margin: '0 0 0.35rem' }}>{ru ? 'Заметки визита' : 'Visit notes'}</p>{visitNotes.map(note => <p key={note.id} style={{ margin: '0.35rem 0', fontSize: '0.8125rem', color: 'hsl(var(--foreground))' }}>{note.note}</p>)}</div>}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(7rem, 1fr))', gap: '0.75rem', marginTop: '1rem' }}>

@@ -76,7 +76,9 @@
 - [x] Add a booking calendar that displays appointment entries
 - [x] Add loading and error states to the booking calendar tab
 - [x] Verify published public-site accessibility and resolve admin render error
-- [ ] Recurring appointments
+- [x] Recurring appointments — implemented as the owner-selected manual repeat-booking shortcut, not an automatic series of future visits
+- [x] Add an admin-only repeat-booking shortcut from Client Memory with prefilled client details and prior services
+- [x] Verify the repeat-booking shortcut preserves availability checks and does not create bookings automatically
 - [x] Send a personal repeat-booking email 14 weeks after a confirmed visit at 10:00 Yerevan time
 - [x] Fix and verify RU/EN language switcher visibility on mobile header
 - [x] Stabilize booking tests when dates are blocked in the live calendar

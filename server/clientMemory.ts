@@ -1,5 +1,5 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
-import { bookingEvents, bookings, clients, reviewRequestHistory, reviews, visitMedia } from "../drizzle/schema";
+import { bookingEvents, bookings, bookingServices, clients, reviewRequestHistory, reviews, visitMedia } from "../drizzle/schema";
 import { getDb } from "./db";
 import { getAvailableSlots } from "./availability";
 import { storageGetSignedUrl, storagePut } from "./storage";
@@ -184,16 +184,23 @@ export async function getClientMemory(clientId: number) {
     .map(([service]) => service)
     .slice(0, 3);
 
-  const [events, media, reviewRequests, visitReviews] = await Promise.all([
+  const [events, media, reviewRequests, visitReviews, visitServices] = await Promise.all([
     visitIds.length ? db.select().from(bookingEvents).where(inArray(bookingEvents.bookingId, visitIds)).orderBy(desc(bookingEvents.createdAt)) : [],
     visitIds.length ? db.select().from(visitMedia).where(inArray(visitMedia.bookingId, visitIds)).orderBy(desc(visitMedia.createdAt)) : [],
     visitIds.length ? db.select().from(reviewRequestHistory).where(inArray(reviewRequestHistory.bookingId, visitIds)).orderBy(desc(reviewRequestHistory.sentAt)) : [],
     visitIds.length ? db.select().from(reviews).where(inArray(reviews.bookingId, visitIds)).orderBy(desc(reviews.createdAt)) : [],
+    visitIds.length ? db.select().from(bookingServices).where(inArray(bookingServices.bookingId, visitIds)) : [],
   ]);
+  const serviceIdsByBooking = new Map<number, number[]>();
+  visitServices.forEach((service) => {
+    const selected = serviceIdsByBooking.get(service.bookingId) ?? [];
+    selected.push(service.serviceId);
+    serviceIdsByBooking.set(service.bookingId, selected);
+  });
 
   return {
     profile,
-    visits,
+    visits: visits.map((visit) => ({ ...visit, serviceIds: serviceIdsByBooking.get(visit.id) ?? [] })),
     events,
     media,
     reviewRequests,

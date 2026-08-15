@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
@@ -6,6 +6,18 @@ import { useLocation } from 'wouter';
 import { downloadCalendarInvite, type CalendarInviteDetails } from '@/lib/calendarInvite';
 
 type Lang = 'ru' | 'en';
+
+const REPEAT_BOOKING_DRAFT_KEY = 'hairstyle-laboratory.repeat-booking-draft';
+
+type RepeatBookingDraft = {
+  serviceIds: number[];
+  clientName: string;
+  clientPhone: string;
+  clientEmail: string;
+  clientBirthday: string;
+  clientInstagram: string;
+  sourceBookingId: number;
+};
 
 const copy: Record<Lang, {
   title: string;
@@ -42,6 +54,7 @@ const copy: Record<Lang, {
   copyStatusLink: string;
   saved: string;
   copyFailed: string;
+  repeatReady: string;
   haircut: string;
   beard: string;
   bioPerm: string;
@@ -92,6 +105,7 @@ const copy: Record<Lang, {
     copyStatusLink: 'Скопировать ссылку на статус',
     saved: 'Сохранено',
     copyFailed: 'Не удалось скопировать. Сохраните номер заявки вручную.',
+    repeatReady: 'Повторная запись: данные клиента и прошлые услуги подставлены. Проверьте их и выберите дату и время.',
     haircut: 'Стрижка',
     beard: 'Моделирование бороды',
     bioPerm: 'Биохимическая завивка',
@@ -142,6 +156,7 @@ const copy: Record<Lang, {
     copyStatusLink: 'Copy status link',
     saved: 'Saved',
     copyFailed: 'Could not copy. Please save the reference number manually.',
+    repeatReady: 'Repeat visit: client details and previous services are filled in. Review them, then choose a date and time.',
     haircut: 'Haircut',
     beard: 'Beard modeling',
     bioPerm: 'Bio Perm',
@@ -191,11 +206,31 @@ export default function Booking() {
   const [calendarInvite, setCalendarInvite] = useState<CalendarInviteDetails | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [repeatDraftApplied, setRepeatDraftApplied] = useState(false);
 
   const createBookingMutation = trpc.bookings.create.useMutation();
   const { data: databaseServices, isLoading: servicesLoading, isError: servicesError } = trpc.services.list.useQuery();
   const servicesList = databaseServices ?? [];
   const servicesReady = !servicesLoading && !servicesError && servicesList.length > 0;
+
+  useEffect(() => {
+    try {
+      const rawDraft = window.sessionStorage.getItem(REPEAT_BOOKING_DRAFT_KEY);
+      if (!rawDraft) return;
+      window.sessionStorage.removeItem(REPEAT_BOOKING_DRAFT_KEY);
+      const draft = JSON.parse(rawDraft) as RepeatBookingDraft;
+      if (!Array.isArray(draft.serviceIds) || draft.serviceIds.length === 0 || !draft.clientName || !draft.clientPhone) return;
+      setSelectedServiceIds(Array.from(new Set(draft.serviceIds)));
+      setClientName(draft.clientName);
+      setClientPhone(draft.clientPhone);
+      setClientEmail(draft.clientEmail ?? '');
+      setClientBirthday(draft.clientBirthday ?? '');
+      setClientInstagram(draft.clientInstagram ?? '');
+      setRepeatDraftApplied(true);
+    } catch {
+      window.sessionStorage.removeItem(REPEAT_BOOKING_DRAFT_KEY);
+    }
+  }, []);
 
   const selectedServices = servicesList.filter((service) => selectedServiceIds.includes(service.id));
   const totalDuration = selectedServices.reduce((total, service) => total + service.durationMinutes, 0);
@@ -359,7 +394,7 @@ export default function Booking() {
         <div style={{ marginBottom: '3rem' }}>
           <p className="label-caps" style={{ marginBottom: '1rem' }}>Hairstyle Laboratory</p>
           <h2 style={{ fontStyle: 'italic', marginBottom: '0.5rem' }}>{c.title}</h2>
-          <p style={{ margin: 0 }}>{c.sub}</p>
+          <p style={{ margin: 0 }}>{repeatDraftApplied ? c.repeatReady : c.sub}</p>
         </div>
 
         <form onSubmit={handleSubmit}>

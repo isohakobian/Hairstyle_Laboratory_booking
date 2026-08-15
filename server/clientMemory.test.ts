@@ -1,5 +1,5 @@
 import { completeBooking, findOrCreateClient, getClientMemory } from './clientMemory';
-import { createBooking, getBookingByReference } from './db';
+import { createBookingWithServices, getBookingByReference } from './db';
 import { clearExampleTestBookings } from './testCleanup';
 import { afterAll, describe, expect, it } from 'vitest';
 
@@ -17,7 +17,7 @@ describe('client memory', () => {
       instagram: 'memory.client',
     });
     const referenceNumber = `CM${Date.now().toString(36)}`.slice(0, 12).toUpperCase();
-    await createBooking({
+    await createBookingWithServices({
       referenceNumber,
       serviceId: 1,
       serviceName: 'Haircut',
@@ -31,7 +31,7 @@ describe('client memory', () => {
       clientEmail: 'memory-client@example.com',
       clientId: client.id,
       status: 'confirmed',
-    });
+    }, [{ serviceId: 1, serviceName: 'Haircut', durationMinutes: 45, priceSummary: '15,000 ֏' }]);
     const booking = await getBookingByReference(referenceNumber);
     if (!booking) throw new Error('Test booking not found');
     await completeBooking(booking.id, 15000, 'Shorter on the sides next time');
@@ -43,5 +43,6 @@ describe('client memory', () => {
     expect(memory?.metrics.averageCheckAmd).toBe(15000);
     expect(memory?.metrics.popularServices).toContain('Haircut');
     expect(memory?.events.some(event => event.eventType === 'completed')).toBe(true);
+    expect(memory?.visits[0]?.serviceIds).toEqual([1]);
   });
 });
