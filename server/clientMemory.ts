@@ -66,7 +66,7 @@ export async function updateClientProfile(clientId: number, changes: {
 
 export async function createBookingEvent(input: {
   bookingId: number;
-  eventType: "created" | "confirmed" | "declined" | "rescheduled" | "completed" | "note";
+  eventType: "created" | "confirmed" | "declined" | "cancelled" | "rescheduled" | "completed" | "note";
   previousDate?: string | null;
   previousTime?: string | null;
   nextDate?: string | null;

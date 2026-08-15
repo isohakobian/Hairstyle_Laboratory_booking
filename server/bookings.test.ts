@@ -423,6 +423,32 @@ describe('Bookings API', () => {
       await expect(adminCaller.admin.confirmBooking({ id: booking.id })).rejects.toThrow(/verify the manual deposit/i);
       await adminCaller.admin.updateManualDepositStatus({ id: booking.id, status: 'verified' });
       await expect(adminCaller.admin.confirmBooking({ id: booking.id })).resolves.toEqual({ success: true });
+
+      const invalidReceiptBooking = await caller.bookings.create({
+        ...base,
+        bookingTime: '13:00',
+        clientName: 'Invalid Receipt Client',
+        clientPhone: '+37455000888',
+        clientEmail: 'invalid-receipt@example.com',
+        policyAccepted: true,
+        receipt: { fileName: 'invalid.png', mimeType: 'image/png', base64Data: 'cmVjZWlwdA==' },
+      });
+      await expect(adminCaller.admin.declineBookingForInvalidReceipt({ id: invalidReceiptBooking.id })).resolves.toEqual({ success: true });
+      const rejected = await caller.bookings.getByReference({ referenceNumber: invalidReceiptBooking.referenceNumber });
+      expect(rejected?.status).toBe('declined');
+      expect(rejected?.manualDepositStatus).toBe('waived');
+
+      const cancellable = await caller.bookings.create({
+        serviceIds: [haircutServiceId], bookingDate: '2099-12-29', bookingTime: '17:00',
+        clientName: 'Cancellation Client', clientPhone: '+37455000777', clientEmail: 'cancel@example.com', policyAccepted: true,
+      });
+      await expect(caller.bookings.cancelByClient({ referenceNumber: cancellable.referenceNumber, clientEmail: 'other@example.com', reason: 'Plans changed' })).rejects.toThrow(/could not be cancelled/i);
+      await expect(caller.bookings.cancelByClient({ referenceNumber: cancellable.referenceNumber, clientEmail: 'cancel@example.com', reason: 'Plans changed' })).resolves.toEqual({ success: true });
+      const cancelled = await caller.bookings.getByReference({ referenceNumber: cancellable.referenceNumber });
+      expect(cancelled?.status).toBe('cancelled');
+      expect(cancelled?.cancellationReason).toBe('Plans changed');
+      expect(await caller.availability.slots({ date: '2099-12-29', durationMinutes: 60 })).toContain('17:00');
+
       await adminCaller.admin.saveManualDepositSettings({
         recipientName: '', cardDetails: '', isEnabled: 'no', policyRu: 'Политика отмены', policyEn: 'Cancellation policy',
       });

@@ -16,9 +16,10 @@ import ServiceManager from '@/components/ServiceManager';
 import ReviewRequestTemplateEditor from '@/components/ReviewRequestTemplateEditor';
 import ManualDepositSettingsEditor from '@/components/ManualDepositSettingsEditor';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink } from '@/components/ui/pagination';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 type Tab = 'bookings' | 'calendar' | 'schedule' | 'services' | 'reviews' | 'clients' | 'news' | 'payment';
-type BookingStatusFilter = 'all' | 'pending' | 'confirmed' | 'declined';
+type BookingStatusFilter = 'all' | 'pending' | 'confirmed' | 'declined' | 'cancelled';
 type BookingSort = 'appointmentAsc' | 'appointmentDesc' | 'newest' | 'statusAsc';
 type ReviewRequestStatusFilter = 'all' | 'awaiting' | 'received';
 type ReviewRequestSort = 'sentDesc' | 'sentAsc' | 'receivedDesc';
@@ -49,12 +50,25 @@ const statusColors: Record<string, string> = {
   pending: 'hsl(35, 60%, 50%)',
   confirmed: 'hsl(142, 50%, 40%)',
   declined: 'hsl(0, 60%, 50%)',
+  cancelled: 'hsl(0, 0%, 48%)',
 };
 
 function DepositReceiptPreview({ bookingId, language }: { bookingId: number; language: string }) {
   const { data: url } = trpc.admin.manualDepositReceiptUrl.useQuery({ bookingId });
+  const [open, setOpen] = useState(false);
   if (!url) return <p style={{ ...labelStyle, margin: '0.75rem 0 0', fontSize: '0.5625rem' }}>{language === 'ru' ? 'Загружаю чек...' : 'Loading receipt...'}</p>;
-  return <a href={url} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', marginTop: '0.75rem', color: 'var(--gold-mid)', fontSize: '0.75rem', textDecoration: 'underline', textUnderlineOffset: '0.2rem' }}>{language === 'ru' ? 'Открыть чек оплаты' : 'Open payment receipt'}</a>;
+  return <>
+    <button type="button" onClick={() => setOpen(true)} style={{ display: 'inline-flex', marginTop: '0.75rem', padding: 0, color: 'var(--gold-mid)', fontSize: '0.75rem', textDecoration: 'underline', textUnderlineOffset: '0.2rem', border: 'none', background: 'transparent', cursor: 'zoom-in' }}>{language === 'ru' ? 'Увеличить чек' : 'Enlarge receipt'}</button>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent className="max-w-3xl p-5 bg-background text-foreground">
+        <DialogHeader><DialogTitle style={{ fontFamily: "'Playfair Display', serif", fontStyle: 'italic' }}>{language === 'ru' ? 'Чек предоплаты' : 'Deposit receipt'}</DialogTitle></DialogHeader>
+        <a href={url} target="_blank" rel="noreferrer" title={language === 'ru' ? 'Открыть оригинал в новой вкладке' : 'Open original in a new tab'} style={{ display: 'block', cursor: 'zoom-in' }}>
+          <img src={url} alt={language === 'ru' ? 'Загруженный клиентом чек предоплаты' : 'Client uploaded deposit receipt'} style={{ width: '100%', maxHeight: '72vh', objectFit: 'contain', border: '1px solid hsl(var(--border))', background: 'hsl(var(--secondary))' }} />
+        </a>
+        <p style={{ ...labelStyle, margin: 0, fontSize: '0.5625rem' }}>{language === 'ru' ? 'Нажмите на изображение, чтобы открыть оригинал.' : 'Click the image to open the original.'}</p>
+      </DialogContent>
+    </Dialog>
+  </>;
 }
 
 export default function AdminDashboard() {
@@ -182,6 +196,13 @@ export default function AdminDashboard() {
   const manualDepositStatusMutation = trpc.admin.updateManualDepositStatus.useMutation({
     onSuccess: () => {
       toast.success(language === 'ru' ? 'Статус предоплаты обновлён' : 'Deposit status updated');
+      refreshBookingLists();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const invalidReceiptMutation = trpc.admin.declineBookingForInvalidReceipt.useMutation({
+    onSuccess: () => {
+      toast.success(language === 'ru' ? 'Заявка отклонена: чек недействителен' : 'Booking declined: receipt is invalid');
       refreshBookingLists();
     },
     onError: (e) => toast.error(e.message),
@@ -387,6 +408,7 @@ export default function AdminDashboard() {
                         { id: 'pending', label: language === 'ru' ? 'Ожидают' : 'Pending' },
                         { id: 'confirmed', label: language === 'ru' ? 'Подтверждены' : 'Confirmed' },
                         { id: 'declined', label: language === 'ru' ? 'Отклонены' : 'Declined' },
+                        { id: 'cancelled', label: language === 'ru' ? 'Отменены' : 'Cancelled' },
                       ] as { id: BookingStatusFilter; label: string }[]).map(filter => (
                         <button
                           key={filter.id}
@@ -438,7 +460,7 @@ export default function AdminDashboard() {
                           <p style={{ ...labelStyle, margin: 0, fontSize: '0.5625rem' }}>{booking.referenceNumber}</p>
                         </div>
                         <span style={{ ...labelStyle, fontSize: '0.5625rem', color: statusColors[booking.status], border: `1px solid ${statusColors[booking.status]}`, padding: '0.25rem 0.625rem' }}>
-                          {booking.status === 'pending' ? (language === 'ru' ? 'Ожидание' : 'Pending') : booking.status === 'confirmed' ? (language === 'ru' ? 'Подтверждено' : 'Confirmed') : (language === 'ru' ? 'Отклонено' : 'Declined')}
+                          {booking.status === 'pending' ? (language === 'ru' ? 'Ожидание' : 'Pending') : booking.status === 'confirmed' ? (language === 'ru' ? 'Подтверждено' : 'Confirmed') : booking.status === 'cancelled' ? (language === 'ru' ? 'Отменено клиентом' : 'Cancelled by client') : (language === 'ru' ? 'Отклонено' : 'Declined')}
                         </span>
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(8rem, 1fr))', gap: '0.75rem 1.25rem', marginBottom: '1rem' }}>
@@ -463,9 +485,10 @@ export default function AdminDashboard() {
                           <p style={{ ...labelStyle, margin: 0, fontSize: '0.5625rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Предоплата' : 'Manual deposit'}</p>
                           <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem' }}>{booking.manualDepositAmountAmd.toLocaleString()} ֏ · {booking.manualDepositStatus === 'verified' ? (language === 'ru' ? 'подтверждена' : 'verified') : booking.manualDepositStatus === 'proof_received' ? (language === 'ru' ? 'чек получен' : 'receipt received') : (language === 'ru' ? 'ожидает проверки' : 'awaiting review')}</p>
                           {booking.manualDepositReceiptKey && <DepositReceiptPreview bookingId={booking.id} language={language} />}
-                          {booking.manualDepositStatus === 'proof_received' && <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginTop: '0.8rem' }}><button type="button" className="btn-primary" style={{ fontSize: '0.5625rem', padding: '0.55rem 0.75rem' }} disabled={manualDepositStatusMutation.isPending} onClick={() => manualDepositStatusMutation.mutate({ id: booking.id, status: 'verified' })}>{language === 'ru' ? 'Подтвердить оплату' : 'Verify payment'}</button><button type="button" className="btn-outline" style={{ fontSize: '0.5625rem', padding: '0.55rem 0.75rem' }} disabled={manualDepositStatusMutation.isPending} onClick={() => manualDepositStatusMutation.mutate({ id: booking.id, status: 'waived' })}>{language === 'ru' ? 'Не засчитывать' : 'Waive'}</button></div>}
+                          {booking.manualDepositStatus === 'proof_received' && <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginTop: '0.8rem' }}><button type="button" className="btn-primary" style={{ fontSize: '0.5625rem', padding: '0.55rem 0.75rem' }} disabled={manualDepositStatusMutation.isPending || invalidReceiptMutation.isPending} onClick={() => manualDepositStatusMutation.mutate({ id: booking.id, status: 'verified' })}>{language === 'ru' ? 'Подтвердить оплату' : 'Verify payment'}</button><button type="button" className="btn-outline" style={{ fontSize: '0.5625rem', padding: '0.55rem 0.75rem' }} disabled={manualDepositStatusMutation.isPending || invalidReceiptMutation.isPending} onClick={() => invalidReceiptMutation.mutate({ id: booking.id })}>{language === 'ru' ? 'Чек недействителен — отклонить' : 'Invalid receipt — decline'}</button></div>}
                         </div>
                       )}
+                      {booking.status === 'cancelled' && booking.cancellationReason && <p style={{ margin: '0 0 1rem', padding: '0.75rem', borderLeft: '2px solid hsl(var(--muted-foreground))', background: 'hsl(var(--secondary))', color: 'hsl(var(--muted-foreground))', fontSize: '0.8125rem', lineHeight: 1.5 }}><strong style={{ color: 'hsl(var(--foreground))' }}>{language === 'ru' ? 'Причина отмены: ' : 'Cancellation reason: '}</strong>{booking.cancellationReason}</p>}
                       {booking.clientId && (
                         <button
                           type="button"

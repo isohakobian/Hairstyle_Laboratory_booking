@@ -166,3 +166,11 @@
 - [x] Let clients securely upload a JPEG, PNG, or WebP payment receipt with their booking request
 - [x] Include the receipt in Isaac’s Gmail booking notification and show it privately in the admin booking view
 - [x] Record the receipt and owner confirmation state without accepting card data on the website
+- [x] Let admin open an uploaded payment receipt in an enlarged in-panel preview
+- [x] Let admin decline a booking when its payment receipt is invalid, with a recorded decision
+- [x] Show a clear client-facing success state after receipt upload: awaiting stylist confirmation
+- [x] Let a client cancel their own pending or confirmed booking through a secure website flow
+- [x] Collect and show the client’s cancellation reason in the admin dashboard and booking history
+- [x] Render client cancellation events and reasons in the Client Memory history timeline
+- [x] Add UI regression coverage proving a cancelled booking reason appears in the Client Memory history timeline
+- [x] Add UI regression coverage proving a cancelled booking card shows its cancellation reason in the admin dashboard

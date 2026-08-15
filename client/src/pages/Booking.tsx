@@ -122,8 +122,8 @@ const copy: Record<Lang, {
     submit: 'Отправить заявку',
     back: '← Назад',
     sentTitle: 'Заявка отправлена',
-    sentSub: 'Ожидает подтверждения Isaac.',
-    statusLabel: 'Статус: ожидание',
+    sentSub: 'Ожидает подтверждения мастером.',
+    statusLabel: 'Статус: ожидает подтверждения мастером',
     refLabel: 'Номер заявки',
     checkStatus: 'Проверить статус',
     backHome: 'На главную',
@@ -181,8 +181,8 @@ const copy: Record<Lang, {
     submit: 'Submit booking',
     back: '← Back',
     sentTitle: 'Request sent',
-    sentSub: 'Waiting for Isaac\'s confirmation.',
-    statusLabel: 'Status: pending',
+    sentSub: 'Awaiting stylist confirmation.',
+    statusLabel: 'Status: awaiting stylist confirmation',
     refLabel: 'Reference number',
     checkStatus: 'Check status',
     backHome: 'Back to home',
@@ -412,7 +412,7 @@ export default function Booking() {
             </div>
 
             <h2 style={{ marginBottom: '1rem', fontStyle: 'italic' }}>{c.sentTitle}</h2>
-            <p style={{ marginBottom: '0.5rem' }}>{c.sentSub}</p>
+            <p style={{ marginBottom: '0.5rem' }}>{manualDepositRequired && paymentReceipt ? (language === 'ru' ? 'Чек загружен вместе с заявкой. Isaac проверит оплату и подтвердит визит.' : 'Your receipt was uploaded with the request. Isaac will verify the payment and confirm the visit.') : c.sentSub}</p>
             <p className="label-caps" style={{ marginBottom: '3rem' }}>{c.statusLabel}</p>
 
             <div style={{ borderTop: '1px solid hsl(var(--border))', borderBottom: '1px solid hsl(var(--border))', padding: '1.5rem 0', marginBottom: '3rem' }}>

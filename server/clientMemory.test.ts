@@ -1,5 +1,5 @@
 import { completeBooking, findOrCreateClient, getClientMemory } from './clientMemory';
-import { createBookingWithServices, getBookingByReference } from './db';
+import { cancelBookingByClient, createBookingWithServices, getBookingByReference } from './db';
 import { clearExampleTestBookings } from './testCleanup';
 import { afterAll, describe, expect, it } from 'vitest';
 
@@ -44,5 +44,40 @@ describe('client memory', () => {
     expect(memory?.metrics.popularServices).toContain('Haircut');
     expect(memory?.events.some(event => event.eventType === 'completed')).toBe(true);
     expect(memory?.visits[0]?.serviceIds).toEqual([1]);
+  });
+
+  it('keeps a client cancellation reason in the private visit history', async () => {
+    const client = await findOrCreateClient({
+      name: 'Cancelled Memory Client',
+      phone: '+37455000888',
+      email: 'cancelled-memory-client@example.com',
+    });
+    const referenceNumber = `CX${Date.now().toString(36)}`.slice(0, 12).toUpperCase();
+    await createBookingWithServices({
+      referenceNumber,
+      serviceId: 1,
+      serviceName: 'Haircut',
+      serviceSummary: 'Haircut',
+      totalDurationMinutes: 45,
+      totalPriceSummary: '15,000 ֏',
+      bookingDate: '2099-12-13',
+      bookingTime: '11:00',
+      clientName: 'Cancelled Memory Client',
+      clientPhone: '+37455000888',
+      clientEmail: 'cancelled-memory-client@example.com',
+      clientId: client.id,
+      status: 'confirmed',
+    }, [{ serviceId: 1, serviceName: 'Haircut', durationMinutes: 45, priceSummary: '15,000 ֏' }]);
+
+    const result = await cancelBookingByClient({
+      referenceNumber,
+      clientEmail: 'cancelled-memory-client@example.com',
+      reason: 'Plans changed',
+    });
+
+    expect(result.cancelled).toBe(true);
+    const memory = await getClientMemory(client.id);
+    expect(memory?.visits.some(visit => visit.status === 'cancelled')).toBe(true);
+    expect(memory?.events.some(event => event.eventType === 'cancelled' && event.note === 'Plans changed')).toBe(true);
   });
 });

@@ -5,12 +5,12 @@ import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import {
   getAllServices, getServiceById, createBookingWithServices, getBookingByReference, getBookingById, BookingIntervalConflictError,
-  getBookingsByEmail, getAllBookings, updateBookingStatus, isTimeSlotAvailable,
+  getBookingsByEmail, getAllBookings, updateBookingStatus, cancelBookingByClient, isTimeSlotAvailable,
   getBlockedDates, blockDate, unblockDate, createReview, getReviewByBookingId, createReviewToken,
   getReviewTokenByHash, markReviewTokenUsed,
   getPublishedReviews, getAllReviews, updateReviewPublished, createManagedService, setServiceActive, updateManagedService,
   createBookingStatusRecoveryToken, claimBookingStatusRecoveryToken, getSafeBookingStatusesByEmail,
-  deleteBookingAndRelatedData, getAdminTodaySummary, getClientDirectory, getBookingPage, getManualDepositSettings, getReviewRequestDashboard, getReviewRequestEmailTemplate, getReviewRequestPage, getReviewRequestStats, saveManualDepositSettings, saveReviewRequestEmailTemplate, updateManualDepositStatus,
+  deleteBookingAndRelatedData, declineBookingForInvalidReceipt, getAdminTodaySummary, getClientDirectory, getBookingPage, getManualDepositSettings, getReviewRequestDashboard, getReviewRequestEmailTemplate, getReviewRequestPage, getReviewRequestStats, saveManualDepositSettings, saveReviewRequestEmailTemplate, updateManualDepositStatus,
 } from "./db";
 import { TRPCError } from "@trpc/server";
 import { sendBookingEmails, sendBookingStatusRecoveryEmail, sendConfirmedBookingEmail, sendReviewRequestEmail } from "./bookingEmail";
@@ -249,6 +249,18 @@ export const appRouter = router({
       .input(z.object({ referenceNumber: z.string() }))
       .query(({ input }) => getBookingByReference(input.referenceNumber)),
 
+    cancelByClient: publicProcedure
+      .input(z.object({
+        referenceNumber: z.string().trim().min(6).max(12).transform(value => value.toUpperCase()),
+        clientEmail: z.string().trim().email().max(320).transform(value => value.toLowerCase()),
+        reason: z.string().trim().min(3).max(1000),
+      }))
+      .mutation(async ({ input }) => {
+        const result = await cancelBookingByClient(input);
+        if (!result.cancelled) throw new TRPCError({ code: "BAD_REQUEST", message: "The booking could not be cancelled" });
+        return { success: true };
+      }),
+
     requestStatusRecovery: publicProcedure
       .input(z.object({ clientEmail: z.string().trim().email() }))
       .mutation(async ({ input }) => {
@@ -341,6 +353,13 @@ export const appRouter = router({
     updateManualDepositStatus: adminMiddleware
       .input(z.object({ id: z.number().int().positive(), status: z.enum(["awaiting_proof", "proof_received", "verified", "waived"]) }))
       .mutation(({ input }) => updateManualDepositStatus(input.id, input.status)),
+    declineBookingForInvalidReceipt: adminMiddleware
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        const result = await declineBookingForInvalidReceipt(input.id);
+        if (!result.declined) throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found" });
+        return { success: true };
+      }),
     manualDepositReceiptUrl: adminMiddleware
       .input(z.object({ bookingId: z.number().int().positive() }))
       .query(async ({ input }) => {
@@ -352,7 +371,7 @@ export const appRouter = router({
       .input(z.object({
         page: z.number().int().min(1),
         pageSize: z.number().int().min(1).max(50),
-        status: z.enum(["all", "pending", "confirmed", "declined"]).optional(),
+        status: z.enum(["all", "pending", "confirmed", "declined", "cancelled"]).optional(),
         search: z.string().trim().max(160).optional(),
         sort: z.enum(["appointmentAsc", "appointmentDesc", "newest", "statusAsc"]).optional(),
       }))

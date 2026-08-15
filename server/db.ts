@@ -272,7 +272,7 @@ export async function getAllBookings() {
 export type BookingPageInput = {
   page: number;
   pageSize: number;
-  status?: "all" | "pending" | "confirmed" | "declined";
+  status?: "all" | "pending" | "confirmed" | "declined" | "cancelled";
   search?: string;
   sort?: "appointmentAsc" | "appointmentDesc" | "newest" | "statusAsc";
 };
@@ -358,10 +358,31 @@ export async function getBookingServices(bookingId: number) {
   return db.select().from(bookingServices).where(eq(bookingServices.bookingId, bookingId));
 }
 
-export async function updateBookingStatus(id: number, status: "pending" | "confirmed" | "declined") {
+export async function updateBookingStatus(id: number, status: "pending" | "confirmed" | "declined" | "cancelled") {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   return db.update(bookings).set({ status }).where(eq(bookings.id, id));
+}
+
+export async function cancelBookingByClient(input: { referenceNumber: string; clientEmail: string; reason: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const booking = await getBookingByReference(input.referenceNumber);
+  if (!booking || !booking.clientEmail || booking.clientEmail.trim().toLowerCase() !== input.clientEmail.trim().toLowerCase()) {
+    return { cancelled: false, reason: "not_found" as const };
+  }
+  if (booking.status !== "pending" && booking.status !== "confirmed") {
+    return { cancelled: false, reason: "unavailable" as const };
+  }
+  await db.transaction(async (tx) => {
+    await tx.update(bookings).set({
+      status: "cancelled",
+      cancelledAt: new Date(),
+      cancellationReason: input.reason,
+    }).where(eq(bookings.id, booking.id));
+    await tx.insert(bookingEvents).values({ bookingId: booking.id, eventType: "cancelled", note: input.reason });
+  });
+  return { cancelled: true, bookingId: booking.id };
 }
 
 export async function getRepeatFollowUpDueBookings(visitDate: string) {
@@ -648,6 +669,18 @@ export async function updateManualDepositStatus(id: number, status: "awaiting_pr
     manualDepositConfirmedAt: status === "verified" ? new Date() : null,
   }).where(eq(bookings.id, id));
   return getBookingById(id);
+}
+
+export async function declineBookingForInvalidReceipt(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const booking = await getBookingById(id);
+  if (!booking) return { declined: false };
+  await db.transaction(async (tx) => {
+    await tx.update(bookings).set({ status: "declined", manualDepositStatus: "waived" }).where(eq(bookings.id, id));
+    await tx.insert(bookingEvents).values({ bookingId: id, eventType: "declined", note: "Payment receipt was marked invalid by the owner." });
+  });
+  return { declined: true };
 }
 
 export async function attachManualDepositReceipt(id: number, receipt: { storageKey: string; fileName: string; mimeType: string }) {

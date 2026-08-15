@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
 import { useLocation } from 'wouter';
@@ -173,7 +173,8 @@ export default function ClientMemoryPanel({ clientId, language, onClose }: Props
           {memory.visits.map(visit => {
             const media = memory.media.filter(item => item.bookingId === visit.id);
             const reviewRequests = memory.reviewRequests.filter(item => item.bookingId === visit.id);
-            const visitNotes = memory.events.filter(item => item.bookingId === visit.id && item.note);
+            const cancellationEvents = memory.events.filter(item => item.bookingId === visit.id && item.eventType === 'cancelled');
+            const visitNotes = memory.events.filter(item => item.bookingId === visit.id && item.note && item.eventType !== 'cancelled');
             const repeatStatus = visit.repeatFollowUpSentAt
               ? (ru ? `Письмо на повторную запись отправлено: ${new Date(visit.repeatFollowUpSentAt).toLocaleDateString()}` : `Repeat-booking email sent: ${new Date(visit.repeatFollowUpSentAt).toLocaleDateString()}`)
               : visit.completedAt
@@ -182,8 +183,9 @@ export default function ClientMemoryPanel({ clientId, language, onClose }: Props
             return <article key={visit.id} style={{ padding: '1rem', border: '1px solid hsl(var(--border))' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
                 <div><p style={{ margin: 0, fontFamily: "'Playfair Display', serif", fontWeight: 700 }}>{visit.bookingDate} · {visit.bookingTime}</p><p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: 'hsl(var(--muted-foreground))' }}>{visit.serviceSummary || visit.serviceName} · {visit.totalDurationMinutes} {ru ? 'мин' : 'min'} · {visit.finalPriceAmd ? formatAmd(visit.finalPriceAmd) : visit.totalPriceSummary}</p></div>
-                <span style={{ ...labelStyle, color: visit.completedAt ? 'hsl(142 50% 40%)' : 'hsl(var(--muted-foreground))' }}>{visit.completedAt ? (ru ? 'Завершён' : 'Completed') : (ru ? 'В процессе' : 'In progress')}</span>
+                <span style={{ ...labelStyle, color: visit.completedAt ? 'hsl(142 50% 40%)' : visit.status === 'cancelled' ? 'hsl(0 0% 48%)' : 'hsl(var(--muted-foreground))' }}>{visit.completedAt ? (ru ? 'Завершён' : 'Completed') : visit.status === 'cancelled' ? (ru ? 'Отменён клиентом' : 'Cancelled by client') : (ru ? 'В процессе' : 'In progress')}</span>
               </div>
+              {cancellationEvents.length > 0 && <div style={{ marginTop: '0.85rem', padding: '0.7rem 0.75rem', borderLeft: '2px solid hsl(0 0% 48%)', background: 'hsl(var(--secondary))' }}><p style={{ ...labelStyle, margin: 0, color: 'hsl(0 0% 48%)' }}>{ru ? 'Отмена клиентом' : 'Client cancellation'}</p>{cancellationEvents.map(event => <p key={event.id} style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', lineHeight: 1.45, color: 'hsl(var(--foreground))' }}>{event.note || (ru ? 'Причина не указана' : 'No reason provided')}</p>)}</div>}
               {visit.completedAt && visit.serviceIds.length > 0 && <button type="button" className="btn-outline" onClick={() => repeatBooking(visit)} style={{ marginTop: '0.85rem', padding: '0.55rem 0.8rem', fontSize: '0.625rem' }}>{ru ? 'Запланировать повтор' : 'Plan a repeat visit'}</button>}
               <p style={{ margin: '0.85rem 0 0', padding: '0.65rem 0.75rem', background: 'hsl(var(--secondary))', color: 'hsl(var(--muted-foreground))', fontSize: '0.75rem', lineHeight: 1.45 }}>{repeatStatus}</p>
               {visitNotes.length > 0 && <div style={{ marginTop: '0.85rem' }}><p style={{ ...labelStyle, margin: '0 0 0.35rem' }}>{ru ? 'Заметки визита' : 'Visit notes'}</p>{visitNotes.map(note => <p key={note.id} style={{ margin: '0.35rem 0', fontSize: '0.8125rem', color: 'hsl(var(--foreground))' }}>{note.note}</p>)}</div>}

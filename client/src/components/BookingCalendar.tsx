@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 
 type Language = 'ru' | 'en';
-type BookingStatus = 'pending' | 'confirmed' | 'declined';
+type BookingStatus = 'pending' | 'confirmed' | 'declined' | 'cancelled';
 
 export type CalendarBooking = {
   id: number;
@@ -26,6 +26,7 @@ const statusColor: Record<BookingStatus, string> = {
   pending: 'hsl(35, 60%, 50%)',
   confirmed: 'hsl(142, 50%, 40%)',
   declined: 'hsl(0, 60%, 50%)',
+  cancelled: 'hsl(0, 0%, 48%)',
 };
 
 function toYMD(date: Date) {
@@ -85,8 +86,8 @@ export default function BookingCalendar({ language, bookings }: Props) {
   };
 
   const statusLabel = (status: BookingStatus) => {
-    if (language === 'ru') return status === 'pending' ? 'Ожидание' : status === 'confirmed' ? 'Подтверждено' : 'Отклонено';
-    return status === 'pending' ? 'Pending' : status === 'confirmed' ? 'Confirmed' : 'Declined';
+    if (language === 'ru') return status === 'pending' ? 'Ожидание' : status === 'confirmed' ? 'Подтверждено' : status === 'cancelled' ? 'Отменено клиентом' : 'Отклонено';
+    return status === 'pending' ? 'Pending' : status === 'confirmed' ? 'Confirmed' : status === 'cancelled' ? 'Cancelled by client' : 'Declined';
   };
 
   const labelStyle: React.CSSProperties = {
@@ -159,7 +160,7 @@ export default function BookingCalendar({ language, bookings }: Props) {
       </div>
 
       <div style={{ display: 'flex', gap: '1rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
-        {(['pending', 'confirmed', 'declined'] as BookingStatus[]).map(status => (
+        {(['pending', 'confirmed', 'declined', 'cancelled'] as BookingStatus[]).map(status => (
           <div key={status} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: statusColor[status] }} />
             <span style={{ ...labelStyle, fontSize: '0.5625rem' }}>{statusLabel(status)}</span>
