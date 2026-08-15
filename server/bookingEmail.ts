@@ -1,6 +1,6 @@
 import nodemailer from "nodemailer";
 import { buildCalendarInvite } from "./calendarInvite";
-import { getReviewRequestEmailTemplate, type ReviewRequestEmailTemplateInput } from "./db";
+import { getReviewRequestEmailTemplate, type ReviewRequestEmailTemplateInput, type WeeklyBookingSummary } from "./db";
 
 export type BookingEmailDetails = {
   referenceNumber: string;
@@ -222,6 +222,48 @@ export function buildRepeatFollowUpEmail(details: BookingEmailDetails, bookingUr
   };
 }
 
+export function buildAppointmentReminderEmail(details: BookingEmailDetails, statusUrl: string): EmailMessage {
+  const safeName = escapeHtml(details.clientName);
+  const safeUrl = escapeHtml(statusUrl);
+  return {
+    subject: "Reminder: your visit is tomorrow — Isaac",
+    text: [
+      `Hi, ${details.clientName}.`,
+      "A friendly reminder that your appointment with me is tomorrow.",
+      bookingDetailsText(details),
+      `Booking status: ${statusUrl}`,
+      "See you soon,",
+      "Isaac",
+      "",
+      `Здравствуйте, ${details.clientName}.`,
+      "Напоминаю, что ваша запись ко мне запланирована на завтра.",
+      bookingDetailsText(details),
+      `Статус записи: ${statusUrl}`,
+      "До встречи,",
+      "Isaac",
+    ].join("\n"),
+    html: `<!doctype html><html><body style="margin:0;background:#F7F5F1;font-family:Arial,sans-serif;color:#17191E;"><div style="max-width:600px;margin:0 auto;padding:36px 24px;"><p style="margin:0 0 8px;color:#A17A2C;font-size:11px;font-weight:700;letter-spacing:2px;">ISAAC HAKOBIAN</p><h1 style="margin:0 0 18px;font-family:Georgia,serif;font-size:32px;line-height:1.1;">Your visit is tomorrow</h1><p style="margin:0 0 8px;font-size:15px;line-height:1.6;">Hi, ${safeName}. A friendly reminder that your appointment with me is tomorrow.</p><p style="margin:0 0 24px;font-size:15px;line-height:1.6;">Напоминаю, что ваша запись ко мне запланирована на завтра.</p><div style="background:#FFFFFF;border:1px solid #E4DED5;padding:24px;"><table style="border-collapse:collapse;width:100%;">${bookingDetailsHtml(details)}</table></div><a href="${safeUrl}" style="display:inline-block;margin-top:24px;background:#17191E;color:#FFFFFF;text-decoration:none;padding:14px 20px;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">Booking status / Статус записи</a><p style="margin:26px 0 0;font-size:15px;line-height:1.6;">See you soon,<br><strong>Isaac</strong></p></div></body></html>`,
+  };
+}
+
+export function buildWeeklyBookingSummaryEmail(summary: WeeklyBookingSummary): EmailMessage {
+  const period = `${summary.start.toLocaleDateString("en-GB", { timeZone: "Asia/Yerevan" })}–${new Date(summary.end.getTime() - 1).toLocaleDateString("en-GB", { timeZone: "Asia/Yerevan" })}`;
+  const rows: Array<[string, number]> = [
+    ["New requests / Новые заявки", summary.newBookings],
+    ["Cancelled / Отменено", summary.cancelledBookings],
+    ["Pending now / Ожидают решения", summary.pendingBookings],
+    ["Confirmed now / Подтверждено", summary.confirmedBookings],
+    ["Completed last week / Завершено за неделю", summary.completedBookings],
+  ];
+  const textRows = rows.map(([label, value]) => `${label}: ${value}`).join("\n");
+  const htmlRows = rows.map(([label, value]) => `<tr><td style="padding:9px 14px 9px 0;color:#6B7280;font-size:13px;">${label}</td><td style="padding:9px 0;color:#17191E;font-size:16px;font-weight:700;text-align:right;">${value}</td></tr>`).join("");
+  return {
+    subject: `Weekly booking summary — ${period}`,
+    text: ["Hairstyle Laboratory weekly summary", `Period: ${period}`, "", textRows, "", "Isaac"].join("\n"),
+    html: `<!doctype html><html><body style="margin:0;background:#F7F5F1;font-family:Arial,sans-serif;color:#17191E;"><div style="max-width:600px;margin:0 auto;padding:36px 24px;"><p style="margin:0 0 8px;color:#A17A2C;font-size:11px;font-weight:700;letter-spacing:2px;">HAIRSTYLE LABORATORY</p><h1 style="margin:0 0 8px;font-family:Georgia,serif;font-size:32px;line-height:1.1;">Weekly booking summary</h1><p style="margin:0 0 24px;color:#6B7280;font-size:14px;">${period}</p><div style="background:#FFFFFF;border:1px solid #E4DED5;padding:24px;"><table style="border-collapse:collapse;width:100%;">${htmlRows}</table></div><p style="margin:22px 0 0;color:#6B7280;font-size:12px;">Automatic weekly overview for Isaac.</p></div></body></html>`,
+  };
+}
+
 function getMailTransport() {
   const user = process.env.GMAIL_SMTP_USER;
   const pass = process.env.GMAIL_SMTP_APP_PASSWORD;
@@ -338,6 +380,38 @@ export async function sendReviewRequestEmail(details: BookingEmailDetails, revie
     text: email.text,
     html: email.html,
     headers: { "X-Booking-Reference": details.referenceNumber },
+  });
+}
+
+export async function sendAppointmentReminderEmail(details: BookingEmailDetails, statusUrl: string) {
+  if (process.env.NODE_ENV === "test" || !details.clientEmail) return { skipped: true } as const;
+  const config = getMailTransport();
+  if (!config) return { skipped: true } as const;
+  const email = buildAppointmentReminderEmail(details, statusUrl);
+  return config.transport.sendMail({
+    from: `Hairstyle Laboratory <${config.user}>`,
+    to: details.clientEmail,
+    replyTo: config.user,
+    subject: email.subject,
+    text: email.text,
+    html: email.html,
+    headers: { "X-Booking-Reference": details.referenceNumber, "X-Booking-Email-Type": "appointment-reminder" },
+  });
+}
+
+export async function sendWeeklyBookingSummaryEmail(summary: WeeklyBookingSummary) {
+  if (process.env.NODE_ENV === "test") return { skipped: true } as const;
+  const config = getMailTransport();
+  if (!config) return { skipped: true } as const;
+  const email = buildWeeklyBookingSummaryEmail(summary);
+  return config.transport.sendMail({
+    from: `Hairstyle Laboratory <${config.user}>`,
+    to: config.user,
+    replyTo: config.user,
+    subject: email.subject,
+    text: email.text,
+    html: email.html,
+    headers: { "X-Booking-Email-Type": "weekly-summary" },
   });
 }
 

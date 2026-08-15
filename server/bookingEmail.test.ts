@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildClientBookingEmail, buildConfiguredReviewRequestEmail, buildOwnerBookingEmail, buildRepeatFollowUpEmail, buildReviewRequestEmail } from "./bookingEmail";
+import { buildAppointmentReminderEmail, buildClientBookingEmail, buildConfiguredReviewRequestEmail, buildOwnerBookingEmail, buildRepeatFollowUpEmail, buildReviewRequestEmail, buildWeeklyBookingSummaryEmail } from "./bookingEmail";
 
 const booking = {
   referenceNumber: "ABC123",
@@ -64,5 +64,26 @@ describe("booking email templates", () => {
     expect(email.text).toContain("буду рад снова вас видеть");
     expect(email.html).toContain("https://example.com/booking");
     expect(email.html).toContain("Isaac &lt;Client&gt;");
+  });
+
+  it("creates a bilingual appointment reminder with booking details", () => {
+    const email = buildAppointmentReminderEmail(booking, "https://example.com/status");
+
+    expect(email.subject).toContain("visit is tomorrow");
+    expect(email.text).toContain("Напоминаю, что ваша запись ко мне запланирована на завтра.");
+    expect(email.text).toContain("https://example.com/status");
+    expect(email.html).toContain("Isaac &lt;Client&gt;");
+  });
+
+  it("creates an owner weekly summary with the main booking metrics", () => {
+    const email = buildWeeklyBookingSummaryEmail({
+      start: new Date("2026-08-03T20:00:00.000Z"), end: new Date("2026-08-10T20:00:00.000Z"),
+      newBookings: 8, cancelledBookings: 2, pendingBookings: 1, confirmedBookings: 4, completedBookings: 6,
+    });
+
+    expect(email.subject).toContain("Weekly booking summary");
+    expect(email.text).toContain("New requests / Новые заявки: 8");
+    expect(email.text).toContain("Cancelled / Отменено: 2");
+    expect(email.html).toContain("Confirmed now / Подтверждено");
   });
 });

@@ -174,3 +174,7 @@
 - [x] Render client cancellation events and reasons in the Client Memory history timeline
 - [x] Add UI regression coverage proving a cancelled booking reason appears in the Client Memory history timeline
 - [x] Add UI regression coverage proving a cancelled booking card shows its cancellation reason in the admin dashboard
+- [x] Send each client one bilingual Gmail reminder approximately 24 hours before an active appointment
+- [x] Prevent duplicate client reminders when a scheduled task retries or runs more than once
+- [x] Send Isaac a weekly Gmail summary of new, cancelled, pending, confirmed, and completed bookings
+- [ ] Add secure scheduled handlers, regression coverage, and production Heartbeat schedules for reminders and weekly summaries

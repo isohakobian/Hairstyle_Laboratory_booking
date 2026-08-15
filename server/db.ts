@@ -1,6 +1,6 @@
-import { and, asc, count, desc, eq, isNotNull, isNull, like, lt, lte, or } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, isNotNull, isNull, like, lt, lte, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, InsertBooking, InsertBookingService, users, services, bookings, bookingServices, reviewTokens, bookingStatusRecoveryTokens, bookingEvents, visitMedia, reviewRequestHistory, reviews, clients, emailTemplates, availabilityWindows, manualDepositSettings } from "../drizzle/schema";
+import { InsertUser, InsertBooking, InsertBookingService, users, services, bookings, bookingServices, reviewTokens, bookingStatusRecoveryTokens, bookingEvents, visitMedia, reviewRequestHistory, reviews, clients, emailTemplates, availabilityWindows, manualDepositSettings, automationEmailDeliveries } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -422,6 +422,104 @@ export async function releaseRepeatFollowUpClaim(bookingId: number) {
   return db.update(bookings)
     .set({ repeatFollowUpClaimedAt: null })
     .where(and(eq(bookings.id, bookingId), isNull(bookings.repeatFollowUpSentAt)));
+}
+
+export async function getAppointmentReminderDueBookings(bookingDate: string, startTime: string, endTime: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(bookings).where(and(
+    eq(bookings.status, "confirmed"),
+    eq(bookings.bookingDate, bookingDate),
+    gte(bookings.bookingTime, startTime),
+    lt(bookings.bookingTime, endTime),
+    isNull(bookings.appointmentReminderSentAt),
+  ));
+}
+
+export async function claimAppointmentReminder(bookingId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const staleClaimBefore = new Date(Date.now() - 60 * 60 * 1000);
+  return db.update(bookings).set({ appointmentReminderClaimedAt: new Date() }).where(and(
+    eq(bookings.id, bookingId),
+    isNull(bookings.appointmentReminderSentAt),
+    or(isNull(bookings.appointmentReminderClaimedAt), lt(bookings.appointmentReminderClaimedAt, staleClaimBefore)),
+  ));
+}
+
+export async function markAppointmentReminderSent(bookingId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(bookings).set({ appointmentReminderSentAt: new Date() })
+    .where(and(eq(bookings.id, bookingId), isNull(bookings.appointmentReminderSentAt)));
+}
+
+export async function releaseAppointmentReminderClaim(bookingId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(bookings).set({ appointmentReminderClaimedAt: null })
+    .where(and(eq(bookings.id, bookingId), isNull(bookings.appointmentReminderSentAt)));
+}
+
+export type WeeklyBookingSummary = {
+  start: Date;
+  end: Date;
+  newBookings: number;
+  cancelledBookings: number;
+  pendingBookings: number;
+  confirmedBookings: number;
+  completedBookings: number;
+};
+
+function resultCount(rows: Array<{ count: number }>) {
+  return Number(rows[0]?.count ?? 0);
+}
+
+export async function getWeeklyBookingSummary(start: Date, end: Date): Promise<WeeklyBookingSummary> {
+  const db = await getDb();
+  if (!db) return { start, end, newBookings: 0, cancelledBookings: 0, pendingBookings: 0, confirmedBookings: 0, completedBookings: 0 };
+  const [newRows, cancelledRows, pendingRows, confirmedRows, completedRows] = await Promise.all([
+    db.select({ count: count() }).from(bookings).where(and(gte(bookings.createdAt, start), lt(bookings.createdAt, end))),
+    db.select({ count: count() }).from(bookings).where(and(gte(bookings.cancelledAt, start), lt(bookings.cancelledAt, end))),
+    db.select({ count: count() }).from(bookings).where(eq(bookings.status, "pending")),
+    db.select({ count: count() }).from(bookings).where(eq(bookings.status, "confirmed")),
+    db.select({ count: count() }).from(bookings).where(and(gte(bookings.completedAt, start), lt(bookings.completedAt, end))),
+  ]);
+  return {
+    start,
+    end,
+    newBookings: resultCount(newRows),
+    cancelledBookings: resultCount(cancelledRows),
+    pendingBookings: resultCount(pendingRows),
+    confirmedBookings: resultCount(confirmedRows),
+    completedBookings: resultCount(completedRows),
+  };
+}
+
+export async function claimAutomationEmailDelivery(deliveryKey: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const now = new Date();
+  const staleClaimBefore = new Date(now.getTime() - 60 * 60 * 1000);
+  return db.insert(automationEmailDeliveries).values({ deliveryKey, claimedAt: now }).onDuplicateKeyUpdate({
+    set: {
+      claimedAt: sql`IF(${automationEmailDeliveries.sentAt} IS NULL AND (${automationEmailDeliveries.claimedAt} IS NULL OR ${automationEmailDeliveries.claimedAt} < ${staleClaimBefore}), VALUES(claimedAt), ${automationEmailDeliveries.claimedAt})`,
+    },
+  });
+}
+
+export async function markAutomationEmailDeliverySent(deliveryKey: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(automationEmailDeliveries).set({ sentAt: new Date() })
+    .where(and(eq(automationEmailDeliveries.deliveryKey, deliveryKey), isNull(automationEmailDeliveries.sentAt)));
+}
+
+export async function releaseAutomationEmailDeliveryClaim(deliveryKey: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(automationEmailDeliveries).set({ claimedAt: null })
+    .where(and(eq(automationEmailDeliveries.deliveryKey, deliveryKey), isNull(automationEmailDeliveries.sentAt)));
 }
 
 // Check for double booking on confirmed slots

@@ -77,6 +77,8 @@ export const bookings = mysqlTable("bookings", {
   manualDepositReceiptMimeType: varchar("manualDepositReceiptMimeType", { length: 100 }),
   repeatFollowUpClaimedAt: timestamp("repeatFollowUpClaimedAt"),
   repeatFollowUpSentAt: timestamp("repeatFollowUpSentAt"),
+  appointmentReminderClaimedAt: timestamp("appointmentReminderClaimedAt"),
+  appointmentReminderSentAt: timestamp("appointmentReminderSentAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => [
@@ -188,6 +190,15 @@ export const announcements = mysqlTable("announcements", {
 export const automationSettings = mysqlTable("automationSettings", {
   key: varchar("key", { length: 100 }).primaryKey(),
   scheduleCronTaskUid: varchar("scheduleCronTaskUid", { length: 65 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+// Durable idempotency markers for owner-level scheduled emails such as weekly summaries.
+export const automationEmailDeliveries = mysqlTable("automationEmailDeliveries", {
+  deliveryKey: varchar("deliveryKey", { length: 150 }).primaryKey(),
+  claimedAt: timestamp("claimedAt"),
+  sentAt: timestamp("sentAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
