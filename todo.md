@@ -151,3 +151,6 @@
 - [x] Add paginated admin lists for bookings and review requests with accessible page controls
 - [x] Allow admins to upload a small image or icon for a homepage notice using secure storage
 - [x] Render an optional notice image or icon responsively on the homepage without compromising layout
+- [x] Make homepage section labels more legible while preserving the editorial visual system
+- [x] Refine the hero, personal-introduction, and services copy into one clear personal booking narrative
+- [x] Verify the refined typography and hierarchy on desktop and mobile

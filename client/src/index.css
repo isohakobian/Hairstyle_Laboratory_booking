@@ -200,6 +200,30 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .section-heading-row {
+    display: grid;
+    gap: 0.85rem;
+    margin-bottom: 3rem;
+  }
+
+  .section-heading {
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(1.25rem, 2.5vw, 1.65rem);
+    font-weight: 650;
+    letter-spacing: 0.02em;
+    line-height: 1.15;
+    color: hsl(var(--foreground));
+  }
+
+  .section-intro {
+    max-width: 25rem;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.8125rem;
+    line-height: 1.55;
+    letter-spacing: 0.015em;
+    color: hsl(var(--muted-foreground));
+  }
+
   .notice-card {
     position: relative;
     padding: 1.25rem 1.5rem;
@@ -287,6 +311,12 @@
     .hero-editorial-layout {
       grid-template-columns: minmax(0, 1fr) minmax(18rem, 22rem);
       gap: 4rem !important;
+    }
+
+    .section-heading-row {
+      grid-template-columns: minmax(0, 1fr) minmax(16rem, 25rem);
+      align-items: end;
+      gap: 2rem;
     }
   }
 

@@ -51,4 +51,13 @@ describe('Home service catalog', () => {
     if (!image) throw new Error('Notice image was not rendered');
     expect(image.src).toBe('https://example.com/notice-image.webp');
   });
+
+  it('connects the hero, personal approach, and services into a clear booking narrative', () => {
+    const { container } = render(<Home />);
+    const text = container.textContent ?? '';
+    expect(text).toContain('Персональная запись на стрижку, форму бороды и биохимическую завивку.');
+    expect(text).toContain('О мастере');
+    expect(text).toContain('Точная форма. Естественный результат. Внимание к деталям.');
+    expect(text).toContain('Выбери услугу — затем удобные дату и время.');
+  });
 });

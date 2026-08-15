@@ -9,9 +9,9 @@ type Lang = 'ru' | 'en';
 
 const copy: Record<Lang, {
   nav: { booking: string; status: string; login: string; logout: string; admin: string };
-  hero: { eyebrow: string; line1: string; line2: string; line3: string; sub: string; cta: string };
-  about: { label: string; text: string };
-  services: { label: string; haircut: string; haircutDesc: string; beard: string; beardDesc: string; bioPerm: string; bioPermDesc: string; duration: string; book: string; deposit: string };
+  hero: { eyebrow: string; line1: string; line2: string; line3: string; sub: string; cta: string; servicesCta: string };
+  about: { label: string; title: string; intro: string; text: string };
+  services: { label: string; intro: string; haircut: string; haircutDesc: string; beard: string; beardDesc: string; bioPerm: string; bioPermDesc: string; duration: string; book: string; deposit: string };
   footer: { copy: string };
 }> = {
   ru: {
@@ -21,15 +21,19 @@ const copy: Record<Lang, {
       line1: 'Стрижка.',
       line2: 'Стиль.',
       line3: 'Детали.',
-      sub: 'Персональная запись',
-      cta: 'Записаться',
+      sub: 'Персональная запись на стрижку, форму бороды и биохимическую завивку.',
+      cta: 'Выбрать время',
+      servicesCta: 'Посмотреть услуги',
     },
     about: {
-      label: 'О мастере',
-      text: 'Isaac Hakobian — стилист по волосам. Работаю с мужским образом: стрижка, форма, детали. Каждый клиент — отдельная задача.',
+      label: 'Личный подход',
+      title: 'О мастере',
+      intro: 'Точная форма. Естественный результат. Внимание к деталям.',
+      text: 'Я работаю с мужским образом через стрижку, форму и детали. Сначала слушаю, затем собираю точный и естественный результат — под твой ритм и характер.',
     },
     services: {
       label: 'Услуги',
+      intro: 'Выбери услугу — затем удобные дату и время.',
       haircut: 'Стрижка',
       haircutDesc: 'Точная стрижка и стайлинг',
       beard: 'Моделирование бороды',
@@ -49,15 +53,19 @@ const copy: Record<Lang, {
       line1: 'Cut.',
       line2: 'Style.',
       line3: 'Detail.',
-      sub: 'Personal booking',
-      cta: 'Book appointment',
+      sub: 'Personal appointments for haircuts, beard shaping, and bio perms.',
+      cta: 'Choose a time',
+      servicesCta: 'View services',
     },
     about: {
-      label: 'About',
-      text: 'Isaac Hakobian — men\'s hairstylist. I work with the whole look: cut, shape, detail. Every client is a separate task.',
+      label: 'Personal approach',
+      title: 'About Isaac',
+      intro: 'Precise shape. Natural finish. Attention to detail.',
+      text: 'I work with the full masculine look through cut, shape, and detail. I listen first, then build a precise and natural result around your rhythm and character.',
     },
     services: {
       label: 'Services',
+      intro: 'Choose a service, then select the time that suits you.',
       haircut: 'Haircut',
       haircutDesc: 'Precision cut and styling',
       beard: 'Beard modeling',
@@ -326,10 +334,12 @@ export default function Home() {
             </h1>
 
             <p className="fade-up fade-up-delay-3" style={{
-              fontSize: '0.9375rem',
+              fontSize: 'clamp(0.9375rem, 1.5vw, 1.05rem)',
               color: 'hsl(var(--muted-foreground))',
               marginBottom: '3rem',
-              letterSpacing: '0.05em',
+              letterSpacing: '0.025em',
+              lineHeight: 1.65,
+              maxWidth: '31rem',
             }}>
               {c.hero.sub}
             </p>
@@ -341,7 +351,7 @@ export default function Home() {
               <button className="btn-outline" onClick={() => {
                 document.getElementById('services')?.scrollIntoView({ behavior: 'smooth' });
               }}>
-                {c.services.label}
+                {c.hero.servicesCta}
               </button>
             </div>
           </div>
@@ -386,10 +396,12 @@ export default function Home() {
           background: 'linear-gradient(90deg, var(--gold-mid), transparent)',
         }} />
         <div className="container">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '3rem' }} className="md:grid-cols-[180px_1fr]">
-            <div>
-              <p className="label-caps">{c.about.label}</p>
-            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '3rem' }} className="md:grid-cols-[180px_1fr]">
+              <div>
+                <p className="label-caps" style={{ margin: '0 0 0.7rem', color: 'var(--gold-mid)' }}>{c.about.label}</p>
+                <h2 className="section-heading" style={{ margin: 0 }}>{c.about.title}</h2>
+                <p className="section-intro" style={{ margin: '0.75rem 0 0' }}>{c.about.intro}</p>
+              </div>
             <div>
               <p style={{
                 fontFamily: "'Playfair Display', serif",
@@ -423,7 +435,10 @@ export default function Home() {
           background: 'linear-gradient(90deg, var(--gold-mid), transparent)',
         }} />
         <div className="container">
-          <p className="label-caps" style={{ marginBottom: '3rem' }}>{c.services.label}</p>
+          <div className="section-heading-row">
+            <h2 className="section-heading" style={{ margin: 0 }}>{c.services.label}</h2>
+            <p className="section-intro" style={{ margin: 0 }}>{c.services.intro}</p>
+          </div>
 
           {servicesLoading && <p style={{ color: 'hsl(var(--muted-foreground))' }}>{language === 'ru' ? 'Загружаю услуги...' : 'Loading services...'}</p>}
           {servicesError && <p style={{ color: 'hsl(var(--destructive))' }}>{language === 'ru' ? 'Не удалось загрузить услуги. Попробуйте обновить страницу.' : 'Could not load services. Please refresh the page.'}</p>}
