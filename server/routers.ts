@@ -10,7 +10,7 @@ import {
   getReviewTokenByHash, markReviewTokenUsed,
   getPublishedReviews, getAllReviews, updateReviewPublished, createManagedService, setServiceActive, updateManagedService,
   createBookingStatusRecoveryToken, claimBookingStatusRecoveryToken, getSafeBookingStatusesByEmail,
-  deleteBookingAndRelatedData, declineBookingForInvalidReceipt, getAdminTodaySummary, getClientDirectory, getBookingPage, getManualDepositSettings, getReviewRequestDashboard, getReviewRequestEmailTemplate, getReviewRequestPage, getReviewRequestStats, saveManualDepositSettings, saveReviewRequestEmailTemplate, updateManualDepositStatus,
+  deleteBookingAndRelatedData, declineBookingForInvalidReceipt, getAdminTodaySummary, getBookingReminderSettings, getClientDirectory, getBookingPage, getManualDepositSettings, getReviewRequestDashboard, getReviewRequestEmailTemplate, getReviewRequestPage, getReviewRequestStats, getWeeklyBookingSummary, saveBookingReminderSettings, saveManualDepositSettings, saveReviewRequestEmailTemplate, updateManualDepositStatus,
 } from "./db";
 import { TRPCError } from "@trpc/server";
 import { sendBookingEmails, sendBookingStatusRecoveryEmail, sendConfirmedBookingEmail, sendReviewRequestEmail } from "./bookingEmail";
@@ -67,6 +67,13 @@ const manualDepositSettingsInput = z.object({
   if (input.isEnabled !== "yes") return;
   if (!input.recipientName) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["recipientName"], message: "Recipient name is required when manual deposits are enabled" });
   if (!input.cardDetails) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["cardDetails"], message: "Payment details are required when manual deposits are enabled" });
+});
+
+const bookingReminderSettingsInput = z.object({
+  firstOffsetMinutes: z.number().int().min(30).max(10_080),
+  firstEnabled: z.enum(["yes", "no"]),
+  secondOffsetMinutes: z.number().int().min(15).max(1_440),
+  secondEnabled: z.enum(["yes", "no"]),
 });
 
 export const appRouter = router({
@@ -346,6 +353,13 @@ export const appRouter = router({
   admin: router({
     bookings: adminMiddleware.query(() => getAllBookings()),
     today: adminMiddleware.query(() => getAdminTodaySummary()),
+    weeklyBookingStats: adminMiddleware.query(async () => {
+      const end = new Date();
+      const start = new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000);
+      return getWeeklyBookingSummary(start, end);
+    }),
+    bookingReminderSettings: adminMiddleware.query(() => getBookingReminderSettings()),
+    saveBookingReminderSettings: adminMiddleware.input(bookingReminderSettingsInput).mutation(({ input }) => saveBookingReminderSettings(input)),
     manualDepositSettings: adminMiddleware.query(() => getManualDepositSettings()),
     saveManualDepositSettings: adminMiddleware
       .input(manualDepositSettingsInput)

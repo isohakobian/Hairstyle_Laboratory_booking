@@ -203,6 +203,30 @@ export const automationEmailDeliveries = mysqlTable("automationEmailDeliveries",
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+// Owner-controlled offsets for the two appointment reminders.
+export const bookingReminderSettings = mysqlTable("bookingReminderSettings", {
+  id: int("id").primaryKey().default(1),
+  firstOffsetMinutes: int("firstOffsetMinutes").notNull().default(1440),
+  firstEnabled: mysqlEnum("firstEnabled", ["yes", "no"]).notNull().default("yes"),
+  secondOffsetMinutes: int("secondOffsetMinutes").notNull().default(120),
+  secondEnabled: mysqlEnum("secondEnabled", ["yes", "no"]).notNull().default("yes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+// A unique pair keeps every additional reminder idempotent even if its configured offset changes.
+export const bookingReminderDeliveries = mysqlTable("bookingReminderDeliveries", {
+  id: int("id").autoincrement().primaryKey(),
+  bookingId: int("bookingId").notNull(),
+  offsetMinutes: int("offsetMinutes").notNull(),
+  claimedAt: timestamp("claimedAt"),
+  sentAt: timestamp("sentAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  uniqueIndex("bookingReminderDeliveries_booking_offset_idx").on(table.bookingId, table.offsetMinutes),
+]);
+
 // Each row represents a distinct service selected for one booking. A unique
 // index prevents clients from adding the same service twice to one visit.
 export const bookingServices = mysqlTable("bookingServices", {

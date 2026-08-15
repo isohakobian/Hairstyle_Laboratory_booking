@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, gte, isNotNull, isNull, like, lt, lte, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, InsertBooking, InsertBookingService, users, services, bookings, bookingServices, reviewTokens, bookingStatusRecoveryTokens, bookingEvents, visitMedia, reviewRequestHistory, reviews, clients, emailTemplates, availabilityWindows, manualDepositSettings, automationEmailDeliveries } from "../drizzle/schema";
+import { InsertUser, InsertBooking, InsertBookingService, users, services, bookings, bookingServices, reviewTokens, bookingStatusRecoveryTokens, bookingEvents, visitMedia, reviewRequestHistory, reviews, clients, emailTemplates, availabilityWindows, manualDepositSettings, automationEmailDeliveries, bookingReminderDeliveries, bookingReminderSettings } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -520,6 +520,89 @@ export async function releaseAutomationEmailDeliveryClaim(deliveryKey: string) {
   if (!db) throw new Error("Database not available");
   return db.update(automationEmailDeliveries).set({ claimedAt: null })
     .where(and(eq(automationEmailDeliveries.deliveryKey, deliveryKey), isNull(automationEmailDeliveries.sentAt)));
+}
+
+export type BookingReminderSettings = {
+  firstOffsetMinutes: number;
+  firstEnabled: "yes" | "no";
+  secondOffsetMinutes: number;
+  secondEnabled: "yes" | "no";
+};
+
+const defaultBookingReminderSettings: BookingReminderSettings = {
+  firstOffsetMinutes: 1440,
+  firstEnabled: "yes",
+  secondOffsetMinutes: 120,
+  secondEnabled: "yes",
+};
+
+export async function getBookingReminderSettings(): Promise<BookingReminderSettings> {
+  const db = await getDb();
+  if (!db) return defaultBookingReminderSettings;
+  const settings = await db.select().from(bookingReminderSettings).where(eq(bookingReminderSettings.id, 1)).limit(1);
+  return settings[0] ? {
+    firstOffsetMinutes: settings[0].firstOffsetMinutes,
+    firstEnabled: settings[0].firstEnabled,
+    secondOffsetMinutes: settings[0].secondOffsetMinutes,
+    secondEnabled: settings[0].secondEnabled,
+  } : defaultBookingReminderSettings;
+}
+
+export async function saveBookingReminderSettings(input: BookingReminderSettings) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(bookingReminderSettings).values({ id: 1, ...input }).onDuplicateKeyUpdate({ set: input });
+  return getBookingReminderSettings();
+}
+
+export async function getAdditionalReminderDueBookings(bookingDate: string, startTime: string, endTime: string, offsetMinutes: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.select({ booking: bookings }).from(bookings)
+    .leftJoin(bookingReminderDeliveries, and(
+      eq(bookingReminderDeliveries.bookingId, bookings.id),
+      eq(bookingReminderDeliveries.offsetMinutes, offsetMinutes),
+    ))
+    .where(and(
+      eq(bookings.status, "confirmed"),
+      eq(bookings.bookingDate, bookingDate),
+      gte(bookings.bookingTime, startTime),
+      lt(bookings.bookingTime, endTime),
+      isNull(bookingReminderDeliveries.sentAt),
+    ));
+  return rows.map(row => row.booking);
+}
+
+export async function claimAdditionalReminder(bookingId: number, offsetMinutes: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const now = new Date();
+  const staleClaimBefore = new Date(now.getTime() - 60 * 60 * 1000);
+  return db.insert(bookingReminderDeliveries).values({ bookingId, offsetMinutes, claimedAt: now }).onDuplicateKeyUpdate({
+    set: {
+      claimedAt: sql`IF(${bookingReminderDeliveries.sentAt} IS NULL AND (${bookingReminderDeliveries.claimedAt} IS NULL OR ${bookingReminderDeliveries.claimedAt} < ${staleClaimBefore}), VALUES(claimedAt), ${bookingReminderDeliveries.claimedAt})`,
+    },
+  });
+}
+
+export async function markAdditionalReminderSent(bookingId: number, offsetMinutes: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(bookingReminderDeliveries).set({ sentAt: new Date() }).where(and(
+    eq(bookingReminderDeliveries.bookingId, bookingId),
+    eq(bookingReminderDeliveries.offsetMinutes, offsetMinutes),
+    isNull(bookingReminderDeliveries.sentAt),
+  ));
+}
+
+export async function releaseAdditionalReminderClaim(bookingId: number, offsetMinutes: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(bookingReminderDeliveries).set({ claimedAt: null }).where(and(
+    eq(bookingReminderDeliveries.bookingId, bookingId),
+    eq(bookingReminderDeliveries.offsetMinutes, offsetMinutes),
+    isNull(bookingReminderDeliveries.sentAt),
+  ));
 }
 
 // Check for double booking on confirmed slots

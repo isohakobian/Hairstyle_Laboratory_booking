@@ -70,9 +70,16 @@ describe("booking email templates", () => {
     const email = buildAppointmentReminderEmail(booking, "https://example.com/status");
 
     expect(email.subject).toContain("visit is tomorrow");
-    expect(email.text).toContain("Напоминаю, что ваша запись ко мне запланирована на завтра.");
+    expect(email.text).toContain("Напоминаю, что ваша запись ко мне завтра.");
     expect(email.text).toContain("https://example.com/status");
     expect(email.html).toContain("Isaac &lt;Client&gt;");
+  });
+
+  it("changes the reminder copy when the visit is in two hours", () => {
+    const email = buildAppointmentReminderEmail(booking, "https://example.com/status", 120);
+
+    expect(email.subject).toContain("in 2 hours");
+    expect(email.text).toContain("примерно через 2 ч.");
   });
 
   it("creates an owner weekly summary with the main booking metrics", () => {

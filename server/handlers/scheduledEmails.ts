@@ -1,12 +1,17 @@
 import type { Request, Response } from "express";
 import {
   claimAppointmentReminder,
+  claimAdditionalReminder,
   claimAutomationEmailDelivery,
+  getAdditionalReminderDueBookings,
+  getBookingReminderSettings,
   getAppointmentReminderDueBookings,
   getWeeklyBookingSummary,
   markAppointmentReminderSent,
+  markAdditionalReminderSent,
   markAutomationEmailDeliverySent,
   releaseAppointmentReminderClaim,
+  releaseAdditionalReminderClaim,
   releaseAutomationEmailDeliveryClaim,
 } from "../db";
 import { sendAppointmentReminderEmail, sendWeeklyBookingSummaryEmail } from "../bookingEmail";
@@ -33,13 +38,13 @@ function formatTime(totalMinutes: number) {
   return `${String(Math.floor(totalMinutes / 60)).padStart(2, "0")}:${String(totalMinutes % 60).padStart(2, "0")}`;
 }
 
-export function getYerevanReminderWindow(now = new Date()) {
+export function getYerevanReminderWindow(now = new Date(), minutesAhead = 1440) {
   const parts = getYerevanParts(now);
-  const tomorrow = new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
-  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-  const startMinute = Math.floor((parts.hour * 60 + parts.minute) / 30) * 30;
+  const target = new Date(Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute));
+  target.setUTCMinutes(target.getUTCMinutes() + minutesAhead);
+  const startMinute = Math.floor((target.getUTCHours() * 60 + target.getUTCMinutes()) / 30) * 30;
   return {
-    bookingDate: tomorrow.toISOString().slice(0, 10),
+    bookingDate: target.toISOString().slice(0, 10),
     startTime: formatTime(startMinute),
     endTime: formatTime(startMinute + 30),
   };
@@ -68,8 +73,11 @@ export async function appointmentReminderHandler(req: Request, res: Response) {
   try {
     const user = await sdk.authenticateRequest(req);
     if (!cronOnly(user, res)) return;
-    const window = getYerevanReminderWindow();
-    const dueBookings = await getAppointmentReminderDueBookings(window.bookingDate, window.startTime, window.endTime);
+    const settings = await getBookingReminderSettings();
+    const window = getYerevanReminderWindow(new Date(), settings.firstOffsetMinutes);
+    const dueBookings = settings.firstEnabled === "yes"
+      ? await getAppointmentReminderDueBookings(window.bookingDate, window.startTime, window.endTime)
+      : [];
     let sent = 0;
     let skipped = 0;
     const failures: Array<{ bookingId: number; message: string }> = [];
@@ -84,7 +92,7 @@ export async function appointmentReminderHandler(req: Request, res: Response) {
           totalDurationMinutes: booking.totalDurationMinutes || undefined, totalPriceSummary: booking.totalPriceSummary || undefined,
           bookingDate: booking.bookingDate, bookingTime: booking.bookingTime, clientName: booking.clientName,
           clientPhone: booking.clientPhone, clientEmail: booking.clientEmail, comment: booking.comment,
-        }, STATUS_URL);
+        }, STATUS_URL, settings.firstOffsetMinutes);
         await markAppointmentReminderSent(booking.id);
         sent += 1;
       } catch (error) {
@@ -94,8 +102,29 @@ export async function appointmentReminderHandler(req: Request, res: Response) {
         failures.push({ bookingId: booking.id, message });
       }
     }
-    if (failures.length > 0) return res.status(500).json({ error: "appointment-reminder-delivery-failed", sent, skipped, failures, context: { ...window, taskUid: user.taskUid }, timestamp: new Date().toISOString() });
-    return res.json({ ok: true, ...window, sent, skipped, checked: dueBookings.length });
+    const secondWindow = getYerevanReminderWindow(new Date(), settings.secondOffsetMinutes);
+    const secondaryBookings = settings.secondEnabled === "yes"
+      ? await getAdditionalReminderDueBookings(secondWindow.bookingDate, secondWindow.startTime, secondWindow.endTime, settings.secondOffsetMinutes)
+      : [];
+    let secondSent = 0;
+    let secondSkipped = 0;
+    for (const booking of secondaryBookings) {
+      const claim = await claimAdditionalReminder(booking.id, settings.secondOffsetMinutes);
+      if (!wasClaimed(claim)) { secondSkipped += 1; continue; }
+      if (!booking.clientEmail) { await markAdditionalReminderSent(booking.id, settings.secondOffsetMinutes); secondSkipped += 1; continue; }
+      try {
+        await sendAppointmentReminderEmail({ referenceNumber: booking.referenceNumber, serviceName: booking.serviceSummary || booking.serviceName, totalDurationMinutes: booking.totalDurationMinutes || undefined, totalPriceSummary: booking.totalPriceSummary || undefined, bookingDate: booking.bookingDate, bookingTime: booking.bookingTime, clientName: booking.clientName, clientPhone: booking.clientPhone, clientEmail: booking.clientEmail, comment: booking.comment }, STATUS_URL, settings.secondOffsetMinutes);
+        await markAdditionalReminderSent(booking.id, settings.secondOffsetMinutes);
+        secondSent += 1;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unknown email delivery error";
+        console.error(`[Appointment reminder] Booking ${booking.id} failed:`, error);
+        await releaseAdditionalReminderClaim(booking.id, settings.secondOffsetMinutes);
+        failures.push({ bookingId: booking.id, message });
+      }
+    }
+    if (failures.length > 0) return res.status(500).json({ error: "appointment-reminder-delivery-failed", sent, skipped, secondSent, secondSkipped, failures, context: { ...window, secondWindow, taskUid: user.taskUid }, timestamp: new Date().toISOString() });
+    return res.json({ ok: true, ...window, sent, skipped, checked: dueBookings.length, secondWindow, secondSent, secondSkipped, secondChecked: secondaryBookings.length });
   } catch (error) {
     console.error("[Appointment reminder] Scheduled handler failed:", error);
     return res.status(500).json({ error: error instanceof Error ? error.message : "appointment-reminder-failed", stack: error instanceof Error ? error.stack : undefined, context: { url: req.originalUrl }, timestamp: new Date().toISOString() });

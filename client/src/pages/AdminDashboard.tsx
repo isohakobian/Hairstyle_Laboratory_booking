@@ -15,10 +15,11 @@ import AnnouncementManager from '@/components/AnnouncementManager';
 import ServiceManager from '@/components/ServiceManager';
 import ReviewRequestTemplateEditor from '@/components/ReviewRequestTemplateEditor';
 import ManualDepositSettingsEditor from '@/components/ManualDepositSettingsEditor';
+import BookingReminderSettingsEditor from '@/components/BookingReminderSettingsEditor';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink } from '@/components/ui/pagination';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
-type Tab = 'bookings' | 'calendar' | 'schedule' | 'services' | 'reviews' | 'clients' | 'news' | 'payment';
+type Tab = 'bookings' | 'calendar' | 'schedule' | 'services' | 'reviews' | 'clients' | 'news' | 'payment' | 'settings';
 type BookingStatusFilter = 'all' | 'pending' | 'confirmed' | 'declined' | 'cancelled';
 type BookingSort = 'appointmentAsc' | 'appointmentDesc' | 'newest' | 'statusAsc';
 type ReviewRequestStatusFilter = 'all' | 'awaiting' | 'received';
@@ -27,7 +28,7 @@ type ReviewRequestSort = 'sentDesc' | 'sentAsc' | 'receivedDesc';
 function getInitialTab(): Tab {
   if (typeof window === 'undefined') return 'bookings';
   const tab = new URLSearchParams(window.location.search).get('section');
-  return tab === 'calendar' || tab === 'schedule' || tab === 'services' || tab === 'reviews' || tab === 'clients' || tab === 'news' || tab === 'payment' ? tab : 'bookings';
+  return tab === 'calendar' || tab === 'schedule' || tab === 'services' || tab === 'reviews' || tab === 'clients' || tab === 'news' || tab === 'payment' || tab === 'settings' ? tab : 'bookings';
 }
 
 const labelStyle: React.CSSProperties = {
@@ -99,6 +100,9 @@ export default function AdminDashboard() {
     enabled: isAuthenticated && user?.role === 'admin',
   });
   const { data: todaySummary } = trpc.admin.today.useQuery(undefined, {
+    enabled: isAuthenticated && user?.role === 'admin',
+  });
+  const { data: weeklyBookingStats } = trpc.admin.weeklyBookingStats.useQuery(undefined, {
     enabled: isAuthenticated && user?.role === 'admin',
   });
   const { data: bookingPageData, isLoading: bookingPageLoading, isError: bookingPageError } = trpc.admin.bookingPage.useQuery({
@@ -306,6 +310,7 @@ export default function AdminDashboard() {
     { id: 'clients', label: language === 'ru' ? 'Клиенты' : 'Clients', description: language === 'ru' ? 'Память о клиенте' : 'Client memory' },
     { id: 'news', label: language === 'ru' ? 'Новости' : 'Notices', description: language === 'ru' ? 'Новости и отпуск' : 'News and vacation' },
     { id: 'payment', label: language === 'ru' ? 'Предоплата' : 'Deposit', description: language === 'ru' ? 'Реквизиты, чеки и политика' : 'Details, receipts, and policy' },
+    { id: 'settings', label: language === 'ru' ? 'Настройки' : 'Settings', description: language === 'ru' ? 'Время email-напоминаний' : 'Email reminder timing' },
   ];
 
   const inputStyle: React.CSSProperties = {
@@ -364,6 +369,22 @@ export default function AdminDashboard() {
               <p style={{ ...labelStyle, margin: '0 0 0.55rem', fontSize: '0.5625rem' }}>{language === 'ru' ? 'Свободные окна' : 'Free windows'}</p>
               {(todaySummary?.freeWindows ?? []).length === 0 ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'hsl(var(--muted-foreground))' }}>{language === 'ru' ? 'Нет открытых окон или день полностью занят.' : 'No open windows or the day is full.'}</p> : <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem' }}>{(todaySummary?.freeWindows ?? []).map(window => <span key={`${window.startTime}-${window.endTime}`} style={{ padding: '0.35rem 0.5rem', border: '1px solid hsl(var(--border))', fontSize: '0.75rem' }}>{window.startTime}–{window.endTime}</span>)}</div>}
             </div>
+          </div>
+        </section>
+
+        <section style={{ ...cardStyle, marginBottom: '2rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: '1rem' }}>
+            <div><p style={{ ...labelStyle, margin: '0 0 0.35rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Недельная динамика' : 'Weekly activity'}</p><h3 style={{ margin: 0, fontStyle: 'italic' }}>{language === 'ru' ? 'Последние 7 дней' : 'Last 7 days'}</h3></div>
+            <p style={{ ...labelStyle, margin: 0, fontSize: '0.5625rem' }}>{language === 'ru' ? 'Живые данные по записям' : 'Live booking data'}</p>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(8.5rem, 1fr))', gap: '0.75rem' }}>
+            {[
+              { label: language === 'ru' ? 'Новые' : 'New', value: weeklyBookingStats?.newBookings ?? 0, color: 'var(--gold-mid)' },
+              { label: language === 'ru' ? 'Отменены' : 'Cancelled', value: weeklyBookingStats?.cancelledBookings ?? 0, color: statusColors.cancelled },
+              { label: language === 'ru' ? 'Ожидают' : 'Pending', value: weeklyBookingStats?.pendingBookings ?? 0, color: statusColors.pending },
+              { label: language === 'ru' ? 'Подтверждены' : 'Confirmed', value: weeklyBookingStats?.confirmedBookings ?? 0, color: statusColors.confirmed },
+              { label: language === 'ru' ? 'Завершены' : 'Completed', value: weeklyBookingStats?.completedBookings ?? 0, color: 'hsl(207 55% 48%)' },
+            ].map(stat => <div key={stat.label} style={{ padding: '0.9rem', background: 'hsl(var(--secondary))', borderTop: `2px solid ${stat.color}` }}><p style={{ margin: 0, color: stat.color, fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: '1.75rem' }}>{stat.value}</p><p style={{ ...labelStyle, margin: '0.2rem 0 0', fontSize: '0.5rem' }}>{stat.label}</p></div>)}
           </div>
         </section>
 
@@ -650,6 +671,16 @@ export default function AdminDashboard() {
               <h3 style={{ margin: 0, fontStyle: 'italic' }}>{language === 'ru' ? 'Предоплата, чек и политика' : 'Deposit, receipt, and policy'}</h3>
             </div>
             <ManualDepositSettingsEditor language={language as 'ru' | 'en'} />
+          </div>
+        )}
+
+        {activeTab === 'settings' && (
+          <div>
+            <div style={{ marginBottom: '1.25rem' }}>
+              <p style={{ ...labelStyle, margin: '0 0 0.4rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Автоматизация' : 'Automation'}</p>
+              <h3 style={{ margin: 0, fontStyle: 'italic' }}>{language === 'ru' ? 'Настройки напоминаний' : 'Reminder settings'}</h3>
+            </div>
+            <BookingReminderSettingsEditor language={language as 'ru' | 'en'} />
           </div>
         )}
 

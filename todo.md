@@ -178,3 +178,7 @@
 - [x] Prevent duplicate client reminders when a scheduled task retries or runs more than once
 - [x] Send Isaac a weekly Gmail summary of new, cancelled, pending, confirmed, and completed bookings
 - [x] Add secure scheduled handlers, regression coverage, and production Heartbeat schedules for reminders and weekly summaries
+- [x] Send each client one additional bilingual Gmail reminder approximately 2 hours before a confirmed visit
+- [x] Let Isaac configure active reminder offsets and toggle each client reminder from the admin panel
+- [x] Show a concise weekly booking statistics dashboard on the default admin overview
+- [ ] Add regression coverage and enable the production schedule for the two-hour reminder

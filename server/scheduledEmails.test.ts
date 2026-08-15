@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   authenticateRequest: vi.fn(), getDue: vi.fn(), claimReminder: vi.fn(), markReminder: vi.fn(), releaseReminder: vi.fn(), sendReminder: vi.fn(),
+  getReminderSettings: vi.fn(), getSecondaryDue: vi.fn(), claimSecondary: vi.fn(), markSecondary: vi.fn(), releaseSecondary: vi.fn(),
   claimSummary: vi.fn(), markSummary: vi.fn(), releaseSummary: vi.fn(), getSummary: vi.fn(), sendSummary: vi.fn(),
 }));
 
@@ -10,6 +11,11 @@ vi.mock("./db", () => ({
   claimAppointmentReminder: mocks.claimReminder,
   markAppointmentReminderSent: mocks.markReminder,
   releaseAppointmentReminderClaim: mocks.releaseReminder,
+  getBookingReminderSettings: mocks.getReminderSettings,
+  getAdditionalReminderDueBookings: mocks.getSecondaryDue,
+  claimAdditionalReminder: mocks.claimSecondary,
+  markAdditionalReminderSent: mocks.markSecondary,
+  releaseAdditionalReminderClaim: mocks.releaseSecondary,
   claimAutomationEmailDelivery: mocks.claimSummary,
   markAutomationEmailDeliverySent: mocks.markSummary,
   releaseAutomationEmailDeliveryClaim: mocks.releaseSummary,
@@ -32,9 +38,14 @@ describe("scheduled appointment emails", () => {
     vi.clearAllMocks();
     mocks.authenticateRequest.mockResolvedValue({ isCron: true, taskUid: "scheduled-task" });
     mocks.getDue.mockResolvedValue([]);
+    mocks.getSecondaryDue.mockResolvedValue([]);
+    mocks.getReminderSettings.mockResolvedValue({ firstOffsetMinutes: 1440, firstEnabled: "yes", secondOffsetMinutes: 120, secondEnabled: "yes" });
     mocks.claimReminder.mockResolvedValue([{ affectedRows: 1 }]);
     mocks.markReminder.mockResolvedValue([{ affectedRows: 1 }]);
     mocks.releaseReminder.mockResolvedValue([{ affectedRows: 1 }]);
+    mocks.claimSecondary.mockResolvedValue([{ affectedRows: 1 }]);
+    mocks.markSecondary.mockResolvedValue([{ affectedRows: 1 }]);
+    mocks.releaseSecondary.mockResolvedValue([{ affectedRows: 1 }]);
     mocks.sendReminder.mockResolvedValue({ messageId: "reminder-1" });
     mocks.claimSummary.mockResolvedValue([{ affectedRows: 1 }]);
     mocks.markSummary.mockResolvedValue([{ affectedRows: 1 }]);
@@ -54,7 +65,7 @@ describe("scheduled appointment emails", () => {
     await appointmentReminderHandler({ originalUrl: "/api/scheduled/appointment-reminders" } as never, response as never);
 
     expect(mocks.claimReminder).toHaveBeenCalledWith(42);
-    expect(mocks.sendReminder).toHaveBeenCalledWith(expect.objectContaining({ referenceNumber: "HL-42", clientEmail: "alex@example.com" }), "https://isaacbarber-axczkyb2.manus.space/status");
+    expect(mocks.sendReminder).toHaveBeenCalledWith(expect.objectContaining({ referenceNumber: "HL-42", clientEmail: "alex@example.com" }), "https://isaacbarber-axczkyb2.manus.space/status", 1440);
     expect(mocks.markReminder).toHaveBeenCalledWith(42);
     expect(response.json).toHaveBeenCalledWith(expect.objectContaining({ ok: true, sent: 1 }));
   });
@@ -68,6 +79,18 @@ describe("scheduled appointment emails", () => {
 
     expect(mocks.sendReminder).not.toHaveBeenCalled();
     expect(mocks.markReminder).not.toHaveBeenCalled();
+  });
+
+  it("sends and records the separately claimed two-hour reminder", async () => {
+    mocks.getSecondaryDue.mockResolvedValue([{ id: 73, referenceNumber: "HL-73", serviceName: "Haircut", serviceSummary: "Haircut", totalDurationMinutes: 45, totalPriceSummary: "15,000 ֏", bookingDate: "2026-08-14", bookingTime: "12:00", clientName: "Mia", clientPhone: "+37400000001", clientEmail: "mia@example.com", comment: null }]);
+    const response = createResponse();
+
+    await appointmentReminderHandler({ originalUrl: "/api/scheduled/appointment-reminders" } as never, response as never);
+
+    expect(mocks.claimSecondary).toHaveBeenCalledWith(73, 120);
+    expect(mocks.sendReminder).toHaveBeenCalledWith(expect.objectContaining({ referenceNumber: "HL-73", clientEmail: "mia@example.com" }), "https://isaacbarber-axczkyb2.manus.space/status", 120);
+    expect(mocks.markSecondary).toHaveBeenCalledWith(73, 120);
+    expect(response.json).toHaveBeenCalledWith(expect.objectContaining({ secondSent: 1, secondChecked: 1 }));
   });
 
   it("releases a reminder claim and exposes a retryable failure when delivery fails", async () => {

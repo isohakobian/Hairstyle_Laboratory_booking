@@ -12,11 +12,15 @@ vi.mock("wouter", () => ({ useLocation: () => ["/admin", vi.fn()] }));
 vi.mock("@/const", () => ({ getLoginUrl: () => "/login" }));
 vi.mock("@/components/ScheduleCalendar", () => ({ default: () => <div>Schedule calendar</div> }));
 vi.mock("@/components/BookingCalendar", () => ({ default: () => <div>Booking calendar</div> }));
+vi.mock("@/components/BookingReminderSettingsEditor", () => ({ default: () => <div>Reminder settings editor</div> }));
 vi.mock("@/lib/trpc", () => ({
   trpc: {
     admin: {
       bookings: { useQuery: () => ({ data: [{ id: 1, status: "confirmed", clientName: "Alex", referenceNumber: "REF001", serviceName: "Haircut", serviceSummary: "Haircut", totalDurationMinutes: 45, totalPriceSummary: "15,000 ֏", bookingDate: "2099-12-30", bookingTime: "14:00", clientPhone: "+37455000000", clientEmail: "alex@example.com", comment: null, createdAt: new Date(), completedAt: new Date() }], isLoading: false, isError: false, refetch: vi.fn() }) },
       today: { useQuery: () => ({ data: { date: '2099-12-30', bookings: [{ id: 1, status: 'confirmed', clientName: 'Alex', bookingTime: '14:00' }], pendingCount: 0, confirmedCount: 1, freeWindows: [{ startTime: '09:00', endTime: '14:00' }] } }) },
+      weeklyBookingStats: { useQuery: () => ({ data: { newBookings: 8, cancelledBookings: 2, pendingBookings: 1, confirmedBookings: 4, completedBookings: 6 } }) },
+      bookingReminderSettings: { useQuery: () => ({ data: { firstOffsetMinutes: 1440, firstEnabled: 'yes', secondOffsetMinutes: 120, secondEnabled: 'yes' }, isLoading: false, refetch: vi.fn() }) },
+      saveBookingReminderSettings: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       bookingPage: { useQuery: () => ({ data: { items: [{ id: 1, status: dashboardMockState.showCancelledBooking ? "cancelled" : "confirmed", clientName: "Alex", referenceNumber: "REF001", serviceName: "Haircut", serviceSummary: "Haircut", totalDurationMinutes: 45, totalPriceSummary: "15,000 ֏", bookingDate: "2099-12-30", bookingTime: "14:00", clientPhone: "+37455000000", clientEmail: "alex@example.com", comment: null, createdAt: new Date(), completedAt: dashboardMockState.showCancelledBooking ? null : new Date(), cancellationReason: dashboardMockState.showCancelledBooking ? "Plans changed" : null }], total: 30, page: 1, pageSize: 15 }, isLoading: false, isError: false }) },
       reviews: { useQuery: () => ({ data: [], refetch: vi.fn() }) },
       confirmBooking: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
@@ -58,6 +62,8 @@ describe("AdminDashboard navigation", () => {
 
     expect(screen.getByText("Заявки клиентов")).toBeTruthy();
     expect(screen.getByText(/Сегодня · 2099-12-30/)).toBeTruthy();
+    expect(screen.getByText("Недельная динамика")).toBeTruthy();
+    expect(screen.getByText("Последние 7 дней")).toBeTruthy();
     expect(screen.getByText("Отправить запрос на отзыв")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: /Календарь/i }));
@@ -77,6 +83,9 @@ describe("AdminDashboard navigation", () => {
     expect(screen.getByText("Alex")).toBeTruthy();
     fireEvent.change(clientSearch, { target: { value: "alex@example.com" } });
     expect(screen.getByText("Alex")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /Настройки/i }));
+    expect(screen.getByText("Reminder settings editor")).toBeTruthy();
   });
 
   it("changes the visible booking page through accessible pagination controls", () => {

@@ -222,27 +222,30 @@ export function buildRepeatFollowUpEmail(details: BookingEmailDetails, bookingUr
   };
 }
 
-export function buildAppointmentReminderEmail(details: BookingEmailDetails, statusUrl: string): EmailMessage {
+export function buildAppointmentReminderEmail(details: BookingEmailDetails, statusUrl: string, minutesBefore = 1440): EmailMessage {
   const safeName = escapeHtml(details.clientName);
   const safeUrl = escapeHtml(statusUrl);
+  const hoursBefore = Math.max(1, Math.round(minutesBefore / 60));
+  const englishLead = minutesBefore >= 24 * 60 ? "tomorrow" : `in ${hoursBefore} ${hoursBefore === 1 ? "hour" : "hours"}`;
+  const russianLead = minutesBefore >= 24 * 60 ? "завтра" : `примерно через ${hoursBefore} ч.`;
   return {
-    subject: "Reminder: your visit is tomorrow — Isaac",
+    subject: `Reminder: your visit is ${englishLead} — Isaac`,
     text: [
       `Hi, ${details.clientName}.`,
-      "A friendly reminder that your appointment with me is tomorrow.",
+      `A friendly reminder that your appointment with me is ${englishLead}.`,
       bookingDetailsText(details),
       `Booking status: ${statusUrl}`,
       "See you soon,",
       "Isaac",
       "",
       `Здравствуйте, ${details.clientName}.`,
-      "Напоминаю, что ваша запись ко мне запланирована на завтра.",
+      `Напоминаю, что ваша запись ко мне ${russianLead}.`,
       bookingDetailsText(details),
       `Статус записи: ${statusUrl}`,
       "До встречи,",
       "Isaac",
     ].join("\n"),
-    html: `<!doctype html><html><body style="margin:0;background:#F7F5F1;font-family:Arial,sans-serif;color:#17191E;"><div style="max-width:600px;margin:0 auto;padding:36px 24px;"><p style="margin:0 0 8px;color:#A17A2C;font-size:11px;font-weight:700;letter-spacing:2px;">ISAAC HAKOBIAN</p><h1 style="margin:0 0 18px;font-family:Georgia,serif;font-size:32px;line-height:1.1;">Your visit is tomorrow</h1><p style="margin:0 0 8px;font-size:15px;line-height:1.6;">Hi, ${safeName}. A friendly reminder that your appointment with me is tomorrow.</p><p style="margin:0 0 24px;font-size:15px;line-height:1.6;">Напоминаю, что ваша запись ко мне запланирована на завтра.</p><div style="background:#FFFFFF;border:1px solid #E4DED5;padding:24px;"><table style="border-collapse:collapse;width:100%;">${bookingDetailsHtml(details)}</table></div><a href="${safeUrl}" style="display:inline-block;margin-top:24px;background:#17191E;color:#FFFFFF;text-decoration:none;padding:14px 20px;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">Booking status / Статус записи</a><p style="margin:26px 0 0;font-size:15px;line-height:1.6;">See you soon,<br><strong>Isaac</strong></p></div></body></html>`,
+    html: `<!doctype html><html><body style="margin:0;background:#F7F5F1;font-family:Arial,sans-serif;color:#17191E;"><div style="max-width:600px;margin:0 auto;padding:36px 24px;"><p style="margin:0 0 8px;color:#A17A2C;font-size:11px;font-weight:700;letter-spacing:2px;">ISAAC HAKOBIAN</p><h1 style="margin:0 0 18px;font-family:Georgia,serif;font-size:32px;line-height:1.1;">Your visit is ${englishLead}</h1><p style="margin:0 0 8px;font-size:15px;line-height:1.6;">Hi, ${safeName}. A friendly reminder that your appointment with me is ${englishLead}.</p><p style="margin:0 0 24px;font-size:15px;line-height:1.6;">Напоминаю, что ваша запись ко мне ${russianLead}.</p><div style="background:#FFFFFF;border:1px solid #E4DED5;padding:24px;"><table style="border-collapse:collapse;width:100%;">${bookingDetailsHtml(details)}</table></div><a href="${safeUrl}" style="display:inline-block;margin-top:24px;background:#17191E;color:#FFFFFF;text-decoration:none;padding:14px 20px;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">Booking status / Статус записи</a><p style="margin:26px 0 0;font-size:15px;line-height:1.6;">See you soon,<br><strong>Isaac</strong></p></div></body></html>`,
   };
 }
 
@@ -383,11 +386,11 @@ export async function sendReviewRequestEmail(details: BookingEmailDetails, revie
   });
 }
 
-export async function sendAppointmentReminderEmail(details: BookingEmailDetails, statusUrl: string) {
+export async function sendAppointmentReminderEmail(details: BookingEmailDetails, statusUrl: string, minutesBefore = 1440) {
   if (process.env.NODE_ENV === "test" || !details.clientEmail) return { skipped: true } as const;
   const config = getMailTransport();
   if (!config) return { skipped: true } as const;
-  const email = buildAppointmentReminderEmail(details, statusUrl);
+  const email = buildAppointmentReminderEmail(details, statusUrl, minutesBefore);
   return config.transport.sendMail({
     from: `Hairstyle Laboratory <${config.user}>`,
     to: details.clientEmail,
@@ -395,7 +398,7 @@ export async function sendAppointmentReminderEmail(details: BookingEmailDetails,
     subject: email.subject,
     text: email.text,
     html: email.html,
-    headers: { "X-Booking-Reference": details.referenceNumber, "X-Booking-Email-Type": "appointment-reminder" },
+    headers: { "X-Booking-Reference": details.referenceNumber, "X-Booking-Email-Type": "appointment-reminder", "X-Booking-Reminder-Minutes": String(minutesBefore) },
   });
 }
 
