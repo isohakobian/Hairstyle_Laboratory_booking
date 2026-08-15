@@ -107,7 +107,7 @@
 - [x] Publish a bilingual vacation notice for 31 October through 8 November
 - [x] Let admin reschedule a booking while retaining the original appointment history
 - [x] Add an admin client history view with contact details, visit count, last visit, and last services
-- [ ] Review accessible public Eclise scheduling patterns as inspiration without copying its proprietary interface
+- [x] Review accessible public Eclise scheduling patterns as inspiration without copying its proprietary interface
 - [x] Collect optional client profile fields: birthday and Instagram alongside name, phone, and email
 - [x] Create private client profiles with preferences for length, beard shape, styling, dislikes, skin sensitivity, and free-form notes
 - [x] Preserve per-visit history with date, services, duration, cost, photos before and after, and stylist comments
