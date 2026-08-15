@@ -186,3 +186,10 @@
 - [x] Send a bilingual Gmail email to the client after they cancel their own appointment
 - [x] Preserve successful booking changes when an optional notification email cannot be delivered
 - [x] Add regression coverage for reschedule and cancellation client notifications
+- [x] Add a direct booking link to the client cancellation email
+- [x] Record successful and failed client notification deliveries per booking
+- [x] Make manual resend use the actual latest client notification for the booking
+- [x] Show the complete client email delivery history on each admin booking card with an explicit expand control
+- [x] Add regressions proving latest-notification resend and full history visibility
+- [x] Make manual resend reproduce the truly latest client email, including appointment reminders
+- [x] Add regression coverage for manual resend when a reminder is the latest email

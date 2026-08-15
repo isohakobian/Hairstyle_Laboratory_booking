@@ -10,10 +10,10 @@ import {
   getReviewTokenByHash, markReviewTokenUsed,
   getPublishedReviews, getAllReviews, updateReviewPublished, createManagedService, setServiceActive, updateManagedService,
   createBookingStatusRecoveryToken, claimBookingStatusRecoveryToken, getSafeBookingStatusesByEmail,
-  deleteBookingAndRelatedData, declineBookingForInvalidReceipt, getAdminTodaySummary, getBookingReminderSettings, getClientDirectory, getBookingPage, getManualDepositSettings, getReviewRequestDashboard, getReviewRequestEmailTemplate, getReviewRequestPage, getReviewRequestStats, getWeeklyBookingSummary, saveBookingReminderSettings, saveManualDepositSettings, saveReviewRequestEmailTemplate, updateManualDepositStatus,
+  deleteBookingAndRelatedData, declineBookingForInvalidReceipt, getAdminTodaySummary, getBookingReminderSettings, getClientDirectory, getClientEmailDeliveryHistory, getLatestBookingRescheduleEvent, getBookingPage, getManualDepositSettings, getReviewRequestDashboard, getReviewRequestEmailTemplate, getReviewRequestPage, getReviewRequestStats, getWeeklyBookingSummary, recordClientEmailDelivery, saveBookingReminderSettings, saveManualDepositSettings, saveReviewRequestEmailTemplate, updateManualDepositStatus,
 } from "./db";
 import { TRPCError } from "@trpc/server";
-import { sendBookingCancelledEmail, sendBookingEmails, sendBookingRescheduledEmail, sendBookingStatusRecoveryEmail, sendConfirmedBookingEmail, sendReviewRequestEmail } from "./bookingEmail";
+import { sendAppointmentReminderEmail, sendBookingCancelledEmail, sendBookingDeclinedEmail, sendBookingEmails, sendBookingRescheduledEmail, sendBookingStatusRecoveryEmail, sendClientBookingRequestEmail, sendConfirmedBookingEmail, sendReviewRequestEmail } from "./bookingEmail";
 import { createReviewTokenValue, getBookingStatusRecoveryExpiry, getReviewTokenExpiry, hashReviewToken } from "./reviewToken";
 import { blockDates, getAvailabilityWindows, getAvailableSlots, getPublicAvailableDates, setAvailabilityForDates } from "./availability";
 import { completeBooking, createBookingEvent, findOrCreateClient, getClientMemory, getSignedVisitMediaUrl, recordReviewRequest, rescheduleBooking, updateClientProfile, uploadVisitMedia } from "./clientMemory";
@@ -27,6 +27,26 @@ const adminMiddleware = protectedProcedure.use(async ({ ctx, next }) => {
   }
   return next({ ctx });
 });
+
+const PUBLIC_BOOKING_URL = "https://isaacbarber-axczkyb2.manus.space/booking";
+const PUBLIC_STATUS_URL = "https://isaacbarber-axczkyb2.manus.space/status";
+
+function trackClientEmailDelivery(
+  bookingId: number,
+  recipientEmail: string,
+  notificationType: string,
+  delivery: Promise<unknown>,
+  isManualResend: "yes" | "no" = "no",
+) {
+  void delivery.then(async (result) => {
+    const skipped = Boolean(result && typeof result === "object" && "skipped" in result && (result as { skipped?: boolean }).skipped);
+    await recordClientEmailDelivery({ bookingId, recipientEmail, notificationType, deliveryStatus: skipped ? "skipped" : "sent", isManualResend });
+  }).catch(async (error: unknown) => {
+    const message = error instanceof Error ? error.message : "Unknown email delivery error";
+    await recordClientEmailDelivery({ bookingId, recipientEmail, notificationType, deliveryStatus: "failed", errorMessage: message, isManualResend }).catch((recordError: unknown) => console.error("[Client email history] Could not record failure:", recordError));
+    console.error(`[Client email] ${notificationType} delivery failed:`, error);
+  });
+}
 
 const managedServiceInput = z.object({
   id: z.number().int().positive().optional(),
@@ -230,7 +250,7 @@ export const appRouter = router({
         }
 
         try {
-          await sendBookingEmails({
+          const deliveryResults = await sendBookingEmails({
             referenceNumber,
             serviceName: serviceSummary,
             totalDurationMinutes,
@@ -244,7 +264,20 @@ export const appRouter = router({
             manualDepositAmountAmd: requiresManualDeposit ? depositTotalAmd : null,
             receipt: receipt ? { fileName: receipt.fileName, mimeType: receipt.mimeType, content: receipt.content } : null,
           });
+          if (booking?.clientEmail) {
+            const clientResult = Array.isArray(deliveryResults) ? deliveryResults[deliveryResults.length - 1] : deliveryResults;
+            const skipped = Boolean(clientResult && typeof clientResult === "object" && "skipped" in clientResult && (clientResult as { skipped?: boolean }).skipped);
+            const failed = Boolean(clientResult && typeof clientResult === "object" && "status" in clientResult && (clientResult as PromiseRejectedResult).status === "rejected");
+            await recordClientEmailDelivery({
+              bookingId: booking.id,
+              recipientEmail: booking.clientEmail,
+              notificationType: "booking-request",
+              deliveryStatus: failed ? "failed" : skipped ? "skipped" : "sent",
+              errorMessage: failed ? String((clientResult as PromiseRejectedResult).reason) : null,
+            });
+          }
         } catch (e) {
+          if (booking?.clientEmail) await recordClientEmailDelivery({ bookingId: booking.id, recipientEmail: booking.clientEmail, notificationType: "booking-request", deliveryStatus: "failed", errorMessage: e instanceof Error ? e.message : "Unknown email delivery error" }).catch(() => undefined);
           // Email delivery must never block a successfully created booking.
           console.warn('[Booking] Failed to send Gmail booking emails:', e);
         }
@@ -267,7 +300,7 @@ export const appRouter = router({
         if (!result.cancelled || !result.bookingId) throw new TRPCError({ code: "BAD_REQUEST", message: "The booking could not be cancelled" });
         const booking = await getBookingById(result.bookingId);
         if (booking?.clientEmail) {
-          void sendBookingCancelledEmail({
+          trackClientEmailDelivery(booking.id, booking.clientEmail, "booking-cancelled", sendBookingCancelledEmail({
             referenceNumber: booking.referenceNumber,
             serviceName: booking.serviceSummary || booking.serviceName,
             totalDurationMinutes: booking.totalDurationMinutes || undefined,
@@ -278,7 +311,7 @@ export const appRouter = router({
             clientPhone: booking.clientPhone,
             clientEmail: booking.clientEmail,
             comment: booking.comment,
-          }, input.reason).catch((error: unknown) => console.error(`[Booking cancellation email] ${booking.referenceNumber} failed:`, error));
+          }, input.reason, PUBLIC_BOOKING_URL));
         }
         return { success: true };
       }),
@@ -379,6 +412,54 @@ export const appRouter = router({
     saveManualDepositSettings: adminMiddleware
       .input(manualDepositSettingsInput)
       .mutation(({ input }) => saveManualDepositSettings({ ...input, instagramUrl: "" })),
+    clientEmailHistory: adminMiddleware
+      .input(z.object({ bookingId: z.number().int().positive() }))
+      .query(({ input }) => getClientEmailDeliveryHistory(input.bookingId)),
+    resendBookingNotification: adminMiddleware
+      .input(z.object({ bookingId: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        const booking = await getBookingById(input.bookingId);
+        if (!booking) throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found" });
+        if (!booking.clientEmail) throw new TRPCError({ code: "BAD_REQUEST", message: "This booking does not have a client email" });
+        const details = {
+          referenceNumber: booking.referenceNumber,
+          serviceName: booking.serviceSummary || booking.serviceName,
+          totalDurationMinutes: booking.totalDurationMinutes || undefined,
+          totalPriceSummary: booking.totalPriceSummary || undefined,
+          bookingDate: booking.bookingDate,
+          bookingTime: booking.bookingTime,
+          clientName: booking.clientName,
+          clientPhone: booking.clientPhone,
+          clientEmail: booking.clientEmail,
+          comment: booking.comment,
+        };
+        const history = await getClientEmailDeliveryHistory(booking.id);
+        const latestClientEmail = history[0];
+        const notificationType = latestClientEmail?.notificationType ?? (booking.status === "confirmed" ? "booking-confirmed" : booking.status === "cancelled" ? "booking-cancelled" : booking.status === "declined" ? "booking-declined" : "booking-request");
+        const reminderMatch = /^appointment-reminder-(\d+)$/.exec(notificationType);
+        const reminderMinutes = reminderMatch ? Number(reminderMatch[1]) : null;
+        const latestReschedule = notificationType === "booking-rescheduled" ? await getLatestBookingRescheduleEvent(booking.id) : null;
+        try {
+          const result = reminderMinutes !== null
+            ? await sendAppointmentReminderEmail(details, PUBLIC_STATUS_URL, reminderMinutes)
+            : notificationType === "booking-rescheduled" && latestReschedule?.previousDate && latestReschedule.previousTime
+            ? await sendBookingRescheduledEmail(details, latestReschedule.previousDate, latestReschedule.previousTime)
+            : notificationType === "booking-cancelled"
+              ? await sendBookingCancelledEmail(details, booking.cancellationReason || "Cancelled", PUBLIC_BOOKING_URL)
+              : notificationType === "booking-declined"
+                ? await sendBookingDeclinedEmail(details)
+                : notificationType === "booking-request"
+                  ? await sendClientBookingRequestEmail(details)
+                  : await sendConfirmedBookingEmail(details);
+          const skipped = Boolean(result && typeof result === "object" && "skipped" in result && result.skipped);
+          await recordClientEmailDelivery({ bookingId: booking.id, recipientEmail: booking.clientEmail, notificationType, deliveryStatus: skipped ? "skipped" : "sent", isManualResend: "yes" });
+          return { success: true, skipped };
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Unknown email delivery error";
+          await recordClientEmailDelivery({ bookingId: booking.id, recipientEmail: booking.clientEmail, notificationType, deliveryStatus: "failed", errorMessage: message, isManualResend: "yes" });
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "The email could not be sent. The failed attempt was recorded in the booking history." });
+        }
+      }),
     updateManualDepositStatus: adminMiddleware
       .input(z.object({ id: z.number().int().positive(), status: z.enum(["awaiting_proof", "proof_received", "verified", "waived"]) }))
       .mutation(({ input }) => updateManualDepositStatus(input.id, input.status)),
@@ -472,7 +553,7 @@ export const appRouter = router({
         if (booking) await createBookingEvent({ bookingId: booking.id, eventType: "confirmed" });
         if (booking?.clientEmail) {
           try {
-            await sendConfirmedBookingEmail({
+            const result = await sendConfirmedBookingEmail({
               referenceNumber: booking.referenceNumber,
               serviceName: booking.serviceSummary || booking.serviceName,
               totalDurationMinutes: booking.totalDurationMinutes || undefined,
@@ -484,7 +565,9 @@ export const appRouter = router({
               clientEmail: booking.clientEmail,
               comment: booking.comment,
             });
+            await recordClientEmailDelivery({ bookingId: booking.id, recipientEmail: booking.clientEmail, notificationType: "booking-confirmed", deliveryStatus: result && typeof result === "object" && "skipped" in result && result.skipped ? "skipped" : "sent" });
           } catch (error) {
+            await recordClientEmailDelivery({ bookingId: booking.id, recipientEmail: booking.clientEmail, notificationType: "booking-confirmed", deliveryStatus: "failed", errorMessage: error instanceof Error ? error.message : "Unknown email delivery error" }).catch(() => undefined);
             console.warn("[Booking] Failed to send confirmation email:", error);
           }
         }
@@ -589,7 +672,7 @@ export const appRouter = router({
         const booking = await getBookingById(input.id);
         await rescheduleBooking(input.id, input.bookingDate, input.bookingTime, input.note);
         if (booking?.clientEmail) {
-          void sendBookingRescheduledEmail({
+          trackClientEmailDelivery(booking.id, booking.clientEmail, "booking-rescheduled", sendBookingRescheduledEmail({
             referenceNumber: booking.referenceNumber,
             serviceName: booking.serviceSummary || booking.serviceName,
             totalDurationMinutes: booking.totalDurationMinutes || undefined,
@@ -600,7 +683,7 @@ export const appRouter = router({
             clientPhone: booking.clientPhone,
             clientEmail: booking.clientEmail,
             comment: booking.comment,
-          }, booking.bookingDate, booking.bookingTime).catch((error: unknown) => console.error(`[Booking reschedule email] ${booking.referenceNumber} failed:`, error));
+          }, booking.bookingDate, booking.bookingTime));
         }
         return { success: true };
       }),

@@ -96,6 +96,8 @@ describe("booking email templates", () => {
 
     expect(email.subject).toContain("appointment has been cancelled");
     expect(email.text).toContain("Причина отмены: Plans changed <today>");
+    expect(email.text).toContain("Выбрать новое время");
+    expect(email.html).toContain("https://isaacbarber-axczkyb2.manus.space/booking");
     expect(email.html).toContain("Plans changed &lt;today&gt;");
   });
 

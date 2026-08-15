@@ -1,22 +1,28 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TrpcContext } from "./_core/context";
 import { clearExampleTestBookings } from "./testCleanup";
-import { createReviewToken } from "./db";
+import { createReviewToken, recordClientEmailDelivery } from "./db";
 import { createReviewTokenValue, hashReviewToken } from "./reviewToken";
 import { setAvailabilityForDates } from "./availability";
 
-const { sendBookingEmails, sendBookingCancelledEmail, sendBookingRescheduledEmail, sendConfirmedBookingEmail, sendReviewRequestEmail } = vi.hoisted(() => ({
+const { sendAppointmentReminderEmail, sendBookingEmails, sendBookingCancelledEmail, sendBookingDeclinedEmail, sendBookingRescheduledEmail, sendClientBookingRequestEmail, sendConfirmedBookingEmail, sendReviewRequestEmail } = vi.hoisted(() => ({
+  sendAppointmentReminderEmail: vi.fn().mockResolvedValue({ accepted: ["client@example.com"] }),
   sendBookingEmails: vi.fn().mockResolvedValue({ skipped: true }),
   sendBookingCancelledEmail: vi.fn().mockResolvedValue({ accepted: ["client@example.com"] }),
+  sendBookingDeclinedEmail: vi.fn().mockResolvedValue({ accepted: ["client@example.com"] }),
   sendBookingRescheduledEmail: vi.fn().mockResolvedValue({ accepted: ["client@example.com"] }),
+  sendClientBookingRequestEmail: vi.fn().mockResolvedValue({ accepted: ["client@example.com"] }),
   sendConfirmedBookingEmail: vi.fn().mockResolvedValue({ accepted: ["client@example.com"] }),
   sendReviewRequestEmail: vi.fn().mockResolvedValue({ accepted: ["client@example.com"] }),
 }));
 
 vi.mock("./bookingEmail", () => ({
+  sendAppointmentReminderEmail,
   sendBookingEmails,
   sendBookingCancelledEmail,
+  sendBookingDeclinedEmail,
   sendBookingRescheduledEmail,
+  sendClientBookingRequestEmail,
   sendConfirmedBookingEmail,
   sendReviewRequestEmail,
 }));
@@ -44,10 +50,13 @@ function context(role: "user" | "admin"): TrpcContext {
 
 describe("booking lifecycle emails", () => {
   beforeEach(async () => {
-    sendConfirmedBookingEmail.mockClear();
-    sendBookingCancelledEmail.mockClear();
-    sendBookingRescheduledEmail.mockClear();
-    sendReviewRequestEmail.mockClear();
+    sendAppointmentReminderEmail.mockReset().mockResolvedValue({ accepted: ["client@example.com"] });
+    sendConfirmedBookingEmail.mockReset().mockResolvedValue({ accepted: ["client@example.com"] });
+    sendBookingCancelledEmail.mockReset().mockResolvedValue({ accepted: ["client@example.com"] });
+    sendBookingDeclinedEmail.mockReset().mockResolvedValue({ accepted: ["client@example.com"] });
+    sendBookingRescheduledEmail.mockReset().mockResolvedValue({ accepted: ["client@example.com"] });
+    sendClientBookingRequestEmail.mockReset().mockResolvedValue({ accepted: ["client@example.com"] });
+    sendReviewRequestEmail.mockReset().mockResolvedValue({ accepted: ["client@example.com"] });
     await setAvailabilityForDates(["2099-12-30", "2099-12-31"], "09:00", "19:00", 30);
   });
 
@@ -115,7 +124,7 @@ describe("booking lifecycle emails", () => {
     sendBookingCancelledEmail.mockRejectedValueOnce(new Error("SMTP unavailable"));
 
     await expect(publicCaller.bookings.cancelByClient({ referenceNumber: booking.referenceNumber, clientEmail: "cancellation-notice@example.com", reason: "Plans changed" })).resolves.toEqual({ success: true });
-    expect(sendBookingCancelledEmail).toHaveBeenCalledWith(expect.objectContaining({ referenceNumber: booking.referenceNumber }), "Plans changed");
+    expect(sendBookingCancelledEmail).toHaveBeenCalledWith(expect.objectContaining({ referenceNumber: booking.referenceNumber }), "Plans changed", "https://isaacbarber-axczkyb2.manus.space/booking");
     await new Promise(resolve => setTimeout(resolve, 0));
     expect((await publicCaller.bookings.getByReference({ referenceNumber: booking.referenceNumber }))?.status).toBe("cancelled");
   });
@@ -135,6 +144,58 @@ describe("booking lifecycle emails", () => {
     await expect(adminCaller.admin.rescheduleBooking({ id: booking.id, bookingDate: "2099-12-31", bookingTime: "11:00" })).resolves.toEqual({ success: true });
     await new Promise(resolve => setTimeout(resolve, 0));
     expect((await publicCaller.bookings.getByReference({ referenceNumber: booking.referenceNumber }))?.bookingTime).toBe("11:00");
+  });
+
+  it("records and resends the current booking notification from the admin workflow", async () => {
+    const publicCaller = appRouter.createCaller(context("user"));
+    const services = await publicCaller.services.list();
+    const haircutId = services.find((service) => service.nameEn === "Haircut")?.id;
+    if (!haircutId) throw new Error("Haircut service is unavailable");
+    const booking = await publicCaller.bookings.create({
+      serviceIds: [haircutId], bookingDate: "2099-12-31", bookingTime: "17:00",
+      clientName: "Resend Client", clientPhone: "+37455000006", clientEmail: "resend@example.com", policyAccepted: true,
+    });
+    const adminCaller = appRouter.createCaller(context("admin"));
+    await adminCaller.admin.confirmBooking({ id: booking.id });
+    await expect(adminCaller.admin.resendBookingNotification({ bookingId: booking.id })).resolves.toEqual({ success: true, skipped: false });
+    expect(sendConfirmedBookingEmail).toHaveBeenCalledTimes(2);
+    const history = await adminCaller.admin.clientEmailHistory({ bookingId: booking.id });
+    expect(history.some(item => item.notificationType === "booking-confirmed" && item.isManualResend === "yes" && item.deliveryStatus === "sent")).toBe(true);
+  });
+
+  it("resends the actual latest reschedule email rather than falling back to the current booking status", async () => {
+    const publicCaller = appRouter.createCaller(context("user"));
+    const services = await publicCaller.services.list();
+    const haircutId = services.find((service) => service.nameEn === "Haircut")?.id;
+    if (!haircutId) throw new Error("Haircut service is unavailable");
+    const booking = await publicCaller.bookings.create({
+      serviceIds: [haircutId], bookingDate: "2099-12-30", bookingTime: "16:00",
+      clientName: "Latest Reschedule Client", clientPhone: "+37455000007", clientEmail: "latest-reschedule@example.com", policyAccepted: true,
+    });
+    const adminCaller = appRouter.createCaller(context("admin"));
+    await adminCaller.admin.confirmBooking({ id: booking.id });
+    await adminCaller.admin.rescheduleBooking({ id: booking.id, bookingDate: "2099-12-30", bookingTime: "17:00" });
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    await adminCaller.admin.resendBookingNotification({ bookingId: booking.id });
+    expect(sendBookingRescheduledEmail).toHaveBeenLastCalledWith(expect.objectContaining({ bookingDate: "2099-12-30", bookingTime: "17:00" }), "2099-12-30", "16:00");
+  });
+
+  it("resends the latest reminder when that is newer than the booking-status email", async () => {
+    const publicCaller = appRouter.createCaller(context("user"));
+    const services = await publicCaller.services.list();
+    const haircutId = services.find((service) => service.nameEn === "Haircut")?.id;
+    if (!haircutId) throw new Error("Haircut service is unavailable");
+    const booking = await publicCaller.bookings.create({
+      serviceIds: [haircutId], bookingDate: "2099-12-31", bookingTime: "18:00",
+      clientName: "Latest Reminder Client", clientPhone: "+37455000008", clientEmail: "latest-reminder@example.com", policyAccepted: true,
+    });
+    const adminCaller = appRouter.createCaller(context("admin"));
+    await adminCaller.admin.confirmBooking({ id: booking.id });
+    await recordClientEmailDelivery({ bookingId: booking.id, recipientEmail: "latest-reminder@example.com", notificationType: "appointment-reminder-120", deliveryStatus: "sent" });
+
+    await adminCaller.admin.resendBookingNotification({ bookingId: booking.id });
+    expect(sendAppointmentReminderEmail).toHaveBeenLastCalledWith(expect.objectContaining({ referenceNumber: booking.referenceNumber }), "https://isaacbarber-axczkyb2.manus.space/status", 120);
   });
 
   it("rejects an expired one-time review link", async () => {

@@ -16,6 +16,7 @@ import ServiceManager from '@/components/ServiceManager';
 import ReviewRequestTemplateEditor from '@/components/ReviewRequestTemplateEditor';
 import ManualDepositSettingsEditor from '@/components/ManualDepositSettingsEditor';
 import BookingReminderSettingsEditor from '@/components/BookingReminderSettingsEditor';
+import BookingEmailHistory from '@/components/BookingEmailHistory';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink } from '@/components/ui/pagination';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
@@ -510,6 +511,7 @@ export default function AdminDashboard() {
                         </div>
                       )}
                       {booking.status === 'cancelled' && booking.cancellationReason && <p style={{ margin: '0 0 1rem', padding: '0.75rem', borderLeft: '2px solid hsl(var(--muted-foreground))', background: 'hsl(var(--secondary))', color: 'hsl(var(--muted-foreground))', fontSize: '0.8125rem', lineHeight: 1.5 }}><strong style={{ color: 'hsl(var(--foreground))' }}>{language === 'ru' ? 'Причина отмены: ' : 'Cancellation reason: '}</strong>{booking.cancellationReason}</p>}
+                      <BookingEmailHistory bookingId={booking.id} clientEmail={booking.clientEmail} language={language as 'ru' | 'en'} />
                       {booking.clientId && (
                         <button
                           type="button"

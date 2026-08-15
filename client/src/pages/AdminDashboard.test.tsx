@@ -13,6 +13,7 @@ vi.mock("@/const", () => ({ getLoginUrl: () => "/login" }));
 vi.mock("@/components/ScheduleCalendar", () => ({ default: () => <div>Schedule calendar</div> }));
 vi.mock("@/components/BookingCalendar", () => ({ default: () => <div>Booking calendar</div> }));
 vi.mock("@/components/BookingReminderSettingsEditor", () => ({ default: () => <div>Reminder settings editor</div> }));
+vi.mock("@/components/BookingEmailHistory", () => ({ default: () => <div>Client email history</div> }));
 vi.mock("@/lib/trpc", () => ({
   trpc: {
     admin: {
@@ -64,6 +65,7 @@ describe("AdminDashboard navigation", () => {
     expect(screen.getByText(/Сегодня · 2099-12-30/)).toBeTruthy();
     expect(screen.getByText("Недельная динамика")).toBeTruthy();
     expect(screen.getByText("Последние 7 дней")).toBeTruthy();
+    expect(screen.getByText("Client email history")).toBeTruthy();
     expect(screen.getByText("Отправить запрос на отзыв")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: /Календарь/i }));

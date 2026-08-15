@@ -141,9 +141,10 @@ export function buildBookingRescheduledEmail(details: BookingEmailDetails, previ
   };
 }
 
-export function buildBookingCancelledEmail(details: BookingEmailDetails, reason: string): EmailMessage {
+export function buildBookingCancelledEmail(details: BookingEmailDetails, reason: string, bookingUrl = "https://isaacbarber-axczkyb2.manus.space/booking"): EmailMessage {
   const safeName = escapeHtml(details.clientName);
   const safeReason = escapeHtml(reason);
+  const safeBookingUrl = escapeHtml(bookingUrl);
   return {
     subject: "Your appointment has been cancelled — Isaac",
     text: [
@@ -154,11 +155,12 @@ export function buildBookingCancelledEmail(details: BookingEmailDetails, reason:
       `Здравствуйте, ${details.clientName}.`,
       "Ваша запись отменена. Это время снова стало доступно для записи.",
       `Причина отмены: ${reason}`,
+      `Choose a new time / Выбрать новое время: ${bookingUrl}`,
       "",
       bookingDetailsText(details),
       "Isaac",
     ].join("\n"),
-    html: `<!doctype html><html><body style="margin:0;background:#F7F5F1;font-family:Arial,sans-serif;color:#17191E;"><div style="max-width:600px;margin:0 auto;padding:36px 24px;"><p style="margin:0 0 8px;color:#A17A2C;font-size:11px;font-weight:700;letter-spacing:2px;">ISAAC HAKOBIAN</p><h1 style="margin:0 0 18px;font-family:Georgia,serif;font-size:32px;line-height:1.1;">Your appointment has been cancelled</h1><p style="margin:0 0 8px;font-size:15px;line-height:1.6;">Hello, ${safeName}. Your appointment has been cancelled. This time is now available again.</p><p style="margin:0 0 20px;font-size:15px;line-height:1.6;">Здравствуйте, ${safeName}. Ваша запись отменена. Это время снова стало доступно для записи.</p><div style="background:#FFFFFF;border:1px solid #E4DED5;padding:24px;"><p style="margin:0 0 8px;font-size:13px;color:#6B7280;">Cancellation reason / Причина отмены</p><p style="margin:0 0 18px;font-size:15px;font-weight:700;">${safeReason}</p><table style="border-collapse:collapse;width:100%;">${bookingDetailsHtml(details)}</table></div><p style="margin:26px 0 0;font-size:15px;line-height:1.6;">Isaac</p></div></body></html>`,
+    html: `<!doctype html><html><body style="margin:0;background:#F7F5F1;font-family:Arial,sans-serif;color:#17191E;"><div style="max-width:600px;margin:0 auto;padding:36px 24px;"><p style="margin:0 0 8px;color:#A17A2C;font-size:11px;font-weight:700;letter-spacing:2px;">ISAAC HAKOBIAN</p><h1 style="margin:0 0 18px;font-family:Georgia,serif;font-size:32px;line-height:1.1;">Your appointment has been cancelled</h1><p style="margin:0 0 8px;font-size:15px;line-height:1.6;">Hello, ${safeName}. Your appointment has been cancelled. This time is now available again.</p><p style="margin:0 0 20px;font-size:15px;line-height:1.6;">Здравствуйте, ${safeName}. Ваша запись отменена. Это время снова стало доступно для записи.</p><div style="background:#FFFFFF;border:1px solid #E4DED5;padding:24px;"><p style="margin:0 0 8px;font-size:13px;color:#6B7280;">Cancellation reason / Причина отмены</p><p style="margin:0 0 18px;font-size:15px;font-weight:700;">${safeReason}</p><table style="border-collapse:collapse;width:100%;">${bookingDetailsHtml(details)}</table></div><a href="${safeBookingUrl}" style="display:inline-block;margin-top:24px;background:#17191E;color:#FFFFFF;text-decoration:none;padding:14px 20px;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">Choose a new time / Выбрать новое время</a><p style="margin:26px 0 0;font-size:15px;line-height:1.6;">Isaac</p></div></body></html>`,
   };
 }
 
@@ -181,6 +183,15 @@ export function buildBookingStatusRecoveryEmail(recoveryUrl: string): EmailMessa
       "Isaac",
     ].join("\n"),
     html: `<!doctype html><html><body style="margin:0;background:#F7F5F1;font-family:Arial,sans-serif;color:#17191E;"><div style="max-width:600px;margin:0 auto;padding:36px 24px;"><p style="margin:0 0 8px;color:#A17A2C;font-size:11px;font-weight:700;letter-spacing:2px;">ISAAC HAKOBIAN</p><h1 style="margin:0 0 18px;font-family:Georgia,serif;font-size:32px;line-height:1.1;">Your booking status</h1><p style="margin:0 0 8px;font-size:15px;line-height:1.6;">You requested access to your booking status. Use the private link below.</p><p style="margin:0 0 24px;font-size:15px;line-height:1.6;">Вы запросили доступ к статусу вашей записи. Откройте её по приватной ссылке ниже.</p><a href="${safeUrl}" style="display:inline-block;background:#17191E;color:#FFFFFF;text-decoration:none;padding:14px 20px;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">Open booking status / Открыть статус</a><p style="margin:24px 0 0;color:#6B7280;font-size:12px;line-height:1.6;">This link works once and expires in 15 minutes. If you did not request it, you can ignore this email.<br>Ссылка работает один раз и действует 15 минут. Если вы её не запрашивали, просто проигнорируйте письмо.</p><p style="margin:20px 0 0;font-size:15px;line-height:1.6;">Isaac</p></div></body></html>`,
+  };
+}
+
+export function buildBookingDeclinedEmail(details: BookingEmailDetails): EmailMessage {
+  const safeName = escapeHtml(details.clientName);
+  return {
+    subject: "Your booking request could not be confirmed — Isaac",
+    text: [`Hello, ${details.clientName}.`, "Unfortunately, I could not confirm this booking request. Please choose another available time.", "", `Здравствуйте, ${details.clientName}.`, "К сожалению, я не смог подтвердить эту заявку. Пожалуйста, выберите другое свободное время.", "", bookingDetailsText(details), "Isaac"].join("\n"),
+    html: `<!doctype html><html><body style="margin:0;background:#F7F5F1;font-family:Arial,sans-serif;color:#17191E;"><div style="max-width:600px;margin:0 auto;padding:36px 24px;"><p style="margin:0 0 8px;color:#A17A2C;font-size:11px;font-weight:700;letter-spacing:2px;">ISAAC HAKOBIAN</p><h1 style="margin:0 0 18px;font-family:Georgia,serif;font-size:32px;line-height:1.1;">Your booking could not be confirmed</h1><p style="margin:0 0 8px;font-size:15px;line-height:1.6;">Hello, ${safeName}. Unfortunately, I could not confirm this booking request. Please choose another available time.</p><p style="margin:0 0 20px;font-size:15px;line-height:1.6;">Здравствуйте, ${safeName}. К сожалению, я не смог подтвердить эту заявку. Пожалуйста, выберите другое свободное время.</p><div style="background:#FFFFFF;border:1px solid #E4DED5;padding:24px;"><table style="border-collapse:collapse;width:100%;">${bookingDetailsHtml(details)}</table></div></div></body></html>`,
   };
 }
 
@@ -396,6 +407,22 @@ export async function sendConfirmedBookingEmail(details: BookingEmailDetails) {
   });
 }
 
+export async function sendClientBookingRequestEmail(details: BookingEmailDetails) {
+  if (process.env.NODE_ENV === "test" || !details.clientEmail) return { skipped: true } as const;
+  const config = getMailTransport();
+  if (!config) return { skipped: true } as const;
+  const email = buildClientBookingEmail(details);
+  return config.transport.sendMail({ from: `Hairstyle Laboratory <${config.user}>`, to: details.clientEmail, replyTo: config.user, subject: email.subject, text: email.text, html: email.html, headers: { "X-Booking-Reference": details.referenceNumber, "X-Booking-Email-Type": "booking-request" } });
+}
+
+export async function sendBookingDeclinedEmail(details: BookingEmailDetails) {
+  if (process.env.NODE_ENV === "test" || !details.clientEmail) return { skipped: true } as const;
+  const config = getMailTransport();
+  if (!config) return { skipped: true } as const;
+  const email = buildBookingDeclinedEmail(details);
+  return config.transport.sendMail({ from: `Hairstyle Laboratory <${config.user}>`, to: details.clientEmail, replyTo: config.user, subject: email.subject, text: email.text, html: email.html, headers: { "X-Booking-Reference": details.referenceNumber, "X-Booking-Email-Type": "booking-declined" } });
+}
+
 export async function sendBookingRescheduledEmail(details: BookingEmailDetails, previousDate: string, previousTime: string) {
   if (process.env.NODE_ENV === "test" || !details.clientEmail) return { skipped: true } as const;
   const config = getMailTransport();
@@ -412,11 +439,11 @@ export async function sendBookingRescheduledEmail(details: BookingEmailDetails, 
   });
 }
 
-export async function sendBookingCancelledEmail(details: BookingEmailDetails, reason: string) {
+export async function sendBookingCancelledEmail(details: BookingEmailDetails, reason: string, bookingUrl = "https://isaacbarber-axczkyb2.manus.space/booking") {
   if (process.env.NODE_ENV === "test" || !details.clientEmail) return { skipped: true } as const;
   const config = getMailTransport();
   if (!config) return { skipped: true } as const;
-  const email = buildBookingCancelledEmail(details, reason);
+  const email = buildBookingCancelledEmail(details, reason, bookingUrl);
   return config.transport.sendMail({
     from: `Hairstyle Laboratory <${config.user}>`,
     to: details.clientEmail,

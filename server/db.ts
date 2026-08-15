@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, gte, isNotNull, isNull, like, lt, lte, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, InsertBooking, InsertBookingService, users, services, bookings, bookingServices, reviewTokens, bookingStatusRecoveryTokens, bookingEvents, visitMedia, reviewRequestHistory, reviews, clients, emailTemplates, availabilityWindows, manualDepositSettings, automationEmailDeliveries, bookingReminderDeliveries, bookingReminderSettings } from "../drizzle/schema";
+import { InsertUser, InsertBooking, InsertBookingService, users, services, bookings, bookingServices, reviewTokens, bookingStatusRecoveryTokens, bookingEvents, visitMedia, reviewRequestHistory, clientEmailDeliveries, reviews, clients, emailTemplates, availabilityWindows, manualDepositSettings, automationEmailDeliveries, bookingReminderDeliveries, bookingReminderSettings } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -329,6 +329,7 @@ export async function deleteBookingAndRelatedData(bookingId: number) {
     await tx.delete(reviews).where(eq(reviews.bookingId, bookingId));
     await tx.delete(reviewTokens).where(eq(reviewTokens.bookingId, bookingId));
     await tx.delete(reviewRequestHistory).where(eq(reviewRequestHistory.bookingId, bookingId));
+    await tx.delete(clientEmailDeliveries).where(eq(clientEmailDeliveries.bookingId, bookingId));
     await tx.delete(bookingEvents).where(eq(bookingEvents.bookingId, bookingId));
     // The built-in storage layer intentionally exposes no physical-delete API.
     // Removing the stored keys and metadata makes private media unreachable.
@@ -350,6 +351,42 @@ export async function deleteBookingAndRelatedData(bookingId: number) {
 
     return { deleted: true, deletedClientProfile };
   });
+}
+
+export type ClientEmailDeliveryStatus = "sent" | "failed" | "skipped";
+
+export async function recordClientEmailDelivery(input: {
+  bookingId: number;
+  notificationType: string;
+  recipientEmail: string;
+  deliveryStatus: ClientEmailDeliveryStatus;
+  errorMessage?: string | null;
+  isManualResend?: "yes" | "no";
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.insert(clientEmailDeliveries).values({
+    ...input,
+    errorMessage: input.errorMessage ? input.errorMessage.slice(0, 1000) : null,
+    isManualResend: input.isManualResend ?? "no",
+  });
+}
+
+export async function getClientEmailDeliveryHistory(bookingId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(clientEmailDeliveries)
+    .where(eq(clientEmailDeliveries.bookingId, bookingId))
+    .orderBy(desc(clientEmailDeliveries.createdAt), desc(clientEmailDeliveries.id));
+}
+
+export async function getLatestBookingRescheduleEvent(bookingId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  return (await db.select().from(bookingEvents)
+    .where(and(eq(bookingEvents.bookingId, bookingId), eq(bookingEvents.eventType, "rescheduled")))
+    .orderBy(desc(bookingEvents.createdAt), desc(bookingEvents.id))
+    .limit(1))[0] ?? null;
 }
 
 export async function getBookingServices(bookingId: number) {

@@ -167,6 +167,20 @@ export const reviewRequestHistory = mysqlTable("reviewRequestHistory", {
   index("reviewRequestHistory_bookingId_idx").on(table.bookingId),
 ]);
 
+// Delivery attempts for client-facing booking emails, shown privately on the admin booking card.
+export const clientEmailDeliveries = mysqlTable("clientEmailDeliveries", {
+  id: int("id").autoincrement().primaryKey(),
+  bookingId: int("bookingId").notNull(),
+  notificationType: varchar("notificationType", { length: 80 }).notNull(),
+  recipientEmail: varchar("recipientEmail", { length: 320 }).notNull(),
+  deliveryStatus: mysqlEnum("deliveryStatus", ["sent", "failed", "skipped"]).notNull(),
+  errorMessage: varchar("errorMessage", { length: 1000 }),
+  isManualResend: mysqlEnum("isManualResend", ["yes", "no"]).notNull().default("no"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [
+  index("clientEmailDeliveries_bookingId_idx").on(table.bookingId),
+]);
+
 // Editorial notices are date-bound, bilingual, and appear in the public hero
 // only while they are published and active.
 export const announcements = mysqlTable("announcements", {

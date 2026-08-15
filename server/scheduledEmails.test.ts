@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   authenticateRequest: vi.fn(), getDue: vi.fn(), claimReminder: vi.fn(), markReminder: vi.fn(), releaseReminder: vi.fn(), sendReminder: vi.fn(),
   getReminderSettings: vi.fn(), getSecondaryDue: vi.fn(), claimSecondary: vi.fn(), markSecondary: vi.fn(), releaseSecondary: vi.fn(),
-  claimSummary: vi.fn(), markSummary: vi.fn(), releaseSummary: vi.fn(), getSummary: vi.fn(), sendSummary: vi.fn(),
+  claimSummary: vi.fn(), markSummary: vi.fn(), releaseSummary: vi.fn(), getSummary: vi.fn(), sendSummary: vi.fn(), recordDelivery: vi.fn(),
 }));
 
 vi.mock("./db", () => ({
@@ -20,6 +20,7 @@ vi.mock("./db", () => ({
   markAutomationEmailDeliverySent: mocks.markSummary,
   releaseAutomationEmailDeliveryClaim: mocks.releaseSummary,
   getWeeklyBookingSummary: mocks.getSummary,
+  recordClientEmailDelivery: mocks.recordDelivery,
 }));
 vi.mock("./bookingEmail", () => ({ sendAppointmentReminderEmail: mocks.sendReminder, sendWeeklyBookingSummaryEmail: mocks.sendSummary }));
 vi.mock("./_core/sdk", () => ({ sdk: { authenticateRequest: mocks.authenticateRequest } }));
@@ -52,6 +53,7 @@ describe("scheduled appointment emails", () => {
     mocks.releaseSummary.mockResolvedValue([{ affectedRows: 1 }]);
     mocks.getSummary.mockResolvedValue({ start: new Date("2026-08-03T20:00:00.000Z"), end: new Date("2026-08-10T20:00:00.000Z"), newBookings: 8, cancelledBookings: 2, pendingBookings: 1, confirmedBookings: 4, completedBookings: 6 });
     mocks.sendSummary.mockResolvedValue({ messageId: "summary-1" });
+    mocks.recordDelivery.mockResolvedValue([{ affectedRows: 1 }]);
   });
 
   it("uses a 30-minute Yerevan appointment window for next-day reminders", () => {

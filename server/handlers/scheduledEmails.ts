@@ -13,6 +13,7 @@ import {
   releaseAppointmentReminderClaim,
   releaseAdditionalReminderClaim,
   releaseAutomationEmailDeliveryClaim,
+  recordClientEmailDelivery,
 } from "../db";
 import { sendAppointmentReminderEmail, sendWeeklyBookingSummaryEmail } from "../bookingEmail";
 import { sdk } from "../_core/sdk";
@@ -87,17 +88,19 @@ export async function appointmentReminderHandler(req: Request, res: Response) {
       if (!wasClaimed(claim)) { skipped += 1; continue; }
       if (!booking.clientEmail) { await markAppointmentReminderSent(booking.id); skipped += 1; continue; }
       try {
-        await sendAppointmentReminderEmail({
+        const delivery = await sendAppointmentReminderEmail({
           referenceNumber: booking.referenceNumber, serviceName: booking.serviceSummary || booking.serviceName,
           totalDurationMinutes: booking.totalDurationMinutes || undefined, totalPriceSummary: booking.totalPriceSummary || undefined,
           bookingDate: booking.bookingDate, bookingTime: booking.bookingTime, clientName: booking.clientName,
           clientPhone: booking.clientPhone, clientEmail: booking.clientEmail, comment: booking.comment,
         }, STATUS_URL, settings.firstOffsetMinutes);
         await markAppointmentReminderSent(booking.id);
+        await recordClientEmailDelivery({ bookingId: booking.id, recipientEmail: booking.clientEmail, notificationType: `appointment-reminder-${settings.firstOffsetMinutes}`, deliveryStatus: delivery && typeof delivery === "object" && "skipped" in delivery && delivery.skipped ? "skipped" : "sent" });
         sent += 1;
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unknown email delivery error";
         console.error(`[Appointment reminder] Booking ${booking.id} failed:`, error);
+        await recordClientEmailDelivery({ bookingId: booking.id, recipientEmail: booking.clientEmail, notificationType: `appointment-reminder-${settings.firstOffsetMinutes}`, deliveryStatus: "failed", errorMessage: message }).catch(() => undefined);
         await releaseAppointmentReminderClaim(booking.id);
         failures.push({ bookingId: booking.id, message });
       }
@@ -113,12 +116,14 @@ export async function appointmentReminderHandler(req: Request, res: Response) {
       if (!wasClaimed(claim)) { secondSkipped += 1; continue; }
       if (!booking.clientEmail) { await markAdditionalReminderSent(booking.id, settings.secondOffsetMinutes); secondSkipped += 1; continue; }
       try {
-        await sendAppointmentReminderEmail({ referenceNumber: booking.referenceNumber, serviceName: booking.serviceSummary || booking.serviceName, totalDurationMinutes: booking.totalDurationMinutes || undefined, totalPriceSummary: booking.totalPriceSummary || undefined, bookingDate: booking.bookingDate, bookingTime: booking.bookingTime, clientName: booking.clientName, clientPhone: booking.clientPhone, clientEmail: booking.clientEmail, comment: booking.comment }, STATUS_URL, settings.secondOffsetMinutes);
+        const delivery = await sendAppointmentReminderEmail({ referenceNumber: booking.referenceNumber, serviceName: booking.serviceSummary || booking.serviceName, totalDurationMinutes: booking.totalDurationMinutes || undefined, totalPriceSummary: booking.totalPriceSummary || undefined, bookingDate: booking.bookingDate, bookingTime: booking.bookingTime, clientName: booking.clientName, clientPhone: booking.clientPhone, clientEmail: booking.clientEmail, comment: booking.comment }, STATUS_URL, settings.secondOffsetMinutes);
         await markAdditionalReminderSent(booking.id, settings.secondOffsetMinutes);
+        await recordClientEmailDelivery({ bookingId: booking.id, recipientEmail: booking.clientEmail, notificationType: `appointment-reminder-${settings.secondOffsetMinutes}`, deliveryStatus: delivery && typeof delivery === "object" && "skipped" in delivery && delivery.skipped ? "skipped" : "sent" });
         secondSent += 1;
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unknown email delivery error";
         console.error(`[Appointment reminder] Booking ${booking.id} failed:`, error);
+        await recordClientEmailDelivery({ bookingId: booking.id, recipientEmail: booking.clientEmail, notificationType: `appointment-reminder-${settings.secondOffsetMinutes}`, deliveryStatus: "failed", errorMessage: message }).catch(() => undefined);
         await releaseAdditionalReminderClaim(booking.id, settings.secondOffsetMinutes);
         failures.push({ bookingId: booking.id, message });
       }
