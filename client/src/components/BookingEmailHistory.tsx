@@ -34,7 +34,7 @@ export default function BookingEmailHistory({ bookingId, clientEmail, language }
     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
       <div><p style={{ ...labelStyle, margin: 0, color: 'var(--gold-mid)' }}>{ru ? 'Клиентские email' : 'Client emails'}</p><p style={{ margin: '0.3rem 0 0', fontSize: '0.75rem', color: 'hsl(var(--muted-foreground))' }}>{clientEmail}</p></div>
       <button type="button" className="btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.5625rem', padding: '0.5rem 0.65rem' }} onClick={() => resendMutation.mutate({ bookingId })} disabled={resendMutation.isPending}>
-        {resendMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <RotateCw size={12} />}{ru ? 'Повторить email' : 'Resend email'}
+        {resendMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <RotateCw size={12} />}{resendMutation.isPending ? (ru ? 'Отправка...' : 'Sending...') : (ru ? 'Повторить email' : 'Resend email')}
       </button>
     </div>
     {isLoading ? <p style={{ ...labelStyle, margin: '0.75rem 0 0', fontSize: '0.5rem' }}>{ru ? 'Загружаю историю...' : 'Loading history...'}</p>

@@ -179,6 +179,28 @@ describe("booking lifecycle emails", () => {
     expect(history.some(item => item.notificationType === "booking-confirmed" && item.isManualResend === "yes" && item.deliveryStatus === "sent")).toBe(true);
   });
 
+  it("batch-resends the latest notification for bookings with unresolved email failures", async () => {
+    const publicCaller = appRouter.createCaller(context("user"));
+    const services = await publicCaller.services.list();
+    const haircutId = services.find((service) => service.nameEn === "Haircut")?.id;
+    if (!haircutId) throw new Error("Haircut service is unavailable");
+    const booking = await publicCaller.bookings.create({
+      serviceIds: [haircutId], bookingDate: "2099-12-31", bookingTime: "12:00",
+      clientName: "Batch Resend Client", clientPhone: "+37455000009", clientEmail: "batch-resend@example.com", policyAccepted: true,
+    });
+    await recordClientEmailDelivery({
+      bookingId: booking.id, recipientEmail: "batch-resend@example.com", notificationType: "booking-request", deliveryStatus: "failed", errorMessage: "SMTP unavailable",
+    });
+    const adminCaller = appRouter.createCaller(context("admin"));
+
+    const result = await adminCaller.admin.batchResendEmailFailures();
+
+    expect(result.checked).toBeGreaterThanOrEqual(1);
+    expect(result.sent).toBeGreaterThanOrEqual(1);
+    const history = await adminCaller.admin.clientEmailHistory({ bookingId: booking.id });
+    expect(history.some(item => item.notificationType === "booking-request" && item.isManualResend === "yes" && item.deliveryStatus === "sent")).toBe(true);
+  });
+
   it("resends the actual latest reschedule email rather than falling back to the current booking status", async () => {
     const publicCaller = appRouter.createCaller(context("user"));
     const services = await publicCaller.services.list();

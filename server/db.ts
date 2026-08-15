@@ -301,11 +301,26 @@ export async function getBookingPage(input: BookingPageInput) {
     db.select({ total: count() }).from(bookings).where(where),
   ]);
   const bookingIds = items.map(item => item.id);
-  const deliveryFailures = bookingIds.length
-    ? await db.select({ bookingId: clientEmailDeliveries.bookingId }).from(clientEmailDeliveries).where(and(inArray(clientEmailDeliveries.bookingId, bookingIds), eq(clientEmailDeliveries.deliveryStatus, "failed")))
+  const deliveryAttempts = bookingIds.length
+    ? await db.select({ bookingId: clientEmailDeliveries.bookingId, deliveryStatus: clientEmailDeliveries.deliveryStatus }).from(clientEmailDeliveries).where(inArray(clientEmailDeliveries.bookingId, bookingIds)).orderBy(desc(clientEmailDeliveries.createdAt), desc(clientEmailDeliveries.id))
     : [];
-  const failedBookingIds = new Set(deliveryFailures.map(item => item.bookingId));
+  const latestDeliveryByBooking = new Map<number, string>();
+  deliveryAttempts.forEach(item => { if (!latestDeliveryByBooking.has(item.bookingId)) latestDeliveryByBooking.set(item.bookingId, item.deliveryStatus); });
+  const failedBookingIds = new Set(Array.from(latestDeliveryByBooking.entries()).filter(([, status]) => status === "failed").map(([bookingId]) => bookingId));
   return { items: items.map(item => ({ ...item, hasEmailDeliveryFailure: failedBookingIds.has(item.id) })), total: Number(totalResult[0]?.total ?? 0), page, pageSize };
+}
+
+export async function getBookingsWithUnresolvedEmailFailures(limit = 50) {
+  const db = await getDb();
+  if (!db) return { bookings: [], totalUnresolved: 0 };
+  const attempts = await db.select({ bookingId: clientEmailDeliveries.bookingId, deliveryStatus: clientEmailDeliveries.deliveryStatus })
+    .from(clientEmailDeliveries).orderBy(desc(clientEmailDeliveries.createdAt), desc(clientEmailDeliveries.id));
+  const latestDeliveryByBooking = new Map<number, string>();
+  attempts.forEach(item => { if (!latestDeliveryByBooking.has(item.bookingId)) latestDeliveryByBooking.set(item.bookingId, item.deliveryStatus); });
+  const unresolvedBookingIds = Array.from(latestDeliveryByBooking.entries()).filter(([, status]) => status === "failed").map(([bookingId]) => bookingId);
+  const bookingIds = unresolvedBookingIds.slice(0, limit);
+  const matchingBookings = bookingIds.length ? await db.select().from(bookings).where(inArray(bookings.id, bookingIds)) : [];
+  return { bookings: matchingBookings, totalUnresolved: unresolvedBookingIds.length };
 }
 
 export async function getClientDirectory() {
@@ -515,6 +530,7 @@ export type WeeklyBookingSummary = {
   pendingBookings: number;
   confirmedBookings: number;
   completedBookings: number;
+  emailDeliveryErrors: number;
 };
 
 function resultCount(rows: Array<{ count: number }>) {
@@ -523,14 +539,17 @@ function resultCount(rows: Array<{ count: number }>) {
 
 export async function getWeeklyBookingSummary(start: Date, end: Date): Promise<WeeklyBookingSummary> {
   const db = await getDb();
-  if (!db) return { start, end, newBookings: 0, cancelledBookings: 0, pendingBookings: 0, confirmedBookings: 0, completedBookings: 0 };
-  const [newRows, cancelledRows, pendingRows, confirmedRows, completedRows] = await Promise.all([
+  if (!db) return { start, end, newBookings: 0, cancelledBookings: 0, pendingBookings: 0, confirmedBookings: 0, completedBookings: 0, emailDeliveryErrors: 0 };
+  const [newRows, cancelledRows, pendingRows, confirmedRows, completedRows, deliveryAttempts] = await Promise.all([
     db.select({ count: count() }).from(bookings).where(and(gte(bookings.createdAt, start), lt(bookings.createdAt, end))),
     db.select({ count: count() }).from(bookings).where(and(gte(bookings.cancelledAt, start), lt(bookings.cancelledAt, end))),
     db.select({ count: count() }).from(bookings).where(eq(bookings.status, "pending")),
     db.select({ count: count() }).from(bookings).where(eq(bookings.status, "confirmed")),
     db.select({ count: count() }).from(bookings).where(and(gte(bookings.completedAt, start), lt(bookings.completedAt, end))),
+    db.select({ bookingId: clientEmailDeliveries.bookingId, deliveryStatus: clientEmailDeliveries.deliveryStatus }).from(clientEmailDeliveries).orderBy(desc(clientEmailDeliveries.createdAt), desc(clientEmailDeliveries.id)),
   ]);
+  const latestDeliveryByBooking = new Map<number, string>();
+  deliveryAttempts.forEach(item => { if (!latestDeliveryByBooking.has(item.bookingId)) latestDeliveryByBooking.set(item.bookingId, item.deliveryStatus); });
   return {
     start,
     end,
@@ -539,6 +558,7 @@ export async function getWeeklyBookingSummary(start: Date, end: Date): Promise<W
     pendingBookings: resultCount(pendingRows),
     confirmedBookings: resultCount(confirmedRows),
     completedBookings: resultCount(completedRows),
+    emailDeliveryErrors: Array.from(latestDeliveryByBooking.values()).filter(status => status === "failed").length,
   };
 }
 

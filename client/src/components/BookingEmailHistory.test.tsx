@@ -2,7 +2,7 @@ import React from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ resend: vi.fn(), refetch: vi.fn() }));
+const mocks = vi.hoisted(() => ({ resend: vi.fn(), refetch: vi.fn(), isPending: false }));
 const history = [
   { id: 1, notificationType: 'booking-cancelled', recipientEmail: 'alex@example.com', deliveryStatus: 'sent' as const, errorMessage: null, emailSubject: 'Your appointment has been cancelled', emailText: 'Hello Alex. Your appointment has been cancelled.', isManualResend: 'no' as const, createdAt: new Date() },
   { id: 2, notificationType: 'booking-confirmed', recipientEmail: 'alex@example.com', deliveryStatus: 'sent' as const, errorMessage: null, emailSubject: 'Booking confirmed', emailText: 'Hello Alex. Your visit is confirmed.', isManualResend: 'no' as const, createdAt: new Date() },
@@ -14,7 +14,7 @@ const history = [
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock('@/lib/trpc', () => ({ trpc: { admin: {
   clientEmailHistory: { useQuery: () => ({ data: history, isLoading: false, refetch: mocks.refetch }) },
-  resendBookingNotification: { useMutation: () => ({ mutate: mocks.resend, isPending: false }) },
+  resendBookingNotification: { useMutation: () => ({ mutate: mocks.resend, isPending: mocks.isPending }) },
 } } }));
 
 import BookingEmailHistory from './BookingEmailHistory';
@@ -53,5 +53,12 @@ describe('BookingEmailHistory', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Показать все (6)' }));
     fireEvent.click(screen.getByText(/appointment-reminder-120/));
     expect(screen.getByText('Hello Alex. Your visit is in 2 hours.')).toBeTruthy();
+  });
+
+  it('shows a clear loading state while a manual resend is in progress', () => {
+    mocks.isPending = true;
+    render(<BookingEmailHistory bookingId={42} clientEmail="alex@example.com" language="ru" />);
+    expect(screen.getByRole('button', { name: 'Отправка...' })).toBeTruthy();
+    mocks.isPending = false;
   });
 });

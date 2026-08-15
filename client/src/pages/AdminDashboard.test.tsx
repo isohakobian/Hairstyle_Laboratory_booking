@@ -19,7 +19,7 @@ vi.mock("@/lib/trpc", () => ({
     admin: {
       bookings: { useQuery: () => ({ data: [{ id: 1, status: "confirmed", clientName: "Alex", referenceNumber: "REF001", serviceName: "Haircut", serviceSummary: "Haircut", totalDurationMinutes: 45, totalPriceSummary: "15,000 ֏", bookingDate: "2099-12-30", bookingTime: "14:00", clientPhone: "+37455000000", clientEmail: "alex@example.com", comment: null, createdAt: new Date(), completedAt: new Date() }], isLoading: false, isError: false, refetch: vi.fn() }) },
       today: { useQuery: () => ({ data: { date: '2099-12-30', bookings: [{ id: 1, status: 'confirmed', clientName: 'Alex', bookingTime: '14:00' }], pendingCount: 0, confirmedCount: 1, freeWindows: [{ startTime: '09:00', endTime: '14:00' }] } }) },
-      weeklyBookingStats: { useQuery: () => ({ data: { newBookings: 8, cancelledBookings: 2, pendingBookings: 1, confirmedBookings: 4, completedBookings: 6 } }) },
+      weeklyBookingStats: { useQuery: () => ({ data: { newBookings: 8, cancelledBookings: 2, pendingBookings: 1, confirmedBookings: 4, completedBookings: 6, emailDeliveryErrors: 1 } }) },
       bookingReminderSettings: { useQuery: () => ({ data: { firstOffsetMinutes: 1440, firstEnabled: 'yes', secondOffsetMinutes: 120, secondEnabled: 'yes' }, isLoading: false, refetch: vi.fn() }) },
       saveBookingReminderSettings: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       bookingPage: { useQuery: () => ({ data: { items: [{ id: 1, status: dashboardMockState.showCancelledBooking ? "cancelled" : "confirmed", clientName: "Alex", referenceNumber: "REF001", serviceName: "Haircut", serviceSummary: "Haircut", totalDurationMinutes: 45, totalPriceSummary: "15,000 ֏", bookingDate: "2099-12-30", bookingTime: "14:00", clientPhone: "+37455000000", clientEmail: "alex@example.com", comment: null, createdAt: new Date(), completedAt: dashboardMockState.showCancelledBooking ? null : new Date(), cancellationReason: dashboardMockState.showCancelledBooking ? "Plans changed" : null, hasEmailDeliveryFailure: true }], total: 30, page: 1, pageSize: 15 }, isLoading: false, isError: false }) },
@@ -33,6 +33,7 @@ vi.mock("@/lib/trpc", () => ({
       completeBooking: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       updateManualDepositStatus: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       declineBookingForInvalidReceipt: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+      batchResendEmailFailures: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       reviewRequests: { useQuery: () => ({ data: { items: [], stats: { sent: 0, received: 0, awaiting: 0 } }, isLoading: false, isError: false, refetch: vi.fn() }) },
       reviewRequestPage: { useQuery: () => ({ data: { items: [], total: 0, page: 1, pageSize: 15 }, isLoading: false, isError: false }) },
       reviewRequestStats: { useQuery: () => ({ data: { sent: 0, received: 0, awaiting: 0 } }) },
@@ -48,6 +49,7 @@ vi.mock("@/lib/trpc", () => ({
       admin: {
         bookingPage: { invalidate: vi.fn() },
         today: { invalidate: vi.fn() },
+        weeklyBookingStats: { invalidate: vi.fn() },
         reviewRequestPage: { invalidate: vi.fn() },
         reviewRequestStats: { invalidate: vi.fn() },
       },
@@ -65,6 +67,8 @@ describe("AdminDashboard navigation", () => {
     expect(screen.getByText(/Сегодня · 2099-12-30/)).toBeTruthy();
     expect(screen.getByText("Недельная динамика")).toBeTruthy();
     expect(screen.getByText("Последние 7 дней")).toBeTruthy();
+    expect(screen.getByText("Ошибки email")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Повторить ошибки email" })).toBeTruthy();
     expect(screen.getByText("Client email history")).toBeTruthy();
     expect(screen.getByText("Ошибка email")).toBeTruthy();
     expect(screen.getByText("Отправить запрос на отзыв")).toBeTruthy();

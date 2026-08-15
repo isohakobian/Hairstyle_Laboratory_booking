@@ -199,3 +199,8 @@
 - [x] Filter booking email history by delivery status and notification category, including reminders
 - [x] Add regression coverage for previews across every client email type
 - [x] Add UI regressions proving preview opens for booking-request, confirmation, and reminder history entries
+- [x] Show a count of bookings with unresolved email delivery errors in the main admin summary
+- [x] Let the admin resend the latest email for every booking with an unresolved delivery error in one protected batch action
+- [x] Show per-action loading state and clear success feedback for manual email resend
+- [x] Add regression coverage for the error counter, batch resend, and manual resend feedback
+- [x] Make the safe 50-email batch limit explicit and show when another protected batch is needed for remaining errors
