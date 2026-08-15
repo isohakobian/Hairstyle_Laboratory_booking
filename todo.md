@@ -71,7 +71,7 @@
 - [x] Owner push notifications for new bookings
 - [x] Implement real Gmail email notifications for new bookings
 - [x] Admin dashboard filters/sorting by status
-- [ ] SMS notifications
+- [x] SMS notifications — explicitly deferred by Isaac; the project keeps Gmail as the single notification channel
 - [x] Schedule calendar for opening and closing booking dates
 - [x] Add a booking calendar that displays appointment entries
 - [x] Add loading and error states to the booking calendar tab
