@@ -5,7 +5,13 @@ import { createReviewToken, recordClientEmailDelivery } from "./db";
 import { createReviewTokenValue, hashReviewToken } from "./reviewToken";
 import { setAvailabilityForDates } from "./availability";
 
-const { sendAppointmentReminderEmail, sendBookingEmails, sendBookingCancelledEmail, sendBookingDeclinedEmail, sendBookingRescheduledEmail, sendClientBookingRequestEmail, sendConfirmedBookingEmail, sendReviewRequestEmail } = vi.hoisted(() => ({
+const { buildAppointmentReminderEmail, buildBookingCancelledEmail, buildBookingDeclinedEmail, buildBookingRescheduledEmail, buildClientBookingEmail, buildClientConfirmationEmail, sendAppointmentReminderEmail, sendBookingEmails, sendBookingCancelledEmail, sendBookingDeclinedEmail, sendBookingRescheduledEmail, sendClientBookingRequestEmail, sendConfirmedBookingEmail, sendReviewRequestEmail } = vi.hoisted(() => ({
+  buildAppointmentReminderEmail: vi.fn(() => ({ subject: "Reminder", text: "Reminder preview" })),
+  buildBookingCancelledEmail: vi.fn(() => ({ subject: "Cancelled", text: "Cancelled preview" })),
+  buildBookingDeclinedEmail: vi.fn(() => ({ subject: "Declined", text: "Declined preview" })),
+  buildBookingRescheduledEmail: vi.fn(() => ({ subject: "Rescheduled", text: "Rescheduled preview" })),
+  buildClientBookingEmail: vi.fn(() => ({ subject: "Booking request", text: "Booking request preview" })),
+  buildClientConfirmationEmail: vi.fn(() => ({ subject: "Confirmed", text: "Confirmed preview" })),
   sendAppointmentReminderEmail: vi.fn().mockResolvedValue({ accepted: ["client@example.com"] }),
   sendBookingEmails: vi.fn().mockResolvedValue({ skipped: true }),
   sendBookingCancelledEmail: vi.fn().mockResolvedValue({ accepted: ["client@example.com"] }),
@@ -17,6 +23,12 @@ const { sendAppointmentReminderEmail, sendBookingEmails, sendBookingCancelledEma
 }));
 
 vi.mock("./bookingEmail", () => ({
+  buildAppointmentReminderEmail,
+  buildBookingCancelledEmail,
+  buildBookingDeclinedEmail,
+  buildBookingRescheduledEmail,
+  buildClientBookingEmail,
+  buildClientConfirmationEmail,
   sendAppointmentReminderEmail,
   sendBookingEmails,
   sendBookingCancelledEmail,
@@ -80,6 +92,8 @@ describe("booking lifecycle emails", () => {
       policyAccepted: true,
     });
     const adminCaller = appRouter.createCaller(context("admin"));
+    const requestHistory = await adminCaller.admin.clientEmailHistory({ bookingId: booking.id });
+    expect(requestHistory.some(item => item.notificationType === "booking-request" && item.emailSubject === "Booking request" && item.emailText === "Booking request preview")).toBe(true);
 
     await adminCaller.admin.confirmBooking({ id: booking.id });
     expect(sendConfirmedBookingEmail).toHaveBeenCalledWith(expect.objectContaining({
@@ -87,6 +101,8 @@ describe("booking lifecycle emails", () => {
       clientEmail: "lifecycle-client@example.com",
       totalDurationMinutes: booking.totalDurationMinutes,
     }));
+    const confirmationHistory = await adminCaller.admin.clientEmailHistory({ bookingId: booking.id });
+    expect(confirmationHistory.some(item => item.notificationType === "booking-confirmed" && item.emailSubject === "Confirmed" && item.emailText === "Confirmed preview")).toBe(true);
 
     await adminCaller.admin.rescheduleBooking({ id: booking.id, bookingDate: "2099-12-30", bookingTime: "15:00", note: "Updated availability" });
     expect(sendBookingRescheduledEmail).toHaveBeenCalledWith(

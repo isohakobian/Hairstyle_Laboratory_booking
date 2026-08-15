@@ -175,6 +175,8 @@ export const clientEmailDeliveries = mysqlTable("clientEmailDeliveries", {
   recipientEmail: varchar("recipientEmail", { length: 320 }).notNull(),
   deliveryStatus: mysqlEnum("deliveryStatus", ["sent", "failed", "skipped"]).notNull(),
   errorMessage: varchar("errorMessage", { length: 1000 }),
+  emailSubject: varchar("emailSubject", { length: 500 }),
+  emailText: text("emailText"),
   isManualResend: mysqlEnum("isManualResend", ["yes", "no"]).notNull().default("no"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (table) => [

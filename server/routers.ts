@@ -13,7 +13,7 @@ import {
   deleteBookingAndRelatedData, declineBookingForInvalidReceipt, getAdminTodaySummary, getBookingReminderSettings, getClientDirectory, getClientEmailDeliveryHistory, getLatestBookingRescheduleEvent, getBookingPage, getManualDepositSettings, getReviewRequestDashboard, getReviewRequestEmailTemplate, getReviewRequestPage, getReviewRequestStats, getWeeklyBookingSummary, recordClientEmailDelivery, saveBookingReminderSettings, saveManualDepositSettings, saveReviewRequestEmailTemplate, updateManualDepositStatus,
 } from "./db";
 import { TRPCError } from "@trpc/server";
-import { sendAppointmentReminderEmail, sendBookingCancelledEmail, sendBookingDeclinedEmail, sendBookingEmails, sendBookingRescheduledEmail, sendBookingStatusRecoveryEmail, sendClientBookingRequestEmail, sendConfirmedBookingEmail, sendReviewRequestEmail } from "./bookingEmail";
+import { buildAppointmentReminderEmail, buildBookingCancelledEmail, buildBookingDeclinedEmail, buildBookingRescheduledEmail, buildClientBookingEmail, buildClientConfirmationEmail, sendAppointmentReminderEmail, sendBookingCancelledEmail, sendBookingDeclinedEmail, sendBookingEmails, sendBookingRescheduledEmail, sendBookingStatusRecoveryEmail, sendClientBookingRequestEmail, sendConfirmedBookingEmail, sendReviewRequestEmail } from "./bookingEmail";
 import { createReviewTokenValue, getBookingStatusRecoveryExpiry, getReviewTokenExpiry, hashReviewToken } from "./reviewToken";
 import { blockDates, getAvailabilityWindows, getAvailableSlots, getPublicAvailableDates, setAvailabilityForDates } from "./availability";
 import { completeBooking, createBookingEvent, findOrCreateClient, getClientMemory, getSignedVisitMediaUrl, recordReviewRequest, rescheduleBooking, updateClientProfile, uploadVisitMedia } from "./clientMemory";
@@ -37,13 +37,14 @@ function trackClientEmailDelivery(
   notificationType: string,
   delivery: Promise<unknown>,
   isManualResend: "yes" | "no" = "no",
+  preview?: { subject: string; text: string },
 ) {
   void delivery.then(async (result) => {
     const skipped = Boolean(result && typeof result === "object" && "skipped" in result && (result as { skipped?: boolean }).skipped);
-    await recordClientEmailDelivery({ bookingId, recipientEmail, notificationType, deliveryStatus: skipped ? "skipped" : "sent", isManualResend });
+    await recordClientEmailDelivery({ bookingId, recipientEmail, notificationType, deliveryStatus: skipped ? "skipped" : "sent", isManualResend, emailSubject: preview?.subject, emailText: preview?.text });
   }).catch(async (error: unknown) => {
     const message = error instanceof Error ? error.message : "Unknown email delivery error";
-    await recordClientEmailDelivery({ bookingId, recipientEmail, notificationType, deliveryStatus: "failed", errorMessage: message, isManualResend }).catch((recordError: unknown) => console.error("[Client email history] Could not record failure:", recordError));
+    await recordClientEmailDelivery({ bookingId, recipientEmail, notificationType, deliveryStatus: "failed", errorMessage: message, isManualResend, emailSubject: preview?.subject, emailText: preview?.text }).catch((recordError: unknown) => console.error("[Client email history] Could not record failure:", recordError));
     console.error(`[Client email] ${notificationType} delivery failed:`, error);
   });
 }
@@ -265,6 +266,7 @@ export const appRouter = router({
             receipt: receipt ? { fileName: receipt.fileName, mimeType: receipt.mimeType, content: receipt.content } : null,
           });
           if (booking?.clientEmail) {
+            const requestPreview = buildClientBookingEmail({ referenceNumber, serviceName: serviceSummary, totalDurationMinutes, totalPriceSummary, bookingDate: input.bookingDate, bookingTime: input.bookingTime, clientName: input.clientName, clientPhone: input.clientPhone, clientEmail: input.clientEmail, comment: input.comment });
             const clientResult = Array.isArray(deliveryResults) ? deliveryResults[deliveryResults.length - 1] : deliveryResults;
             const skipped = Boolean(clientResult && typeof clientResult === "object" && "skipped" in clientResult && (clientResult as { skipped?: boolean }).skipped);
             const failed = Boolean(clientResult && typeof clientResult === "object" && "status" in clientResult && (clientResult as PromiseRejectedResult).status === "rejected");
@@ -274,10 +276,15 @@ export const appRouter = router({
               notificationType: "booking-request",
               deliveryStatus: failed ? "failed" : skipped ? "skipped" : "sent",
               errorMessage: failed ? String((clientResult as PromiseRejectedResult).reason) : null,
+              emailSubject: requestPreview.subject,
+              emailText: requestPreview.text,
             });
           }
         } catch (e) {
-          if (booking?.clientEmail) await recordClientEmailDelivery({ bookingId: booking.id, recipientEmail: booking.clientEmail, notificationType: "booking-request", deliveryStatus: "failed", errorMessage: e instanceof Error ? e.message : "Unknown email delivery error" }).catch(() => undefined);
+          if (booking?.clientEmail) {
+            const requestPreview = buildClientBookingEmail({ referenceNumber, serviceName: serviceSummary, totalDurationMinutes, totalPriceSummary, bookingDate: input.bookingDate, bookingTime: input.bookingTime, clientName: input.clientName, clientPhone: input.clientPhone, clientEmail: input.clientEmail, comment: input.comment });
+            await recordClientEmailDelivery({ bookingId: booking.id, recipientEmail: booking.clientEmail, notificationType: "booking-request", deliveryStatus: "failed", errorMessage: e instanceof Error ? e.message : "Unknown email delivery error", emailSubject: requestPreview.subject, emailText: requestPreview.text }).catch(() => undefined);
+          }
           // Email delivery must never block a successfully created booking.
           console.warn('[Booking] Failed to send Gmail booking emails:', e);
         }
@@ -311,6 +318,11 @@ export const appRouter = router({
             clientPhone: booking.clientPhone,
             clientEmail: booking.clientEmail,
             comment: booking.comment,
+          }, input.reason, PUBLIC_BOOKING_URL), "no", buildBookingCancelledEmail({
+            referenceNumber: booking.referenceNumber, serviceName: booking.serviceSummary || booking.serviceName,
+            totalDurationMinutes: booking.totalDurationMinutes || undefined, totalPriceSummary: booking.totalPriceSummary || undefined,
+            bookingDate: booking.bookingDate, bookingTime: booking.bookingTime, clientName: booking.clientName,
+            clientPhone: booking.clientPhone, clientEmail: booking.clientEmail, comment: booking.comment,
           }, input.reason, PUBLIC_BOOKING_URL));
         }
         return { success: true };
@@ -439,6 +451,17 @@ export const appRouter = router({
         const reminderMatch = /^appointment-reminder-(\d+)$/.exec(notificationType);
         const reminderMinutes = reminderMatch ? Number(reminderMatch[1]) : null;
         const latestReschedule = notificationType === "booking-rescheduled" ? await getLatestBookingRescheduleEvent(booking.id) : null;
+        const preview = reminderMinutes !== null
+          ? buildAppointmentReminderEmail(details, PUBLIC_STATUS_URL, reminderMinutes)
+          : notificationType === "booking-rescheduled" && latestReschedule?.previousDate && latestReschedule.previousTime
+            ? buildBookingRescheduledEmail(details, latestReschedule.previousDate, latestReschedule.previousTime)
+            : notificationType === "booking-cancelled"
+              ? buildBookingCancelledEmail(details, booking.cancellationReason || "Cancelled", PUBLIC_BOOKING_URL)
+              : notificationType === "booking-declined"
+                ? buildBookingDeclinedEmail(details)
+                : notificationType === "booking-request"
+                  ? buildClientBookingEmail(details)
+                  : buildClientConfirmationEmail(details);
         try {
           const result = reminderMinutes !== null
             ? await sendAppointmentReminderEmail(details, PUBLIC_STATUS_URL, reminderMinutes)
@@ -452,11 +475,11 @@ export const appRouter = router({
                   ? await sendClientBookingRequestEmail(details)
                   : await sendConfirmedBookingEmail(details);
           const skipped = Boolean(result && typeof result === "object" && "skipped" in result && result.skipped);
-          await recordClientEmailDelivery({ bookingId: booking.id, recipientEmail: booking.clientEmail, notificationType, deliveryStatus: skipped ? "skipped" : "sent", isManualResend: "yes" });
+          await recordClientEmailDelivery({ bookingId: booking.id, recipientEmail: booking.clientEmail, notificationType, deliveryStatus: skipped ? "skipped" : "sent", isManualResend: "yes", emailSubject: preview.subject, emailText: preview.text });
           return { success: true, skipped };
         } catch (error) {
           const message = error instanceof Error ? error.message : "Unknown email delivery error";
-          await recordClientEmailDelivery({ bookingId: booking.id, recipientEmail: booking.clientEmail, notificationType, deliveryStatus: "failed", errorMessage: message, isManualResend: "yes" });
+          await recordClientEmailDelivery({ bookingId: booking.id, recipientEmail: booking.clientEmail, notificationType, deliveryStatus: "failed", errorMessage: message, isManualResend: "yes", emailSubject: preview.subject, emailText: preview.text });
           throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "The email could not be sent. The failed attempt was recorded in the booking history." });
         }
       }),
@@ -553,7 +576,7 @@ export const appRouter = router({
         if (booking) await createBookingEvent({ bookingId: booking.id, eventType: "confirmed" });
         if (booking?.clientEmail) {
           try {
-            const result = await sendConfirmedBookingEmail({
+            const confirmationDetails = {
               referenceNumber: booking.referenceNumber,
               serviceName: booking.serviceSummary || booking.serviceName,
               totalDurationMinutes: booking.totalDurationMinutes || undefined,
@@ -564,10 +587,13 @@ export const appRouter = router({
               clientPhone: booking.clientPhone,
               clientEmail: booking.clientEmail,
               comment: booking.comment,
-            });
-            await recordClientEmailDelivery({ bookingId: booking.id, recipientEmail: booking.clientEmail, notificationType: "booking-confirmed", deliveryStatus: result && typeof result === "object" && "skipped" in result && result.skipped ? "skipped" : "sent" });
+            };
+            const result = await sendConfirmedBookingEmail(confirmationDetails);
+            const confirmationPreview = buildClientConfirmationEmail(confirmationDetails);
+            await recordClientEmailDelivery({ bookingId: booking.id, recipientEmail: booking.clientEmail, notificationType: "booking-confirmed", deliveryStatus: result && typeof result === "object" && "skipped" in result && result.skipped ? "skipped" : "sent", emailSubject: confirmationPreview.subject, emailText: confirmationPreview.text });
           } catch (error) {
-            await recordClientEmailDelivery({ bookingId: booking.id, recipientEmail: booking.clientEmail, notificationType: "booking-confirmed", deliveryStatus: "failed", errorMessage: error instanceof Error ? error.message : "Unknown email delivery error" }).catch(() => undefined);
+            const confirmationPreview = buildClientConfirmationEmail({ referenceNumber: booking.referenceNumber, serviceName: booking.serviceSummary || booking.serviceName, totalDurationMinutes: booking.totalDurationMinutes || undefined, totalPriceSummary: booking.totalPriceSummary || undefined, bookingDate: booking.bookingDate, bookingTime: booking.bookingTime, clientName: booking.clientName, clientPhone: booking.clientPhone, clientEmail: booking.clientEmail, comment: booking.comment });
+            await recordClientEmailDelivery({ bookingId: booking.id, recipientEmail: booking.clientEmail, notificationType: "booking-confirmed", deliveryStatus: "failed", errorMessage: error instanceof Error ? error.message : "Unknown email delivery error", emailSubject: confirmationPreview.subject, emailText: confirmationPreview.text }).catch(() => undefined);
             console.warn("[Booking] Failed to send confirmation email:", error);
           }
         }
@@ -683,6 +709,11 @@ export const appRouter = router({
             clientPhone: booking.clientPhone,
             clientEmail: booking.clientEmail,
             comment: booking.comment,
+          }, booking.bookingDate, booking.bookingTime), "no", buildBookingRescheduledEmail({
+            referenceNumber: booking.referenceNumber, serviceName: booking.serviceSummary || booking.serviceName,
+            totalDurationMinutes: booking.totalDurationMinutes || undefined, totalPriceSummary: booking.totalPriceSummary || undefined,
+            bookingDate: input.bookingDate, bookingTime: input.bookingTime, clientName: booking.clientName,
+            clientPhone: booking.clientPhone, clientEmail: booking.clientEmail, comment: booking.comment,
           }, booking.bookingDate, booking.bookingTime));
         }
         return { success: true };

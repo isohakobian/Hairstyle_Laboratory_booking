@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   authenticateRequest: vi.fn(), getDue: vi.fn(), claimReminder: vi.fn(), markReminder: vi.fn(), releaseReminder: vi.fn(), sendReminder: vi.fn(),
   getReminderSettings: vi.fn(), getSecondaryDue: vi.fn(), claimSecondary: vi.fn(), markSecondary: vi.fn(), releaseSecondary: vi.fn(),
-  claimSummary: vi.fn(), markSummary: vi.fn(), releaseSummary: vi.fn(), getSummary: vi.fn(), sendSummary: vi.fn(), recordDelivery: vi.fn(),
+  claimSummary: vi.fn(), markSummary: vi.fn(), releaseSummary: vi.fn(), getSummary: vi.fn(), sendSummary: vi.fn(), recordDelivery: vi.fn(), buildReminder: vi.fn(() => ({ subject: "Reminder", text: "Reminder preview" })),
 }));
 
 vi.mock("./db", () => ({
@@ -22,7 +22,7 @@ vi.mock("./db", () => ({
   getWeeklyBookingSummary: mocks.getSummary,
   recordClientEmailDelivery: mocks.recordDelivery,
 }));
-vi.mock("./bookingEmail", () => ({ sendAppointmentReminderEmail: mocks.sendReminder, sendWeeklyBookingSummaryEmail: mocks.sendSummary }));
+vi.mock("./bookingEmail", () => ({ buildAppointmentReminderEmail: mocks.buildReminder, sendAppointmentReminderEmail: mocks.sendReminder, sendWeeklyBookingSummaryEmail: mocks.sendSummary }));
 vi.mock("./_core/sdk", () => ({ sdk: { authenticateRequest: mocks.authenticateRequest } }));
 
 import { appointmentReminderHandler, getPreviousYerevanWeek, getYerevanReminderWindow, weeklyBookingSummaryHandler } from "./handlers/scheduledEmails";
@@ -69,6 +69,7 @@ describe("scheduled appointment emails", () => {
     expect(mocks.claimReminder).toHaveBeenCalledWith(42);
     expect(mocks.sendReminder).toHaveBeenCalledWith(expect.objectContaining({ referenceNumber: "HL-42", clientEmail: "alex@example.com" }), "https://isaacbarber-axczkyb2.manus.space/status", 1440);
     expect(mocks.markReminder).toHaveBeenCalledWith(42);
+    expect(mocks.recordDelivery).toHaveBeenCalledWith(expect.objectContaining({ bookingId: 42, notificationType: "appointment-reminder-1440", emailSubject: "Reminder", emailText: "Reminder preview" }));
     expect(response.json).toHaveBeenCalledWith(expect.objectContaining({ ok: true, sent: 1 }));
   });
 

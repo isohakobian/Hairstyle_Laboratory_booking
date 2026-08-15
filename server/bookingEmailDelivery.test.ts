@@ -3,12 +3,13 @@ import type { TrpcContext } from "./_core/context";
 import { clearExampleTestBookings } from "./testCleanup";
 import { setAvailabilityForDates } from "./availability";
 
-const { sendBookingEmails, notifyOwner } = vi.hoisted(() => ({
+const { buildClientBookingEmail, sendBookingEmails, notifyOwner } = vi.hoisted(() => ({
+  buildClientBookingEmail: vi.fn(() => ({ subject: "Booking request", text: "Booking request preview" })),
   sendBookingEmails: vi.fn().mockResolvedValue({ skipped: false }),
   notifyOwner: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("./bookingEmail", () => ({ sendBookingEmails }));
+vi.mock("./bookingEmail", () => ({ buildClientBookingEmail, sendBookingEmails }));
 vi.mock("./_core/notification", () => ({ notifyOwner }));
 
 import { appRouter } from "./routers";

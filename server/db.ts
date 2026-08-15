@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gte, isNotNull, isNull, like, lt, lte, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, inArray, isNotNull, isNull, like, lt, lte, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, InsertBooking, InsertBookingService, users, services, bookings, bookingServices, reviewTokens, bookingStatusRecoveryTokens, bookingEvents, visitMedia, reviewRequestHistory, clientEmailDeliveries, reviews, clients, emailTemplates, availabilityWindows, manualDepositSettings, automationEmailDeliveries, bookingReminderDeliveries, bookingReminderSettings } from "../drizzle/schema";
 import { ENV } from './_core/env';
@@ -300,7 +300,12 @@ export async function getBookingPage(input: BookingPageInput) {
     db.select().from(bookings).where(where).orderBy(...ordering).limit(pageSize).offset((page - 1) * pageSize),
     db.select({ total: count() }).from(bookings).where(where),
   ]);
-  return { items, total: Number(totalResult[0]?.total ?? 0), page, pageSize };
+  const bookingIds = items.map(item => item.id);
+  const deliveryFailures = bookingIds.length
+    ? await db.select({ bookingId: clientEmailDeliveries.bookingId }).from(clientEmailDeliveries).where(and(inArray(clientEmailDeliveries.bookingId, bookingIds), eq(clientEmailDeliveries.deliveryStatus, "failed")))
+    : [];
+  const failedBookingIds = new Set(deliveryFailures.map(item => item.bookingId));
+  return { items: items.map(item => ({ ...item, hasEmailDeliveryFailure: failedBookingIds.has(item.id) })), total: Number(totalResult[0]?.total ?? 0), page, pageSize };
 }
 
 export async function getClientDirectory() {
@@ -361,6 +366,8 @@ export async function recordClientEmailDelivery(input: {
   recipientEmail: string;
   deliveryStatus: ClientEmailDeliveryStatus;
   errorMessage?: string | null;
+  emailSubject?: string | null;
+  emailText?: string | null;
   isManualResend?: "yes" | "no";
 }) {
   const db = await getDb();
@@ -368,6 +375,8 @@ export async function recordClientEmailDelivery(input: {
   return db.insert(clientEmailDeliveries).values({
     ...input,
     errorMessage: input.errorMessage ? input.errorMessage.slice(0, 1000) : null,
+    emailSubject: input.emailSubject ? input.emailSubject.slice(0, 500) : null,
+    emailText: input.emailText ?? null,
     isManualResend: input.isManualResend ?? "no",
   });
 }

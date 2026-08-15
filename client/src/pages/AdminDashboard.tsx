@@ -484,6 +484,7 @@ export default function AdminDashboard() {
                         <span style={{ ...labelStyle, fontSize: '0.5625rem', color: statusColors[booking.status], border: `1px solid ${statusColors[booking.status]}`, padding: '0.25rem 0.625rem' }}>
                           {booking.status === 'pending' ? (language === 'ru' ? 'Ожидание' : 'Pending') : booking.status === 'confirmed' ? (language === 'ru' ? 'Подтверждено' : 'Confirmed') : booking.status === 'cancelled' ? (language === 'ru' ? 'Отменено клиентом' : 'Cancelled by client') : (language === 'ru' ? 'Отклонено' : 'Declined')}
                         </span>
+                        {booking.hasEmailDeliveryFailure && <span title={language === 'ru' ? 'Есть ошибка отправки email — откройте историю уведомлений' : 'An email delivery failed — open notification history'} style={{ ...labelStyle, fontSize: '0.5rem', color: 'hsl(0 60% 50%)', border: '1px solid hsl(0 60% 50%)', padding: '0.25rem 0.5rem', background: 'hsl(0 60% 96%)' }}>{language === 'ru' ? 'Ошибка email' : 'Email error'}</span>}
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(8rem, 1fr))', gap: '0.75rem 1.25rem', marginBottom: '1rem' }}>
                         {[

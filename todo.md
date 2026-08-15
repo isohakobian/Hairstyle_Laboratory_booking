@@ -193,3 +193,9 @@
 - [x] Add regressions proving latest-notification resend and full history visibility
 - [x] Make manual resend reproduce the truly latest client email, including appointment reminders
 - [x] Add regression coverage for manual resend when a reminder is the latest email
+- [x] Show a clear email-delivery error indicator on affected booking cards in the main admin list
+- [x] Store a private preview-safe snapshot for every client email delivery path
+- [x] Let an admin open a saved preview for booking-request, confirmation, and reminder emails
+- [x] Filter booking email history by delivery status and notification category, including reminders
+- [x] Add regression coverage for previews across every client email type
+- [x] Add UI regressions proving preview opens for booking-request, confirmation, and reminder history entries
