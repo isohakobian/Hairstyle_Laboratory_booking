@@ -122,7 +122,7 @@ export default function Home() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'hsl(var(--background))' }}>
+    <div className="typography-modern" style={{ minHeight: '100vh', backgroundColor: 'hsl(var(--background))' }}>
 
       {/* ── Navigation ── */}
       <header style={navStyle}>
@@ -364,7 +364,7 @@ export default function Home() {
                     <p className="label-caps" style={{ margin: 0, color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Новости' : 'Notice'}</p>
                     {announcement.imageUrl && <img src={announcement.imageUrl} alt={language === 'ru' ? `Иллюстрация: ${announcement.titleRu}` : `Illustration: ${announcement.titleEn}`} style={{ width: '3rem', height: '3rem', flex: '0 0 auto', objectFit: 'cover', border: '1px solid hsl(var(--border))' }} />}
                   </div>
-                  <h3 style={{ margin: '0 0 0.55rem', fontStyle: 'italic', fontSize: '1.4rem', lineHeight: 1.08 }}>
+                  <h3 className="notice-title" style={{ margin: '0 0 0.55rem', fontStyle: 'italic', fontSize: '1.4rem', lineHeight: 1.08 }}>
                     {language === 'ru' ? announcement.titleRu : announcement.titleEn}
                   </h3>
                   <p style={{ margin: '0 0 1rem', color: 'hsl(var(--muted-foreground))', fontSize: '0.8125rem', lineHeight: 1.55 }}>
@@ -403,7 +403,7 @@ export default function Home() {
                 <p className="section-intro" style={{ margin: '0.75rem 0 0' }}>{c.about.intro}</p>
               </div>
             <div>
-              <p style={{
+              <p className="about-message" style={{
                 fontFamily: "'Playfair Display', serif",
                 fontSize: 'clamp(1.125rem, 2.5vw, 1.5rem)',
                 fontWeight: 400,

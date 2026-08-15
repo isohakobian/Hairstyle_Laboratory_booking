@@ -154,3 +154,6 @@
 - [x] Make homepage section labels more legible while preserving the editorial visual system
 - [x] Refine the hero, personal-introduction, and services copy into one clear personal booking narrative
 - [x] Verify the refined typography and hierarchy on desktop and mobile
+- [x] Prepare three complete, internally consistent typography directions for the homepage
+- [x] Present full-page desktop and mobile previews so Isaac can select one direction
+- [x] Apply the selected B — Modern typography direction consistently across the homepage

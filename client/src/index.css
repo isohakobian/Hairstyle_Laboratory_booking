@@ -224,6 +224,46 @@
     color: hsl(var(--muted-foreground));
   }
 
+  /* ── Chosen homepage typography: Modern ── */
+  .typography-modern h1,
+  .typography-modern .section-heading,
+  .typography-modern .notice-title,
+  .typography-modern .service-name {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-style: normal !important;
+    letter-spacing: -0.055em;
+  }
+
+  .typography-modern h1 {
+    font-weight: 800;
+    line-height: 0.94;
+  }
+
+  .typography-modern .section-heading {
+    font-weight: 750;
+    letter-spacing: -0.035em;
+  }
+
+  .typography-modern .notice-title,
+  .typography-modern .service-name {
+    font-weight: 700;
+  }
+
+  .typography-modern .about-message {
+    font-family: 'Inter', system-ui, sans-serif !important;
+    font-style: normal !important;
+    font-weight: 500 !important;
+    letter-spacing: -0.02em !important;
+    line-height: 1.5 !important;
+  }
+
+  .typography-modern .label-caps {
+    font-size: 0.625rem;
+    font-weight: 650;
+    letter-spacing: 0.18em;
+  }
+
+
   .notice-card {
     position: relative;
     padding: 1.25rem 1.5rem;
