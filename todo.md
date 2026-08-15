@@ -182,3 +182,7 @@
 - [x] Let Isaac configure active reminder offsets and toggle each client reminder from the admin panel
 - [x] Show a concise weekly booking statistics dashboard on the default admin overview
 - [x] Add regression coverage and enable the production schedule for the two-hour reminder
+- [x] Send a bilingual Gmail email to the client after an admin changes the scheduled appointment time
+- [x] Send a bilingual Gmail email to the client after they cancel their own appointment
+- [x] Preserve successful booking changes when an optional notification email cannot be delivered
+- [x] Add regression coverage for reschedule and cancellation client notifications

@@ -5,14 +5,18 @@ import { createReviewToken } from "./db";
 import { createReviewTokenValue, hashReviewToken } from "./reviewToken";
 import { setAvailabilityForDates } from "./availability";
 
-const { sendBookingEmails, sendConfirmedBookingEmail, sendReviewRequestEmail } = vi.hoisted(() => ({
+const { sendBookingEmails, sendBookingCancelledEmail, sendBookingRescheduledEmail, sendConfirmedBookingEmail, sendReviewRequestEmail } = vi.hoisted(() => ({
   sendBookingEmails: vi.fn().mockResolvedValue({ skipped: true }),
+  sendBookingCancelledEmail: vi.fn().mockResolvedValue({ accepted: ["client@example.com"] }),
+  sendBookingRescheduledEmail: vi.fn().mockResolvedValue({ accepted: ["client@example.com"] }),
   sendConfirmedBookingEmail: vi.fn().mockResolvedValue({ accepted: ["client@example.com"] }),
   sendReviewRequestEmail: vi.fn().mockResolvedValue({ accepted: ["client@example.com"] }),
 }));
 
 vi.mock("./bookingEmail", () => ({
   sendBookingEmails,
+  sendBookingCancelledEmail,
+  sendBookingRescheduledEmail,
   sendConfirmedBookingEmail,
   sendReviewRequestEmail,
 }));
@@ -41,6 +45,8 @@ function context(role: "user" | "admin"): TrpcContext {
 describe("booking lifecycle emails", () => {
   beforeEach(async () => {
     sendConfirmedBookingEmail.mockClear();
+    sendBookingCancelledEmail.mockClear();
+    sendBookingRescheduledEmail.mockClear();
     sendReviewRequestEmail.mockClear();
     await setAvailabilityForDates(["2099-12-30", "2099-12-31"], "09:00", "19:00", 30);
   });
@@ -73,6 +79,13 @@ describe("booking lifecycle emails", () => {
       totalDurationMinutes: booking.totalDurationMinutes,
     }));
 
+    await adminCaller.admin.rescheduleBooking({ id: booking.id, bookingDate: "2099-12-30", bookingTime: "15:00", note: "Updated availability" });
+    expect(sendBookingRescheduledEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ referenceNumber: booking.referenceNumber, bookingDate: "2099-12-30", bookingTime: "15:00" }),
+      "2099-12-30",
+      "14:00",
+    );
+
     await expect(adminCaller.admin.requestReview({ id: booking.id })).rejects.toThrow(/completed/i);
     await adminCaller.admin.completeBooking({ id: booking.id });
 
@@ -88,6 +101,40 @@ describe("booking lifecycle emails", () => {
 
     await expect(publicCaller.reviews.submit({ token, rating: 5, text: "Great visit" })).resolves.toEqual({ success: true });
     await expect(publicCaller.reviews.submit({ token, rating: 5, text: "Repeated" })).rejects.toThrow(/invalid|used|expired/i);
+  });
+
+  it("notifies a client after their own cancellation without rolling back the cancellation if email fails", async () => {
+    const publicCaller = appRouter.createCaller(context("user"));
+    const services = await publicCaller.services.list();
+    const haircutId = services.find((service) => service.nameEn === "Haircut")?.id;
+    if (!haircutId) throw new Error("Haircut service is unavailable");
+    const booking = await publicCaller.bookings.create({
+      serviceIds: [haircutId], bookingDate: "2099-12-31", bookingTime: "14:00",
+      clientName: "Cancellation Notice Client", clientPhone: "+37455000004", clientEmail: "cancellation-notice@example.com", policyAccepted: true,
+    });
+    sendBookingCancelledEmail.mockRejectedValueOnce(new Error("SMTP unavailable"));
+
+    await expect(publicCaller.bookings.cancelByClient({ referenceNumber: booking.referenceNumber, clientEmail: "cancellation-notice@example.com", reason: "Plans changed" })).resolves.toEqual({ success: true });
+    expect(sendBookingCancelledEmail).toHaveBeenCalledWith(expect.objectContaining({ referenceNumber: booking.referenceNumber }), "Plans changed");
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect((await publicCaller.bookings.getByReference({ referenceNumber: booking.referenceNumber }))?.status).toBe("cancelled");
+  });
+
+  it("keeps the new time when the optional reschedule email cannot be delivered", async () => {
+    const publicCaller = appRouter.createCaller(context("user"));
+    const services = await publicCaller.services.list();
+    const haircutId = services.find((service) => service.nameEn === "Haircut")?.id;
+    if (!haircutId) throw new Error("Haircut service is unavailable");
+    const booking = await publicCaller.bookings.create({
+      serviceIds: [haircutId], bookingDate: "2099-12-31", bookingTime: "10:00",
+      clientName: "Reschedule Notice Client", clientPhone: "+37455000005", clientEmail: "reschedule-notice@example.com", policyAccepted: true,
+    });
+    sendBookingRescheduledEmail.mockRejectedValueOnce(new Error("SMTP unavailable"));
+    const adminCaller = appRouter.createCaller(context("admin"));
+
+    await expect(adminCaller.admin.rescheduleBooking({ id: booking.id, bookingDate: "2099-12-31", bookingTime: "11:00" })).resolves.toEqual({ success: true });
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect((await publicCaller.bookings.getByReference({ referenceNumber: booking.referenceNumber }))?.bookingTime).toBe("11:00");
   });
 
   it("rejects an expired one-time review link", async () => {

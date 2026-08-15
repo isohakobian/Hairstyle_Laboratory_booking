@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildAppointmentReminderEmail, buildClientBookingEmail, buildConfiguredReviewRequestEmail, buildOwnerBookingEmail, buildRepeatFollowUpEmail, buildReviewRequestEmail, buildWeeklyBookingSummaryEmail } from "./bookingEmail";
+import { buildAppointmentReminderEmail, buildBookingCancelledEmail, buildBookingRescheduledEmail, buildClientBookingEmail, buildConfiguredReviewRequestEmail, buildOwnerBookingEmail, buildRepeatFollowUpEmail, buildReviewRequestEmail, buildWeeklyBookingSummaryEmail } from "./bookingEmail";
 
 const booking = {
   referenceNumber: "ABC123",
@@ -80,6 +80,23 @@ describe("booking email templates", () => {
 
     expect(email.subject).toContain("in 2 hours");
     expect(email.text).toContain("примерно через 2 ч.");
+  });
+
+  it("creates a bilingual email with previous and new visit times after rescheduling", () => {
+    const email = buildBookingRescheduledEmail(booking, "2026-09-09", "12:00");
+
+    expect(email.subject).toContain("appointment time has changed");
+    expect(email.text).toContain("Previous time: 2026-09-09 at 12:00");
+    expect(email.text).toContain("Новое время: 2026-09-10 в 14:00");
+    expect(email.html).toContain("Isaac &lt;Client&gt;");
+  });
+
+  it("creates a bilingual cancellation email with the client-provided reason", () => {
+    const email = buildBookingCancelledEmail(booking, "Plans changed <today>");
+
+    expect(email.subject).toContain("appointment has been cancelled");
+    expect(email.text).toContain("Причина отмены: Plans changed <today>");
+    expect(email.html).toContain("Plans changed &lt;today&gt;");
   });
 
   it("creates an owner weekly summary with the main booking metrics", () => {

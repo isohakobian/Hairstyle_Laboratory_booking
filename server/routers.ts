@@ -13,7 +13,7 @@ import {
   deleteBookingAndRelatedData, declineBookingForInvalidReceipt, getAdminTodaySummary, getBookingReminderSettings, getClientDirectory, getBookingPage, getManualDepositSettings, getReviewRequestDashboard, getReviewRequestEmailTemplate, getReviewRequestPage, getReviewRequestStats, getWeeklyBookingSummary, saveBookingReminderSettings, saveManualDepositSettings, saveReviewRequestEmailTemplate, updateManualDepositStatus,
 } from "./db";
 import { TRPCError } from "@trpc/server";
-import { sendBookingEmails, sendBookingStatusRecoveryEmail, sendConfirmedBookingEmail, sendReviewRequestEmail } from "./bookingEmail";
+import { sendBookingCancelledEmail, sendBookingEmails, sendBookingRescheduledEmail, sendBookingStatusRecoveryEmail, sendConfirmedBookingEmail, sendReviewRequestEmail } from "./bookingEmail";
 import { createReviewTokenValue, getBookingStatusRecoveryExpiry, getReviewTokenExpiry, hashReviewToken } from "./reviewToken";
 import { blockDates, getAvailabilityWindows, getAvailableSlots, getPublicAvailableDates, setAvailabilityForDates } from "./availability";
 import { completeBooking, createBookingEvent, findOrCreateClient, getClientMemory, getSignedVisitMediaUrl, recordReviewRequest, rescheduleBooking, updateClientProfile, uploadVisitMedia } from "./clientMemory";
@@ -264,7 +264,22 @@ export const appRouter = router({
       }))
       .mutation(async ({ input }) => {
         const result = await cancelBookingByClient(input);
-        if (!result.cancelled) throw new TRPCError({ code: "BAD_REQUEST", message: "The booking could not be cancelled" });
+        if (!result.cancelled || !result.bookingId) throw new TRPCError({ code: "BAD_REQUEST", message: "The booking could not be cancelled" });
+        const booking = await getBookingById(result.bookingId);
+        if (booking?.clientEmail) {
+          void sendBookingCancelledEmail({
+            referenceNumber: booking.referenceNumber,
+            serviceName: booking.serviceSummary || booking.serviceName,
+            totalDurationMinutes: booking.totalDurationMinutes || undefined,
+            totalPriceSummary: booking.totalPriceSummary || undefined,
+            bookingDate: booking.bookingDate,
+            bookingTime: booking.bookingTime,
+            clientName: booking.clientName,
+            clientPhone: booking.clientPhone,
+            clientEmail: booking.clientEmail,
+            comment: booking.comment,
+          }, input.reason).catch((error: unknown) => console.error(`[Booking cancellation email] ${booking.referenceNumber} failed:`, error));
+        }
         return { success: true };
       }),
 
@@ -571,7 +586,22 @@ export const appRouter = router({
         note: z.string().max(1000).optional(),
       }))
       .mutation(async ({ input }) => {
+        const booking = await getBookingById(input.id);
         await rescheduleBooking(input.id, input.bookingDate, input.bookingTime, input.note);
+        if (booking?.clientEmail) {
+          void sendBookingRescheduledEmail({
+            referenceNumber: booking.referenceNumber,
+            serviceName: booking.serviceSummary || booking.serviceName,
+            totalDurationMinutes: booking.totalDurationMinutes || undefined,
+            totalPriceSummary: booking.totalPriceSummary || undefined,
+            bookingDate: input.bookingDate,
+            bookingTime: input.bookingTime,
+            clientName: booking.clientName,
+            clientPhone: booking.clientPhone,
+            clientEmail: booking.clientEmail,
+            comment: booking.comment,
+          }, booking.bookingDate, booking.bookingTime).catch((error: unknown) => console.error(`[Booking reschedule email] ${booking.referenceNumber} failed:`, error));
+        }
         return { success: true };
       }),
 

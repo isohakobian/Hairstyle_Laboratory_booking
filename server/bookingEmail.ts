@@ -119,6 +119,49 @@ export function buildClientConfirmationEmail(details: BookingEmailDetails): Emai
   };
 }
 
+export function buildBookingRescheduledEmail(details: BookingEmailDetails, previousDate: string, previousTime: string): EmailMessage {
+  const safeName = escapeHtml(details.clientName);
+  return {
+    subject: "Your appointment time has changed — Isaac",
+    text: [
+      `Hello, ${details.clientName}.`,
+      "Your appointment time has been updated.",
+      `Previous time: ${previousDate} at ${previousTime}`,
+      `New time: ${details.bookingDate} at ${details.bookingTime}`,
+      "",
+      `Здравствуйте, ${details.clientName}.`,
+      "Время вашей записи изменилось.",
+      `Прежнее время: ${previousDate} в ${previousTime}`,
+      `Новое время: ${details.bookingDate} в ${details.bookingTime}`,
+      "",
+      bookingDetailsText(details),
+      "Isaac",
+    ].join("\n"),
+    html: `<!doctype html><html><body style="margin:0;background:#F7F5F1;font-family:Arial,sans-serif;color:#17191E;"><div style="max-width:600px;margin:0 auto;padding:36px 24px;"><p style="margin:0 0 8px;color:#A17A2C;font-size:11px;font-weight:700;letter-spacing:2px;">ISAAC HAKOBIAN</p><h1 style="margin:0 0 18px;font-family:Georgia,serif;font-size:32px;line-height:1.1;">Your appointment time has changed</h1><p style="margin:0 0 8px;font-size:15px;line-height:1.6;">Hello, ${safeName}. Your appointment time has been updated.</p><p style="margin:0 0 24px;font-size:15px;line-height:1.6;">Здравствуйте, ${safeName}. Время вашей записи изменилось.</p><div style="background:#FFFFFF;border:1px solid #E4DED5;padding:24px;"><p style="margin:0 0 8px;font-size:13px;color:#6B7280;">Previous / Прежнее</p><p style="margin:0 0 18px;font-size:15px;font-weight:700;">${escapeHtml(previousDate)} · ${escapeHtml(previousTime)}</p><p style="margin:0 0 8px;font-size:13px;color:#6B7280;">New / Новое</p><p style="margin:0 0 18px;font-size:15px;font-weight:700;">${escapeHtml(details.bookingDate)} · ${escapeHtml(details.bookingTime)}</p><table style="border-collapse:collapse;width:100%;">${bookingDetailsHtml(details)}</table></div><p style="margin:26px 0 0;font-size:15px;line-height:1.6;">Isaac</p></div></body></html>`,
+  };
+}
+
+export function buildBookingCancelledEmail(details: BookingEmailDetails, reason: string): EmailMessage {
+  const safeName = escapeHtml(details.clientName);
+  const safeReason = escapeHtml(reason);
+  return {
+    subject: "Your appointment has been cancelled — Isaac",
+    text: [
+      `Hello, ${details.clientName}.`,
+      "Your appointment has been cancelled. This time is now available again.",
+      `Cancellation reason: ${reason}`,
+      "",
+      `Здравствуйте, ${details.clientName}.`,
+      "Ваша запись отменена. Это время снова стало доступно для записи.",
+      `Причина отмены: ${reason}`,
+      "",
+      bookingDetailsText(details),
+      "Isaac",
+    ].join("\n"),
+    html: `<!doctype html><html><body style="margin:0;background:#F7F5F1;font-family:Arial,sans-serif;color:#17191E;"><div style="max-width:600px;margin:0 auto;padding:36px 24px;"><p style="margin:0 0 8px;color:#A17A2C;font-size:11px;font-weight:700;letter-spacing:2px;">ISAAC HAKOBIAN</p><h1 style="margin:0 0 18px;font-family:Georgia,serif;font-size:32px;line-height:1.1;">Your appointment has been cancelled</h1><p style="margin:0 0 8px;font-size:15px;line-height:1.6;">Hello, ${safeName}. Your appointment has been cancelled. This time is now available again.</p><p style="margin:0 0 20px;font-size:15px;line-height:1.6;">Здравствуйте, ${safeName}. Ваша запись отменена. Это время снова стало доступно для записи.</p><div style="background:#FFFFFF;border:1px solid #E4DED5;padding:24px;"><p style="margin:0 0 8px;font-size:13px;color:#6B7280;">Cancellation reason / Причина отмены</p><p style="margin:0 0 18px;font-size:15px;font-weight:700;">${safeReason}</p><table style="border-collapse:collapse;width:100%;">${bookingDetailsHtml(details)}</table></div><p style="margin:26px 0 0;font-size:15px;line-height:1.6;">Isaac</p></div></body></html>`,
+  };
+}
+
 export function buildBookingStatusRecoveryEmail(recoveryUrl: string): EmailMessage {
   const safeUrl = escapeHtml(recoveryUrl);
   return {
@@ -350,6 +393,38 @@ export async function sendConfirmedBookingEmail(details: BookingEmailDetails) {
       content: buildCalendarInvite(details),
       contentType: "text/calendar; charset=utf-8; method=PUBLISH",
     }],
+  });
+}
+
+export async function sendBookingRescheduledEmail(details: BookingEmailDetails, previousDate: string, previousTime: string) {
+  if (process.env.NODE_ENV === "test" || !details.clientEmail) return { skipped: true } as const;
+  const config = getMailTransport();
+  if (!config) return { skipped: true } as const;
+  const email = buildBookingRescheduledEmail(details, previousDate, previousTime);
+  return config.transport.sendMail({
+    from: `Hairstyle Laboratory <${config.user}>`,
+    to: details.clientEmail,
+    replyTo: config.user,
+    subject: email.subject,
+    text: email.text,
+    html: email.html,
+    headers: { "X-Booking-Reference": details.referenceNumber, "X-Booking-Email-Type": "booking-rescheduled" },
+  });
+}
+
+export async function sendBookingCancelledEmail(details: BookingEmailDetails, reason: string) {
+  if (process.env.NODE_ENV === "test" || !details.clientEmail) return { skipped: true } as const;
+  const config = getMailTransport();
+  if (!config) return { skipped: true } as const;
+  const email = buildBookingCancelledEmail(details, reason);
+  return config.transport.sendMail({
+    from: `Hairstyle Laboratory <${config.user}>`,
+    to: details.clientEmail,
+    replyTo: config.user,
+    subject: email.subject,
+    text: email.text,
+    html: email.html,
+    headers: { "X-Booking-Reference": details.referenceNumber, "X-Booking-Email-Type": "booking-cancelled" },
   });
 }
 
