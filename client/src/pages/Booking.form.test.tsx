@@ -40,6 +40,9 @@ vi.mock("@/lib/trpc", () => ({
         },
       },
     },
+    manualDeposit: {
+      settings: { useQuery: () => ({ data: { isEnabled: 'no', recipientName: '', cardDetails: '', policyRu: '', policyEn: '' } }) },
+    },
   },
 }));
 
@@ -78,6 +81,7 @@ describe("Booking form", () => {
     fireEvent.change(container.querySelector('input[type="text"]')!, { target: { value: "Client Name" } });
     fireEvent.change(container.querySelector('input[type="tel"]')!, { target: { value: "+37455000000" } });
     fireEvent.change(container.querySelector('input[type="email"]')!, { target: { value: "CLIENT@EXAMPLE.COM" } });
+    fireEvent.click(container.querySelector('input[type="checkbox"]')!);
 
     fireEvent.submit(container.querySelector("form")!);
 
@@ -87,6 +91,7 @@ describe("Booking form", () => {
         clientEmail: "client@example.com",
         clientName: "Client Name",
         clientPhone: "+37455000000",
+        policyAccepted: true,
       }));
     });
   });

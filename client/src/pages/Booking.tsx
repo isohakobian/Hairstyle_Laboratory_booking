@@ -19,6 +19,25 @@ type RepeatBookingDraft = {
   sourceBookingId: number;
 };
 
+type PaymentReceiptDraft = {
+  fileName: string;
+  mimeType: 'image/jpeg' | 'image/png' | 'image/webp';
+  base64Data: string;
+};
+
+function readFileAsBase64(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const payload = String(reader.result || '').split(',')[1];
+      if (payload) resolve(payload);
+      else reject(new Error('Receipt could not be read'));
+    };
+    reader.onerror = () => reject(new Error('Receipt could not be read'));
+    reader.readAsDataURL(file);
+  });
+}
+
 const copy: Record<Lang, {
   title: string;
   sub: string;
@@ -55,6 +74,14 @@ const copy: Record<Lang, {
   saved: string;
   copyFailed: string;
   repeatReady: string;
+  manualDepositTitle: string;
+  manualDepositInstructions: string;
+  manualDepositRecipient: string;
+  manualDepositCard: string;
+  receiptLabel: string;
+  receiptHint: string;
+  policyAccepted: string;
+  receiptReady: string;
   haircut: string;
   beard: string;
   bioPerm: string;
@@ -106,6 +133,14 @@ const copy: Record<Lang, {
     saved: 'Сохранено',
     copyFailed: 'Не удалось скопировать. Сохраните номер заявки вручную.',
     repeatReady: 'Повторная запись: данные клиента и прошлые услуги подставлены. Проверьте их и выберите дату и время.',
+    manualDepositTitle: 'Предоплата и чек',
+    manualDepositInstructions: 'Для этой услуги нужна предоплата. Переведите сумму по реквизитам ниже и прикрепите фото чека к заявке. Isaac проверит оплату перед подтверждением визита.',
+    manualDepositRecipient: 'Получатель',
+    manualDepositCard: 'Карта / реквизиты',
+    receiptLabel: 'Фото чека об оплате',
+    receiptHint: 'JPEG, PNG или WebP · до 5 МБ',
+    policyAccepted: 'Я прочитал(а) и принимаю условия отмены и неявки.',
+    receiptReady: 'Чек прикреплён',
     haircut: 'Стрижка',
     beard: 'Моделирование бороды',
     bioPerm: 'Биохимическая завивка',
@@ -157,6 +192,14 @@ const copy: Record<Lang, {
     saved: 'Saved',
     copyFailed: 'Could not copy. Please save the reference number manually.',
     repeatReady: 'Repeat visit: client details and previous services are filled in. Review them, then choose a date and time.',
+    manualDepositTitle: 'Deposit and receipt',
+    manualDepositInstructions: 'This service requires a deposit. Transfer the amount using the details below and attach a photo of the receipt to your request. Isaac will verify the payment before confirming the visit.',
+    manualDepositRecipient: 'Recipient',
+    manualDepositCard: 'Card / payment details',
+    receiptLabel: 'Payment receipt photo',
+    receiptHint: 'JPEG, PNG, or WebP · up to 5 MB',
+    policyAccepted: 'I have read and accept the cancellation and no-show policy.',
+    receiptReady: 'Receipt attached',
     haircut: 'Haircut',
     beard: 'Beard modeling',
     bioPerm: 'Bio Perm',
@@ -207,9 +250,12 @@ export default function Booking() {
   const [submitted, setSubmitted] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [repeatDraftApplied, setRepeatDraftApplied] = useState(false);
+  const [paymentReceipt, setPaymentReceipt] = useState<PaymentReceiptDraft | null>(null);
+  const [policyAccepted, setPolicyAccepted] = useState(false);
 
   const createBookingMutation = trpc.bookings.create.useMutation();
   const { data: databaseServices, isLoading: servicesLoading, isError: servicesError } = trpc.services.list.useQuery();
+  const { data: manualDepositSettings } = trpc.manualDeposit.settings.useQuery();
   const servicesList = databaseServices ?? [];
   const servicesReady = !servicesLoading && !servicesError && servicesList.length > 0;
 
@@ -234,6 +280,8 @@ export default function Booking() {
 
   const selectedServices = servicesList.filter((service) => selectedServiceIds.includes(service.id));
   const totalDuration = selectedServices.reduce((total, service) => total + service.durationMinutes, 0);
+  const depositTotal = selectedServices.reduce((total, service) => total + (service.depositAmd ?? 0), 0);
+  const manualDepositRequired = manualDepositSettings?.isEnabled === 'yes' && depositTotal > 0;
   const availabilityInput = useMemo(() => ({
     date: bookingDate || '1970-01-01',
     durationMinutes: Math.max(totalDuration, 1),
@@ -284,6 +332,8 @@ export default function Booking() {
     if (!clientPhone.trim()) { toast.error(c.errors.phone); return; }
     const normalizedEmail = clientEmail.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) { toast.error(c.errors.email); return; }
+    if (!policyAccepted) { toast.error(language === 'ru' ? 'Подтвердите условия отмены и неявки' : 'Please accept the cancellation and no-show policy'); return; }
+    if (manualDepositRequired && !paymentReceipt) { toast.error(language === 'ru' ? 'Прикрепите фото чека об оплате' : 'Please attach your payment receipt'); return; }
 
     try {
       const result = await createBookingMutation.mutateAsync({
@@ -296,6 +346,8 @@ export default function Booking() {
         birthday: clientBirthday || undefined,
         instagram: clientInstagram.trim() || undefined,
         comment: comment.trim() || undefined,
+        policyAccepted,
+        receipt: manualDepositRequired && paymentReceipt ? paymentReceipt : undefined,
       });
       if (result) {
         setReferenceNumber(result.referenceNumber);
@@ -322,6 +374,25 @@ export default function Booking() {
       toast.success(c.saved);
     } catch {
       toast.error(c.copyFailed);
+    }
+  };
+
+  const selectReceipt = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      toast.error(language === 'ru' ? 'Поддерживаются JPEG, PNG и WebP' : 'JPEG, PNG, and WebP are supported');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error(language === 'ru' ? 'Чек должен быть меньше 5 МБ' : 'Receipt must be smaller than 5 MB');
+      return;
+    }
+    try {
+      setPaymentReceipt({ fileName: file.name, mimeType: file.type as PaymentReceiptDraft['mimeType'], base64Data: await readFileAsBase64(file) });
+    } catch {
+      toast.error(language === 'ru' ? 'Не удалось прочитать чек' : 'Receipt could not be read');
     }
   };
 
@@ -478,6 +549,32 @@ export default function Booking() {
                   </div>
                 </div>
               </div>
+            )}
+            {manualDepositRequired && (
+              <section style={{ marginTop: '1.25rem', padding: '1.25rem', border: '1px solid var(--gold-mid)', background: 'hsl(var(--secondary))' }}>
+                <p className="label-caps" style={{ margin: '0 0 0.65rem', color: 'var(--gold-mid)' }}>{c.manualDepositTitle}</p>
+                <p style={{ margin: '0 0 1rem', color: 'hsl(var(--muted-foreground))', fontSize: '0.8125rem', lineHeight: 1.55 }}>{c.manualDepositInstructions}</p>
+                <div style={{ display: 'grid', gap: '0.6rem', padding: '0.9rem 0', borderTop: '1px solid hsl(var(--border))', borderBottom: '1px solid hsl(var(--border))' }}>
+                  <p style={{ margin: 0, fontSize: '0.8125rem' }}><span className="label-caps" style={{ fontSize: '0.5625rem' }}>{c.manualDepositRecipient}: </span>{manualDepositSettings?.recipientName}</p>
+                  <p style={{ margin: 0, fontFamily: "'Inter', sans-serif", fontSize: '0.9rem', fontWeight: 600 }}><span className="label-caps" style={{ fontSize: '0.5625rem' }}>{c.manualDepositCard}: </span>{manualDepositSettings?.cardDetails}</p>
+                  <p style={{ margin: 0, fontSize: '0.8125rem' }}><span className="label-caps" style={{ fontSize: '0.5625rem' }}>{c.deposit}: </span>{depositTotal.toLocaleString()} ֏</p>
+                </div>
+                <label style={{ display: 'grid', gap: '0.45rem', marginTop: '1rem', cursor: 'pointer' }}>
+                  <span className="label-caps" style={{ fontSize: '0.5625rem' }}>{c.receiptLabel}</span>
+                  <input type="file" accept="image/jpeg,image/png,image/webp" onChange={selectReceipt} style={{ fontSize: '0.75rem', maxWidth: '100%' }} />
+                  <span style={{ fontSize: '0.75rem', color: paymentReceipt ? 'hsl(142 50% 40%)' : 'hsl(var(--muted-foreground))' }}>{paymentReceipt ? `${c.receiptReady}: ${paymentReceipt.fileName}` : c.receiptHint}</span>
+                </label>
+              </section>
+            )}
+            {selectedServices.length > 0 && (
+              <section style={{ marginTop: '1.25rem', padding: '1rem 1.1rem', borderLeft: '2px solid var(--gold-mid)', background: 'hsl(var(--secondary))' }}>
+                <p className="label-caps" style={{ margin: '0 0 0.55rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Отмена и неявка' : 'Cancellation and no-show'}</p>
+                <p style={{ margin: 0, color: 'hsl(var(--muted-foreground))', fontSize: '0.75rem', lineHeight: 1.55 }}>{language === 'ru' ? manualDepositSettings?.policyRu : manualDepositSettings?.policyEn}</p>
+                <label style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', marginTop: '0.85rem', fontSize: '0.75rem', lineHeight: 1.45, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={policyAccepted} onChange={event => setPolicyAccepted(event.target.checked)} style={{ marginTop: '0.15rem' }} />
+                  <span>{c.policyAccepted}</span>
+                </label>
+              </section>
             )}
           </div>
 

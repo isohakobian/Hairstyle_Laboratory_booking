@@ -14,9 +14,10 @@ import ClientMemoryPanel from '@/components/ClientMemoryPanel';
 import AnnouncementManager from '@/components/AnnouncementManager';
 import ServiceManager from '@/components/ServiceManager';
 import ReviewRequestTemplateEditor from '@/components/ReviewRequestTemplateEditor';
+import ManualDepositSettingsEditor from '@/components/ManualDepositSettingsEditor';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink } from '@/components/ui/pagination';
 
-type Tab = 'bookings' | 'calendar' | 'schedule' | 'services' | 'reviews' | 'clients' | 'news';
+type Tab = 'bookings' | 'calendar' | 'schedule' | 'services' | 'reviews' | 'clients' | 'news' | 'payment';
 type BookingStatusFilter = 'all' | 'pending' | 'confirmed' | 'declined';
 type BookingSort = 'appointmentAsc' | 'appointmentDesc' | 'newest' | 'statusAsc';
 type ReviewRequestStatusFilter = 'all' | 'awaiting' | 'received';
@@ -25,7 +26,7 @@ type ReviewRequestSort = 'sentDesc' | 'sentAsc' | 'receivedDesc';
 function getInitialTab(): Tab {
   if (typeof window === 'undefined') return 'bookings';
   const tab = new URLSearchParams(window.location.search).get('section');
-  return tab === 'calendar' || tab === 'schedule' || tab === 'services' || tab === 'reviews' || tab === 'clients' || tab === 'news' ? tab : 'bookings';
+  return tab === 'calendar' || tab === 'schedule' || tab === 'services' || tab === 'reviews' || tab === 'clients' || tab === 'news' || tab === 'payment' ? tab : 'bookings';
 }
 
 const labelStyle: React.CSSProperties = {
@@ -49,6 +50,12 @@ const statusColors: Record<string, string> = {
   confirmed: 'hsl(142, 50%, 40%)',
   declined: 'hsl(0, 60%, 50%)',
 };
+
+function DepositReceiptPreview({ bookingId, language }: { bookingId: number; language: string }) {
+  const { data: url } = trpc.admin.manualDepositReceiptUrl.useQuery({ bookingId });
+  if (!url) return <p style={{ ...labelStyle, margin: '0.75rem 0 0', fontSize: '0.5625rem' }}>{language === 'ru' ? 'Загружаю чек...' : 'Loading receipt...'}</p>;
+  return <a href={url} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', marginTop: '0.75rem', color: 'var(--gold-mid)', fontSize: '0.75rem', textDecoration: 'underline', textUnderlineOffset: '0.2rem' }}>{language === 'ru' ? 'Открыть чек оплаты' : 'Open payment receipt'}</a>;
+}
 
 export default function AdminDashboard() {
   const { language } = useLanguage();
@@ -75,6 +82,9 @@ export default function AdminDashboard() {
   const [lastReviewRequestBookingId, setLastReviewRequestBookingId] = useState<number | null>(null);
   const utils = trpc.useUtils();
   const { data: bookings, isLoading: bookingsLoading, isError: bookingsError, refetch: refetchBookings } = trpc.admin.bookings.useQuery(undefined, {
+    enabled: isAuthenticated && user?.role === 'admin',
+  });
+  const { data: todaySummary } = trpc.admin.today.useQuery(undefined, {
     enabled: isAuthenticated && user?.role === 'admin',
   });
   const { data: bookingPageData, isLoading: bookingPageLoading, isError: bookingPageError } = trpc.admin.bookingPage.useQuery({
@@ -115,6 +125,7 @@ export default function AdminDashboard() {
   const refreshBookingLists = () => {
     void refetchBookings();
     void utils.admin.bookingPage.invalidate();
+    void utils.admin.today.invalidate();
   };
   const refreshReviewRequests = () => {
     void utils.admin.reviewRequestPage.invalidate();
@@ -165,6 +176,13 @@ export default function AdminDashboard() {
       refreshBookingLists();
       refetchReviews();
       refreshReviewRequests();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const manualDepositStatusMutation = trpc.admin.updateManualDepositStatus.useMutation({
+    onSuccess: () => {
+      toast.success(language === 'ru' ? 'Статус предоплаты обновлён' : 'Deposit status updated');
+      refreshBookingLists();
     },
     onError: (e) => toast.error(e.message),
   });
@@ -266,6 +284,7 @@ export default function AdminDashboard() {
     { id: 'reviews', label: language === 'ru' ? 'Отзывы' : 'Reviews', description: language === 'ru' ? 'Модерация обратной связи' : 'Feedback moderation', count: allReviews?.length ?? 0 },
     { id: 'clients', label: language === 'ru' ? 'Клиенты' : 'Clients', description: language === 'ru' ? 'Память о клиенте' : 'Client memory' },
     { id: 'news', label: language === 'ru' ? 'Новости' : 'Notices', description: language === 'ru' ? 'Новости и отпуск' : 'News and vacation' },
+    { id: 'payment', label: language === 'ru' ? 'Предоплата' : 'Deposit', description: language === 'ru' ? 'Реквизиты, чеки и политика' : 'Details, receipts, and policy' },
   ];
 
   const inputStyle: React.CSSProperties = {
@@ -309,6 +328,23 @@ export default function AdminDashboard() {
             </div>
           ))}
         </div>
+
+        <section style={{ ...cardStyle, marginBottom: '2rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: '1rem' }}>
+            <div><p style={{ ...labelStyle, margin: '0 0 0.35rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Операционный обзор' : 'Operational overview'}</p><h3 style={{ margin: 0, fontStyle: 'italic' }}>{language === 'ru' ? `Сегодня · ${todaySummary?.date ?? '…'}` : `Today · ${todaySummary?.date ?? '…'}`}</h3></div>
+            <p style={{ ...labelStyle, margin: 0, fontSize: '0.5625rem' }}>{language === 'ru' ? `${todaySummary?.pendingCount ?? 0} ожидают · ${todaySummary?.confirmedCount ?? 0} подтверждено` : `${todaySummary?.pendingCount ?? 0} pending · ${todaySummary?.confirmedCount ?? 0} confirmed`}</p>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(15rem, 1fr))', gap: '1.25rem' }}>
+            <div>
+              <p style={{ ...labelStyle, margin: '0 0 0.55rem', fontSize: '0.5625rem' }}>{language === 'ru' ? 'Ближайшие клиенты' : 'Today’s clients'}</p>
+              {(todaySummary?.bookings ?? []).length === 0 ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'hsl(var(--muted-foreground))' }}>{language === 'ru' ? 'Сегодня записей нет.' : 'No appointments today.'}</p> : <div style={{ display: 'grid', gap: '0.45rem' }}>{(todaySummary?.bookings ?? []).slice(0, 4).map(booking => <div key={booking.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.8125rem' }}><span><strong>{booking.bookingTime}</strong> · {booking.clientName}</span><span style={{ color: statusColors[booking.status] }}>{booking.status === 'pending' ? (language === 'ru' ? 'ожидание' : 'pending') : (language === 'ru' ? 'подтв.' : 'confirmed')}</span></div>)}</div>}
+            </div>
+            <div>
+              <p style={{ ...labelStyle, margin: '0 0 0.55rem', fontSize: '0.5625rem' }}>{language === 'ru' ? 'Свободные окна' : 'Free windows'}</p>
+              {(todaySummary?.freeWindows ?? []).length === 0 ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'hsl(var(--muted-foreground))' }}>{language === 'ru' ? 'Нет открытых окон или день полностью занят.' : 'No open windows or the day is full.'}</p> : <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem' }}>{(todaySummary?.freeWindows ?? []).map(window => <span key={`${window.startTime}-${window.endTime}`} style={{ padding: '0.35rem 0.5rem', border: '1px solid hsl(var(--border))', fontSize: '0.75rem' }}>{window.startTime}–{window.endTime}</span>)}</div>}
+            </div>
+          </div>
+        </section>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(9rem, 1fr))', gap: '0.75rem', marginBottom: '2rem' }}>
           {tabs.map(tab => (
@@ -422,6 +458,14 @@ export default function AdminDashboard() {
                         ))}
                       </div>
                       {booking.comment && <p style={{ fontSize: '0.8125rem', color: 'hsl(var(--muted-foreground))', marginBottom: '1rem', fontStyle: 'italic' }}>"{booking.comment}"</p>}
+                      {booking.manualDepositAmountAmd && (
+                        <div style={{ marginBottom: '1rem', padding: '0.85rem', border: '1px solid hsl(var(--border))', background: 'hsl(var(--secondary))' }}>
+                          <p style={{ ...labelStyle, margin: 0, fontSize: '0.5625rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Предоплата' : 'Manual deposit'}</p>
+                          <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem' }}>{booking.manualDepositAmountAmd.toLocaleString()} ֏ · {booking.manualDepositStatus === 'verified' ? (language === 'ru' ? 'подтверждена' : 'verified') : booking.manualDepositStatus === 'proof_received' ? (language === 'ru' ? 'чек получен' : 'receipt received') : (language === 'ru' ? 'ожидает проверки' : 'awaiting review')}</p>
+                          {booking.manualDepositReceiptKey && <DepositReceiptPreview bookingId={booking.id} language={language} />}
+                          {booking.manualDepositStatus === 'proof_received' && <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginTop: '0.8rem' }}><button type="button" className="btn-primary" style={{ fontSize: '0.5625rem', padding: '0.55rem 0.75rem' }} disabled={manualDepositStatusMutation.isPending} onClick={() => manualDepositStatusMutation.mutate({ id: booking.id, status: 'verified' })}>{language === 'ru' ? 'Подтвердить оплату' : 'Verify payment'}</button><button type="button" className="btn-outline" style={{ fontSize: '0.5625rem', padding: '0.55rem 0.75rem' }} disabled={manualDepositStatusMutation.isPending} onClick={() => manualDepositStatusMutation.mutate({ id: booking.id, status: 'waived' })}>{language === 'ru' ? 'Не засчитывать' : 'Waive'}</button></div>}
+                        </div>
+                      )}
                       {booking.clientId && (
                         <button
                           type="button"
@@ -434,7 +478,7 @@ export default function AdminDashboard() {
                       )}
                       {booking.status === 'pending' && (
                         <div style={{ display: 'flex', gap: '0.75rem' }}>
-                          <button className="btn-primary" style={{ flex: 1, fontSize: '0.625rem', padding: '0.625rem 1rem' }} onClick={() => confirmMutation.mutate({ id: booking.id })} disabled={confirmMutation.isPending || declineMutation.isPending}>
+                          <button className="btn-primary" title={booking.manualDepositAmountAmd && booking.manualDepositStatus !== 'verified' ? (language === 'ru' ? 'Сначала подтвердите чек предоплаты' : 'Verify the deposit receipt first') : undefined} style={{ flex: 1, fontSize: '0.625rem', padding: '0.625rem 1rem' }} onClick={() => confirmMutation.mutate({ id: booking.id })} disabled={confirmMutation.isPending || declineMutation.isPending || Boolean(booking.manualDepositAmountAmd && booking.manualDepositStatus !== 'verified')}>
                             {language === 'ru' ? 'Подтвердить' : 'Confirm'}
                           </button>
                           <button className="btn-outline" style={{ flex: 1, fontSize: '0.625rem', padding: '0.625rem 1rem' }} onClick={() => declineMutation.mutate({ id: booking.id })} disabled={confirmMutation.isPending || declineMutation.isPending}>
@@ -573,6 +617,16 @@ export default function AdminDashboard() {
               <h3 style={{ margin: 0, fontStyle: 'italic' }}>{language === 'ru' ? 'Услуги и прайс-лист' : 'Services and price list'}</h3>
             </div>
             <ServiceManager language={language as 'ru' | 'en'} />
+          </div>
+        )}
+
+        {activeTab === 'payment' && (
+          <div>
+            <div style={{ marginBottom: '1.25rem' }}>
+              <p style={{ ...labelStyle, margin: '0 0 0.4rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Оплата вручную' : 'Manual payment'}</p>
+              <h3 style={{ margin: 0, fontStyle: 'italic' }}>{language === 'ru' ? 'Предоплата, чек и политика' : 'Deposit, receipt, and policy'}</h3>
+            </div>
+            <ManualDepositSettingsEditor language={language as 'ru' | 'en'} />
           </div>
         )}
 

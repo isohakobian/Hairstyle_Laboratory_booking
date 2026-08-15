@@ -113,6 +113,20 @@
       "when": 1786743825133,
       "tag": "0015_green_scourge",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "5",
+      "when": 1786794394150,
+      "tag": "0016_opposite_mole_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "5",
+      "when": 1786794522181,
+      "tag": "0017_blue_gabe_jones",
+      "breakpoints": true
     }
   ]
 }

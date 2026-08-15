@@ -67,6 +67,12 @@ export const bookings = mysqlTable("bookings", {
   completedAt: timestamp("completedAt"),
   comment: text("comment"),
   status: mysqlEnum("status", ["pending", "confirmed", "declined"]).default("pending").notNull(),
+  manualDepositAmountAmd: int("manualDepositAmountAmd"),
+  manualDepositStatus: mysqlEnum("manualDepositStatus", ["not_required", "awaiting_proof", "proof_received", "verified", "waived"]).default("not_required").notNull(),
+  manualDepositConfirmedAt: timestamp("manualDepositConfirmedAt"),
+  manualDepositReceiptKey: varchar("manualDepositReceiptKey", { length: 500 }),
+  manualDepositReceiptFileName: varchar("manualDepositReceiptFileName", { length: 255 }),
+  manualDepositReceiptMimeType: varchar("manualDepositReceiptMimeType", { length: 100 }),
   repeatFollowUpClaimedAt: timestamp("repeatFollowUpClaimedAt"),
   repeatFollowUpSentAt: timestamp("repeatFollowUpSentAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -272,3 +278,21 @@ export const emailTemplates = mysqlTable("emailTemplates", {
 
 export type EmailTemplate = typeof emailTemplates.$inferSelect;
 export type InsertEmailTemplate = typeof emailTemplates.$inferInsert;
+
+// A single owner-managed record controls the public manual-deposit instructions.
+// The card/bank details are intentionally shown only after a booking is created;
+// clients never enter card data on this website.
+export const manualDepositSettings = mysqlTable("manualDepositSettings", {
+  key: varchar("key", { length: 100 }).primaryKey(),
+  recipientName: varchar("recipientName", { length: 255 }).notNull().default(""),
+  cardDetails: varchar("cardDetails", { length: 255 }).notNull().default(""),
+  instagramUrl: varchar("instagramUrl", { length: 500 }).notNull().default(""),
+  policyRu: text("policyRu").notNull(),
+  policyEn: text("policyEn").notNull(),
+  isEnabled: mysqlEnum("isEnabled", ["yes", "no"]).default("no").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ManualDepositSettings = typeof manualDepositSettings.$inferSelect;
+export type InsertManualDepositSettings = typeof manualDepositSettings.$inferInsert;

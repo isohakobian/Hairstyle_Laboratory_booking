@@ -62,6 +62,7 @@ describe("booking lifecycle emails", () => {
       clientName: "Lifecycle Client",
       clientPhone: "+37455000000",
       clientEmail: "lifecycle-client@example.com",
+      policyAccepted: true,
     });
     const adminCaller = appRouter.createCaller(context("admin"));
 
@@ -102,6 +103,7 @@ describe("booking lifecycle emails", () => {
       clientName: "Expired Token Client",
       clientPhone: "+37455000001",
       clientEmail: "expired-token@example.com",
+      policyAccepted: true,
     });
     const adminCaller = appRouter.createCaller(context("admin"));
     await adminCaller.admin.confirmBooking({ id: booking.id });

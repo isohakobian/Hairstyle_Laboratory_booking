@@ -10,7 +10,7 @@ import {
   getReviewTokenByHash, markReviewTokenUsed,
   getPublishedReviews, getAllReviews, updateReviewPublished, createManagedService, setServiceActive, updateManagedService,
   createBookingStatusRecoveryToken, claimBookingStatusRecoveryToken, getSafeBookingStatusesByEmail,
-  deleteBookingAndRelatedData, getClientDirectory, getBookingPage, getReviewRequestDashboard, getReviewRequestEmailTemplate, getReviewRequestPage, getReviewRequestStats, saveReviewRequestEmailTemplate,
+  deleteBookingAndRelatedData, getAdminTodaySummary, getClientDirectory, getBookingPage, getManualDepositSettings, getReviewRequestDashboard, getReviewRequestEmailTemplate, getReviewRequestPage, getReviewRequestStats, saveManualDepositSettings, saveReviewRequestEmailTemplate, updateManualDepositStatus,
 } from "./db";
 import { TRPCError } from "@trpc/server";
 import { sendBookingEmails, sendBookingStatusRecoveryEmail, sendConfirmedBookingEmail, sendReviewRequestEmail } from "./bookingEmail";
@@ -18,6 +18,7 @@ import { createReviewTokenValue, getBookingStatusRecoveryExpiry, getReviewTokenE
 import { blockDates, getAvailabilityWindows, getAvailableSlots, getPublicAvailableDates, setAvailabilityForDates } from "./availability";
 import { completeBooking, createBookingEvent, findOrCreateClient, getClientMemory, getSignedVisitMediaUrl, recordReviewRequest, rescheduleBooking, updateClientProfile, uploadVisitMedia } from "./clientMemory";
 import { getActiveAnnouncements, getAllAnnouncements, saveAnnouncement, setAnnouncementPublished, uploadAnnouncementImage } from "./announcements";
+import { getManualDepositReceiptUrl, storeManualDepositReceipt } from "./manualDeposit";
 
 // Admin middleware
 const adminMiddleware = protectedProcedure.use(async ({ ctx, next }) => {
@@ -56,6 +57,18 @@ const managedServiceInput = z.object({
   }
 });
 
+const manualDepositSettingsInput = z.object({
+  recipientName: z.string().trim().max(255),
+  cardDetails: z.string().trim().max(255),
+  policyRu: z.string().trim().min(1).max(6000),
+  policyEn: z.string().trim().min(1).max(6000),
+  isEnabled: z.enum(["yes", "no"]),
+}).superRefine((input, ctx) => {
+  if (input.isEnabled !== "yes") return;
+  if (!input.recipientName) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["recipientName"], message: "Recipient name is required when manual deposits are enabled" });
+  if (!input.cardDetails) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["cardDetails"], message: "Payment details are required when manual deposits are enabled" });
+});
+
 export const appRouter = router({
   system: systemRouter,
   auth: router({
@@ -83,6 +96,13 @@ export const appRouter = router({
       .query(({ input }) => getAvailableSlots(input.date, input.durationMinutes)),
   }),
 
+  manualDeposit: router({
+    settings: publicProcedure.query(async () => {
+      const settings = await getManualDepositSettings();
+      return settings.isEnabled === "yes" ? settings : { ...settings, recipientName: "", cardDetails: "" };
+    }),
+  }),
+
   bookings: router({
     create: publicProcedure
       .input(z.object({
@@ -95,6 +115,12 @@ export const appRouter = router({
         birthday: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
         instagram: z.string().max(100).optional(),
         comment: z.string().optional(),
+        policyAccepted: z.boolean().optional(),
+        receipt: z.object({
+          fileName: z.string().min(1).max(255),
+          mimeType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+          base64Data: z.string().min(1).max(7_000_000),
+        }).optional(),
       }))
       .mutation(async ({ input }) => {
         const uniqueServiceIds = Array.from(new Set(input.serviceIds));
@@ -124,6 +150,14 @@ export const appRouter = router({
         const totalPriceSummary = rangedServices.length > 0
           ? `${(fixedTotalAmd + rangedServices.reduce((total, service) => total + (service.priceMinAmd ?? 0), 0)).toLocaleString()} – ${(fixedTotalAmd + rangedServices.reduce((total, service) => total + (service.priceMaxAmd ?? 0), 0)).toLocaleString()} ֏${depositTotalAmd ? ` · deposit ${depositTotalAmd.toLocaleString()} ֏` : ""}`
           : `${fixedTotalAmd.toLocaleString()} ֏`;
+        const manualDepositSettings = await getManualDepositSettings();
+        const requiresManualDeposit = manualDepositSettings.isEnabled === "yes" && depositTotalAmd > 0;
+        if (input.policyAccepted !== true) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "The cancellation policy must be accepted before booking" });
+        }
+        if (requiresManualDeposit && !input.receipt) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "A payment receipt is required for this booking" });
+        }
 
         const availableSlots = await getAvailableSlots(input.bookingDate, totalDurationMinutes);
         if (!availableSlots.includes(input.bookingTime)) {
@@ -132,6 +166,9 @@ export const appRouter = router({
 
         const referenceNumber = Math.random().toString(36).substring(2, 8).toUpperCase() +
           Date.now().toString(36).substring(0, 4).toUpperCase();
+        const receipt = input.receipt
+          ? await storeManualDepositReceipt({ referenceNumber, ...input.receipt })
+          : null;
         const client = await findOrCreateClient({
           name: input.clientName.trim(),
           phone: input.clientPhone.trim(),
@@ -157,6 +194,11 @@ export const appRouter = router({
             clientId: client.id,
             comment: input.comment,
             status: "pending",
+            manualDepositAmountAmd: requiresManualDeposit ? depositTotalAmd : null,
+            manualDepositStatus: requiresManualDeposit ? "proof_received" : "not_required",
+            manualDepositReceiptKey: receipt?.storageKey ?? null,
+            manualDepositReceiptFileName: receipt?.fileName ?? null,
+            manualDepositReceiptMimeType: receipt?.mimeType ?? null,
           }, services.map((service) => ({
             serviceId: service.id,
             serviceName: service.nameEn,
@@ -192,6 +234,8 @@ export const appRouter = router({
             clientPhone: input.clientPhone,
             clientEmail: input.clientEmail,
             comment: input.comment,
+            manualDepositAmountAmd: requiresManualDeposit ? depositTotalAmd : null,
+            receipt: receipt ? { fileName: receipt.fileName, mimeType: receipt.mimeType, content: receipt.content } : null,
           });
         } catch (e) {
           // Email delivery must never block a successfully created booking.
@@ -289,6 +333,21 @@ export const appRouter = router({
 
   admin: router({
     bookings: adminMiddleware.query(() => getAllBookings()),
+    today: adminMiddleware.query(() => getAdminTodaySummary()),
+    manualDepositSettings: adminMiddleware.query(() => getManualDepositSettings()),
+    saveManualDepositSettings: adminMiddleware
+      .input(manualDepositSettingsInput)
+      .mutation(({ input }) => saveManualDepositSettings({ ...input, instagramUrl: "" })),
+    updateManualDepositStatus: adminMiddleware
+      .input(z.object({ id: z.number().int().positive(), status: z.enum(["awaiting_proof", "proof_received", "verified", "waived"]) }))
+      .mutation(({ input }) => updateManualDepositStatus(input.id, input.status)),
+    manualDepositReceiptUrl: adminMiddleware
+      .input(z.object({ bookingId: z.number().int().positive() }))
+      .query(async ({ input }) => {
+        const booking = await getBookingById(input.bookingId);
+        if (!booking?.manualDepositReceiptKey) throw new TRPCError({ code: "NOT_FOUND", message: "Deposit receipt not found" });
+        return getManualDepositReceiptUrl(booking.manualDepositReceiptKey);
+      }),
     bookingPage: adminMiddleware
       .input(z.object({
         page: z.number().int().min(1),
@@ -356,8 +415,12 @@ export const appRouter = router({
     confirmBooking: adminMiddleware
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
-        await updateBookingStatus(input.id, "confirmed");
         const booking = await getBookingById(input.id);
+        if (!booking) throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found" });
+        if (booking.manualDepositAmountAmd && booking.manualDepositStatus !== "verified") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Verify the manual deposit receipt before confirming this booking" });
+        }
+        await updateBookingStatus(input.id, "confirmed");
         if (booking) await createBookingEvent({ bookingId: booking.id, eventType: "confirmed" });
         if (booking?.clientEmail) {
           try {

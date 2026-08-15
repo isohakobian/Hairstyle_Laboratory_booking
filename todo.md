@@ -159,3 +159,10 @@
 - [x] Prepare three complete, internally consistent typography directions for the homepage
 - [x] Present full-page desktop and mobile previews so Isaac can select one direction
 - [x] Apply the selected B — Modern typography direction consistently across the homepage
+- [x] Show the bilingual cancellation and no-show policy for all booking requests, not only deposit-required services
+- [x] Require explicit policy acknowledgement for every booking submission, with matching server-side validation
+- [x] Add an admin dashboard «Today» card with today’s appointments, pending requests, and free available windows
+- [x] Add admin-managed manual deposit instructions with recipient name and bank-card details, without Instagram confirmation
+- [x] Let clients securely upload a JPEG, PNG, or WebP payment receipt with their booking request
+- [x] Include the receipt in Isaac’s Gmail booking notification and show it privately in the admin booking view
+- [x] Record the receipt and owner confirmation state without accepting card data on the website

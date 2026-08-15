@@ -46,6 +46,7 @@ describe("booking email delivery contract", () => {
       clientName: "Email Contract Client",
       clientPhone: "+37455000000",
       clientEmail,
+      policyAccepted: true,
     });
 
     expect(sendBookingEmails).toHaveBeenCalledWith(expect.objectContaining({

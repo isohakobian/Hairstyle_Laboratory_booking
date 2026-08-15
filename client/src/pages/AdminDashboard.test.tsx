@@ -14,6 +14,7 @@ vi.mock("@/lib/trpc", () => ({
   trpc: {
     admin: {
       bookings: { useQuery: () => ({ data: [{ id: 1, status: "confirmed", clientName: "Alex", referenceNumber: "REF001", serviceName: "Haircut", serviceSummary: "Haircut", totalDurationMinutes: 45, totalPriceSummary: "15,000 ֏", bookingDate: "2099-12-30", bookingTime: "14:00", clientPhone: "+37455000000", clientEmail: "alex@example.com", comment: null, createdAt: new Date(), completedAt: new Date() }], isLoading: false, isError: false, refetch: vi.fn() }) },
+      today: { useQuery: () => ({ data: { date: '2099-12-30', bookings: [{ id: 1, status: 'confirmed', clientName: 'Alex', bookingTime: '14:00' }], pendingCount: 0, confirmedCount: 1, freeWindows: [{ startTime: '09:00', endTime: '14:00' }] } }) },
       bookingPage: { useQuery: () => ({ data: { items: [{ id: 1, status: "confirmed", clientName: "Alex", referenceNumber: "REF001", serviceName: "Haircut", serviceSummary: "Haircut", totalDurationMinutes: 45, totalPriceSummary: "15,000 ֏", bookingDate: "2099-12-30", bookingTime: "14:00", clientPhone: "+37455000000", clientEmail: "alex@example.com", comment: null, createdAt: new Date(), completedAt: new Date() }], total: 30, page: 1, pageSize: 15 }, isLoading: false, isError: false }) },
       reviews: { useQuery: () => ({ data: [], refetch: vi.fn() }) },
       confirmBooking: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
@@ -23,6 +24,7 @@ vi.mock("@/lib/trpc", () => ({
       publishReview: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       rescheduleBooking: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       completeBooking: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+      updateManualDepositStatus: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       reviewRequests: { useQuery: () => ({ data: { items: [], stats: { sent: 0, received: 0, awaiting: 0 } }, isLoading: false, isError: false, refetch: vi.fn() }) },
       reviewRequestPage: { useQuery: () => ({ data: { items: [], total: 0, page: 1, pageSize: 15 }, isLoading: false, isError: false }) },
       reviewRequestStats: { useQuery: () => ({ data: { sent: 0, received: 0, awaiting: 0 } }) },
@@ -37,6 +39,7 @@ vi.mock("@/lib/trpc", () => ({
     useUtils: () => ({
       admin: {
         bookingPage: { invalidate: vi.fn() },
+        today: { invalidate: vi.fn() },
         reviewRequestPage: { invalidate: vi.fn() },
         reviewRequestStats: { invalidate: vi.fn() },
       },
@@ -51,6 +54,7 @@ describe("AdminDashboard navigation", () => {
     render(<AdminDashboard />);
 
     expect(screen.getByText("Заявки клиентов")).toBeTruthy();
+    expect(screen.getByText(/Сегодня · 2099-12-30/)).toBeTruthy();
     expect(screen.getByText("Отправить запрос на отзыв")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: /Календарь/i }));

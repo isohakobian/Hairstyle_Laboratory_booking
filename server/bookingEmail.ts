@@ -13,6 +13,8 @@ export type BookingEmailDetails = {
   clientPhone: string;
   clientEmail?: string | null;
   comment?: string | null;
+  manualDepositAmountAmd?: number | null;
+  receipt?: { fileName: string; mimeType: string; content: Buffer } | null;
 };
 
 type EmailMessage = {
@@ -61,6 +63,7 @@ export function buildOwnerBookingEmail(details: BookingEmailDetails): EmailMessa
     ["Client", details.clientName],
     ["Phone", details.clientPhone],
     details.clientEmail ? ["Email", details.clientEmail] : null,
+    details.manualDepositAmountAmd ? ["Manual deposit", `${details.manualDepositAmountAmd.toLocaleString()} ֏${details.receipt ? " · receipt attached" : ""}`] : null,
     details.comment ? ["Comment", details.comment] : null,
   ].filter((row): row is [string, string] => Boolean(row));
 
@@ -75,6 +78,7 @@ export function buildOwnerBookingEmail(details: BookingEmailDetails): EmailMessa
       `Client: ${details.clientName}`,
       `Phone: ${details.clientPhone}`,
       details.clientEmail ? `Email: ${details.clientEmail}` : null,
+      details.manualDepositAmountAmd ? `Manual deposit: ${details.manualDepositAmountAmd.toLocaleString()} ֏${details.receipt ? " · receipt attached" : ""}` : null,
       bookingDetailsText(details),
       details.comment ? `Comment: ${details.comment}` : null,
     ].filter(Boolean).join("\n"),
@@ -257,6 +261,7 @@ export async function sendBookingEmails(details: BookingEmailDetails) {
       text: ownerEmail.text,
       html: ownerEmail.html,
       headers: { "X-Booking-Reference": details.referenceNumber },
+      ...(details.receipt ? { attachments: [{ filename: details.receipt.fileName, content: details.receipt.content, contentType: details.receipt.mimeType }] } : {}),
     }),
     ...(clientEmail && details.clientEmail ? [
       config.transport.sendMail({

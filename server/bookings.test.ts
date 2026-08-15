@@ -8,11 +8,22 @@ import { setAvailabilityForDates } from './availability';
 import { createReviewTokenValue, hashReviewToken } from './reviewToken';
 
 const sendBookingStatusRecoveryEmailMock = vi.hoisted(() => vi.fn());
+const storeManualDepositReceiptMock = vi.hoisted(() => vi.fn().mockResolvedValue({
+  storageKey: 'private/test-receipt.png',
+  fileName: 'receipt.png',
+  mimeType: 'image/png' as const,
+  content: Buffer.from('receipt'),
+}));
 
 vi.mock('./bookingEmail', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./bookingEmail')>();
   return { ...actual, sendBookingStatusRecoveryEmail: sendBookingStatusRecoveryEmailMock };
 });
+
+vi.mock('./manualDeposit', () => ({
+  storeManualDepositReceipt: storeManualDepositReceiptMock,
+  getManualDepositReceiptUrl: vi.fn(),
+}));
 
 // Mock context for testing
 function createMockContext(userId: number = 1, role: 'user' | 'admin' = 'user'): TrpcContext {
@@ -42,6 +53,7 @@ describe('Bookings API', () => {
   let caller: ReturnType<typeof appRouter.createCaller>;
   let haircutServiceId: number;
   let beardServiceId: number;
+  let bioPermServiceId: number;
 
   beforeAll(async () => {
     const ctx = createMockContext();
@@ -49,8 +61,9 @@ describe('Bookings API', () => {
     const services = await caller.services.list();
     haircutServiceId = services.find((service) => service.nameEn === 'Haircut')?.id ?? 0;
     beardServiceId = services.find((service) => service.nameEn === 'Beard Modeling')?.id ?? 0;
-    if (!haircutServiceId || !beardServiceId) throw new Error('Required services are unavailable');
-    await setAvailabilityForDates(['2099-12-15', '2099-12-16', '2099-12-17', '2099-12-20', '2099-12-21', '2099-12-27'], '09:00', '19:00', 30);
+    bioPermServiceId = services.find((service) => service.nameEn === 'Bio Perm')?.id ?? 0;
+    if (!haircutServiceId || !beardServiceId || !bioPermServiceId) throw new Error('Required services are unavailable');
+    await setAvailabilityForDates(['2099-12-15', '2099-12-16', '2099-12-17', '2099-12-20', '2099-12-21', '2099-12-27', '2099-12-29'], '09:00', '19:00', 30);
   });
 
   afterAll(async () => {
@@ -96,6 +109,7 @@ describe('Bookings API', () => {
         clientPhone: '+1234567890',
         clientEmail: 'john@example.com',
         comment: 'Please be gentle with the fade',
+        policyAccepted: true,
       };
 
       const result = await caller.bookings.create(bookingData);
@@ -116,6 +130,7 @@ describe('Bookings API', () => {
         clientName: 'Jane Doe',
         clientPhone: '+1234567891',
         clientEmail: 'jane@example.com',
+        policyAccepted: true,
       };
 
       const bookingData2 = {
@@ -125,6 +140,7 @@ describe('Bookings API', () => {
         clientName: 'Bob Smith',
         clientPhone: '+1234567892',
         clientEmail: 'bob@example.com',
+        policyAccepted: true,
       };
 
       const booking1 = await caller.bookings.create(bookingData1);
@@ -145,6 +161,7 @@ describe('Bookings API', () => {
         clientName: 'Alice Johnson',
         clientPhone: '+1234567893',
         clientEmail: 'alice@example.com',
+        policyAccepted: true,
       };
 
       const created = await caller.bookings.create(bookingData);
@@ -209,6 +226,7 @@ describe('Bookings API', () => {
         clientName: 'Multi Service Client',
         clientPhone: '+37455000001',
         clientEmail: 'multi-service@example.com',
+        policyAccepted: true,
       });
 
       expect(result.serviceSummary).toContain('Haircut');
@@ -229,6 +247,7 @@ describe('Bookings API', () => {
         clientName: 'Duplicate Service Client',
         clientPhone: '+37455000002',
         clientEmail: 'duplicate-service@example.com',
+        policyAccepted: true,
       })).rejects.toThrow('Each service can only be selected once');
     });
 
@@ -241,6 +260,7 @@ describe('Bookings API', () => {
         clientName: 'Interval Client',
         clientPhone: '+37455000003',
         clientEmail: 'interval-client@example.com',
+        policyAccepted: true,
       });
       expect(combined.totalDurationMinutes).toBeGreaterThan(60);
 
@@ -251,6 +271,7 @@ describe('Bookings API', () => {
         clientName: 'Overlapping Client',
         clientPhone: '+37455000004',
         clientEmail: 'overlap-client@example.com',
+        policyAccepted: true,
       })).rejects.toThrow(/not available/i);
 
       const remainingSlots = await caller.availability.slots({ date, durationMinutes: 30 });
@@ -374,5 +395,37 @@ describe('Bookings API', () => {
       await expect(adminCaller.admin.deleteBooking({ id: created.id })).resolves.toMatchObject({ success: true });
       await expect(caller.bookings.getByReference({ referenceNumber })).resolves.toBeUndefined();
     });
+
+    it('requires a receipt for a deposit booking and blocks confirmation until Isaac verifies it', async () => {
+      const adminCaller = appRouter.createCaller(createMockContext(99, 'admin'));
+      await adminCaller.admin.saveManualDepositSettings({
+        recipientName: 'Isaac Hakobian', cardDetails: '0000 0000 0000 0000', isEnabled: 'yes',
+        policyRu: 'Политика отмены', policyEn: 'Cancellation policy',
+      });
+      const base = {
+        serviceIds: [bioPermServiceId], bookingDate: '2099-12-29', bookingTime: '09:00',
+        clientName: 'Deposit Client', clientPhone: '+37455000999', clientEmail: 'deposit@example.com',
+      };
+      await expect(caller.bookings.create(base)).rejects.toThrow(/cancellation policy/i);
+      await expect(caller.bookings.create({ ...base, policyAccepted: true })).rejects.toThrow(/payment receipt/i);
+
+      storeManualDepositReceiptMock.mockClear();
+      const booking = await caller.bookings.create({
+        ...base,
+        policyAccepted: true,
+        receipt: { fileName: 'receipt.png', mimeType: 'image/png', base64Data: 'cmVjZWlwdA==' },
+      });
+      expect(storeManualDepositReceiptMock).toHaveBeenCalledTimes(1);
+      expect(booking.manualDepositAmountAmd).toBe(35000);
+      expect(booking.manualDepositStatus).toBe('proof_received');
+      expect(booking.manualDepositReceiptKey).toBe('private/test-receipt.png');
+
+      await expect(adminCaller.admin.confirmBooking({ id: booking.id })).rejects.toThrow(/verify the manual deposit/i);
+      await adminCaller.admin.updateManualDepositStatus({ id: booking.id, status: 'verified' });
+      await expect(adminCaller.admin.confirmBooking({ id: booking.id })).resolves.toEqual({ success: true });
+      await adminCaller.admin.saveManualDepositSettings({
+        recipientName: '', cardDetails: '', isEnabled: 'no', policyRu: 'Политика отмены', policyEn: 'Cancellation policy',
+      });
+    }, 20000);
   });
 });

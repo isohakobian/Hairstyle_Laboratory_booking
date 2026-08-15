@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, isNotNull, isNull, like, lt, lte, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, InsertBooking, InsertBookingService, users, services, bookings, bookingServices, reviewTokens, bookingStatusRecoveryTokens, bookingEvents, visitMedia, reviewRequestHistory, reviews, clients, emailTemplates } from "../drizzle/schema";
+import { InsertUser, InsertBooking, InsertBookingService, users, services, bookings, bookingServices, reviewTokens, bookingStatusRecoveryTokens, bookingEvents, visitMedia, reviewRequestHistory, reviews, clients, emailTemplates, availabilityWindows, manualDepositSettings } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -595,6 +595,122 @@ export async function saveReviewRequestEmailTemplate(input: ReviewRequestEmailTe
   if (!db) throw new Error("Database not available");
   await db.insert(emailTemplates).values({ key: REVIEW_REQUEST_TEMPLATE_KEY, ...input }).onDuplicateKeyUpdate({ set: input });
   return getReviewRequestEmailTemplate();
+}
+
+export const MANUAL_DEPOSIT_SETTINGS_KEY = "manual-deposit";
+
+export type ManualDepositSettingsInput = {
+  recipientName: string;
+  cardDetails: string;
+  instagramUrl: string;
+  policyRu: string;
+  policyEn: string;
+  isEnabled: "yes" | "no";
+};
+
+export const defaultManualDepositSettings: ManualDepositSettingsInput = {
+  recipientName: "",
+  cardDetails: "",
+  instagramUrl: "",
+  policyRu: "Отмена или перенос возможны не позднее чем за 24 часа до визита. При отмене позднее чем за 24 часа или неявке предоплата не возвращается. При своевременной отмене предоплату можно перенести на новую дату по согласованию с Isaac.",
+  policyEn: "Cancellation or rescheduling is available no later than 24 hours before the visit. For a late cancellation or no-show, the deposit is non-refundable. With timely notice, the deposit can be moved to a new date by agreement with Isaac.",
+  isEnabled: "no",
+};
+
+export async function getManualDepositSettings() {
+  const db = await getDb();
+  if (!db) return defaultManualDepositSettings;
+  const saved = (await db.select().from(manualDepositSettings)
+    .where(eq(manualDepositSettings.key, MANUAL_DEPOSIT_SETTINGS_KEY))
+    .limit(1))[0];
+  return saved ? {
+    recipientName: saved.recipientName,
+    cardDetails: saved.cardDetails,
+    instagramUrl: saved.instagramUrl,
+    policyRu: saved.policyRu,
+    policyEn: saved.policyEn,
+    isEnabled: saved.isEnabled,
+  } : defaultManualDepositSettings;
+}
+
+export async function saveManualDepositSettings(input: ManualDepositSettingsInput) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(manualDepositSettings).values({ key: MANUAL_DEPOSIT_SETTINGS_KEY, ...input }).onDuplicateKeyUpdate({ set: input });
+  return getManualDepositSettings();
+}
+
+export async function updateManualDepositStatus(id: number, status: "awaiting_proof" | "proof_received" | "verified" | "waived") {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(bookings).set({
+    manualDepositStatus: status,
+    manualDepositConfirmedAt: status === "verified" ? new Date() : null,
+  }).where(eq(bookings.id, id));
+  return getBookingById(id);
+}
+
+export async function attachManualDepositReceipt(id: number, receipt: { storageKey: string; fileName: string; mimeType: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(bookings).set({
+    manualDepositReceiptKey: receipt.storageKey,
+    manualDepositReceiptFileName: receipt.fileName,
+    manualDepositReceiptMimeType: receipt.mimeType,
+    manualDepositStatus: "proof_received",
+  }).where(eq(bookings.id, id));
+  return getBookingById(id);
+}
+
+function getYerevanDate() {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Yerevan", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? "";
+  return `${part("year")}-${part("month")}-${part("day")}`;
+}
+
+function minutesForTime(time: string) {
+  const [hour, minute] = time.split(":").map(Number);
+  return hour * 60 + minute;
+}
+
+function timeForMinutes(value: number) {
+  return `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`;
+}
+
+export async function getAdminTodaySummary() {
+  const db = await getDb();
+  const date = getYerevanDate();
+  if (!db) return { date, bookings: [], pendingCount: 0, confirmedCount: 0, freeWindows: [] as Array<{ startTime: string; endTime: string }> };
+  const [todayBookings, windows, blocked] = await Promise.all([
+    db.select().from(bookings).where(eq(bookings.bookingDate, date)).orderBy(asc(bookings.bookingTime)),
+    db.select().from(availabilityWindows).where(eq(availabilityWindows.date, date)).orderBy(asc(availabilityWindows.startTime)),
+    db.select({ id: blockedDates.id }).from(blockedDates).where(eq(blockedDates.date, date)).limit(1),
+  ]);
+  const activeBookings = todayBookings.filter((booking) => booking.status === "pending" || booking.status === "confirmed");
+  const freeWindows = (blocked.length > 0 ? [] : windows).flatMap((window) => {
+    const windowStart = minutesForTime(window.startTime);
+    const windowEnd = minutesForTime(window.endTime);
+    const dayBookings = activeBookings
+      .map((booking) => ({ start: minutesForTime(booking.bookingTime), end: minutesForTime(booking.bookingTime) + Math.max(booking.totalDurationMinutes || 0, 1) }))
+      .filter((booking) => booking.end > windowStart && booking.start < windowEnd)
+      .sort((left, right) => left.start - right.start);
+    let cursor = windowStart;
+    const gaps: Array<{ startTime: string; endTime: string }> = [];
+    dayBookings.forEach((booking) => {
+      const start = Math.max(windowStart, booking.start);
+      if (start > cursor) gaps.push({ startTime: timeForMinutes(cursor), endTime: timeForMinutes(start) });
+      cursor = Math.max(cursor, Math.min(windowEnd, booking.end));
+    });
+    if (cursor < windowEnd) gaps.push({ startTime: timeForMinutes(cursor), endTime: timeForMinutes(windowEnd) });
+    return gaps;
+  });
+  return {
+    date,
+    bookings: activeBookings,
+    pendingCount: activeBookings.filter((booking) => booking.status === "pending").length,
+    confirmedCount: activeBookings.filter((booking) => booking.status === "confirmed").length,
+    freeWindows,
+  };
 }
 
 export async function updateReviewPublished(id: number, isPublished: "yes" | "no") {
