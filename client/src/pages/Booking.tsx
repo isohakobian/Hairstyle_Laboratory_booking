@@ -4,6 +4,7 @@ import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
 import { useLocation } from 'wouter';
 import { downloadCalendarInvite, type CalendarInviteDetails } from '@/lib/calendarInvite';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 type Lang = 'ru' | 'en';
 
@@ -92,9 +93,11 @@ const copy: Record<Lang, {
   referencePhotoHint: string;
   referencePhotoReady: string;
   reviewsTitle: string;
-  thankYouModalTitle: string;
-  thankYouModalText: string;
-  instagramBtn: string;
+    thankYouModalTitle: string;
+    thankYouModalText: string;
+    instagramBtn: string;
+    faqTitle: string;
+    faqs: Array<{ q: string; a: string }>;
   haircut: string;
   beard: string;
   bioPerm: string;
@@ -161,6 +164,25 @@ const copy: Record<Lang, {
     thankYouModalTitle: 'Спасибо за запись!',
     thankYouModalText: 'Ваша заявка успешно принята. Скоро я проверю время и отправлю подтверждение с точным адресом на ваш email.',
     instagramBtn: 'Перейти в Instagram @isaac_hakobian',
+    faqTitle: 'Частые вопросы',
+    faqs: [
+      {
+        q: 'Где находится студия?',
+        a: 'Студия Hairstyle Laboratory расположена по адресу: Armenia, Yerevan, Pushkin 44. Точный адрес и ссылка на карту приходят на ваш email сразу после подтверждения записи.',
+      },
+      {
+        q: 'Как подтверждается запись?',
+        a: 'После отправки заявки я проверяю расписание и подтверждаю визит. На ваш email приходит письмо с деталями, ссылкой на календарь и адресом.',
+      },
+      {
+        q: 'Как отменить или перенести визит?',
+        a: 'Вы можете в любой момент открыть страницу «Статус» по коду вашей записи, проверить текущее состояние или отменить бронирование с указанием причины.',
+      },
+      {
+        q: 'Нужна ли предоплата?',
+        a: 'Предоплата требуется только для сложных процедур (например, биохимической завивки). Реквизиты и возможность прикрепить чек появятся прямо в форме.',
+      },
+    ],
     haircut: 'Стрижка',
     beard: 'Моделирование бороды',
     bioPerm: 'Биохимическая завивка',
@@ -227,6 +249,25 @@ const copy: Record<Lang, {
     thankYouModalTitle: 'Thank You for Booking!',
     thankYouModalText: 'Your request has been received. I will review the time and send confirmation with the precise address to your email soon.',
     instagramBtn: 'Visit Instagram @isaac_hakobian',
+    faqTitle: 'Frequently Asked Questions',
+    faqs: [
+      {
+        q: 'Where is the studio located?',
+        a: 'Hairstyle Laboratory is located at: Armenia, Yerevan, Pushkin 44. The exact address and map link are sent to your email immediately upon booking confirmation.',
+      },
+      {
+        q: 'How is my appointment confirmed?',
+        a: 'After you submit a request, I verify the schedule and confirm your visit. You will receive an email confirmation with calendar details and the studio address.',
+      },
+      {
+        q: 'How can I cancel or reschedule?',
+        a: 'You can open the Status page using your booking reference code at any time to check your appointment or cancel it with a reason.',
+      },
+      {
+        q: 'Is a deposit required?',
+        a: 'A deposit is only required for complex services (such as bio perms). Bank details and receipt upload will appear directly in the booking form when applicable.',
+      },
+    ],
     haircut: 'Haircut',
     beard: 'Beard Modeling',
     bioPerm: 'Bio Perm',
@@ -807,6 +848,23 @@ export default function Booking() {
             ) : c.submit}
           </button>
         </form>
+
+        {/* FAQ section */}
+        <div style={{ marginTop: '4rem', borderTop: '1px solid hsl(var(--border))', paddingTop: '3rem' }}>
+          <p className="label-caps" style={{ marginBottom: '1.25rem' }}>{c.faqTitle}</p>
+          <Accordion type="single" collapsible className="w-full">
+            {c.faqs.map((faq, index) => (
+              <AccordionItem key={index} value={`faq-${index}`}>
+                <AccordionTrigger style={{ fontSize: '0.9375rem', textAlign: 'left', fontWeight: 500 }}>
+                  {faq.q}
+                </AccordionTrigger>
+                <AccordionContent style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem', lineHeight: 1.6 }}>
+                  {faq.a}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </div>
       </div>
     </div>
   );
