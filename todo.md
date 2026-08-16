@@ -220,3 +220,6 @@
 - [x] Include studio address (Armenia, Yerevan, Pushkin 44) in client confirmation emails
 - [x] Add client Instagram handle to admin booking cards and Google Calendar event details
 - [x] Add notice in the booking form that address and appointment details will be sent via email upon confirmation
+- [x] Make studio address a clickable Google Maps link in client confirmation emails
+- [x] Include client Instagram handle in owner notification emails for new bookings
+- [x] Add a refined loading animation and disable double-submission on the booking form

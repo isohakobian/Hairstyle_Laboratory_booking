@@ -13,6 +13,7 @@ export type BookingEmailDetails = {
   clientName: string;
   clientPhone: string;
   clientEmail?: string | null;
+  clientInstagram?: string | null;
   comment?: string | null;
   manualDepositAmountAmd?: number | null;
   receipt?: { fileName: string; mimeType: string; content: Buffer } | null;
@@ -33,7 +34,7 @@ function escapeHtml(value: string) {
     .replace(/'/g, "&#039;");
 }
 
-function bookingDetailsHtml(details: BookingEmailDetails) {
+function bookingDetailsHtml(details: BookingEmailDetails, makeLocationLink = false) {
   const rows = [
     ["Service", details.serviceName],
     ...(details.totalDurationMinutes ? [["Duration", `${details.totalDurationMinutes} min`]] : []),
@@ -41,11 +42,11 @@ function bookingDetailsHtml(details: BookingEmailDetails) {
     ["Date", details.bookingDate],
     ["Time", details.bookingTime],
     ["Reference", details.referenceNumber],
-    ["Location", ENV.studioAddress],
+    ["Location", makeLocationLink ? `<a href="https://maps.google.com/?q=${encodeURIComponent(ENV.studioAddress)}" target="_blank" style="color:#A17A2C;text-decoration:underline;">${escapeHtml(ENV.studioAddress)}</a>` : ENV.studioAddress],
   ];
 
   return rows.map(([label, value]) => (
-    `<tr><td style="padding:8px 14px 8px 0;color:#6B7280;font-size:13px;">${label}</td><td style="padding:8px 0;color:#17191E;font-size:14px;font-weight:600;">${escapeHtml(value)}</td></tr>`
+    `<tr><td style="padding:8px 14px 8px 0;color:#6B7280;font-size:13px;">${label}</td><td style="padding:8px 0;color:#17191E;font-size:14px;font-weight:600;">${value.startsWith('<a ') ? value : escapeHtml(value)}</td></tr>`
   )).join("");
 }
 
@@ -66,6 +67,7 @@ export function buildOwnerBookingEmail(details: BookingEmailDetails): EmailMessa
     ["Client", details.clientName],
     ["Phone", details.clientPhone],
     details.clientEmail ? ["Email", details.clientEmail] : null,
+    details.clientInstagram ? ["Instagram", `@${details.clientInstagram.replace(/^@/, '')}`] : null,
     details.manualDepositAmountAmd ? ["Manual deposit", `${details.manualDepositAmountAmd.toLocaleString()} ֏${details.receipt ? " · receipt attached" : ""}`] : null,
     details.comment ? ["Comment", details.comment] : null,
   ].filter((row): row is [string, string] => Boolean(row));
@@ -81,6 +83,7 @@ export function buildOwnerBookingEmail(details: BookingEmailDetails): EmailMessa
       `Client: ${details.clientName}`,
       `Phone: ${details.clientPhone}`,
       details.clientEmail ? `Email: ${details.clientEmail}` : null,
+      details.clientInstagram ? `Instagram: @${details.clientInstagram.replace(/^@/, '')}` : null,
       details.manualDepositAmountAmd ? `Manual deposit: ${details.manualDepositAmountAmd.toLocaleString()} ֏${details.receipt ? " · receipt attached" : ""}` : null,
       bookingDetailsText(details),
       details.comment ? `Comment: ${details.comment}` : null,
@@ -118,7 +121,7 @@ export function buildClientConfirmationEmail(details: BookingEmailDetails): Emai
       "",
       bookingDetailsText(details),
     ].join("\n"),
-    html: `<!doctype html><html><body style="margin:0;background:#F7F5F1;font-family:Arial,sans-serif;color:#17191E;"><div style="max-width:600px;margin:0 auto;padding:36px 24px;"><p style="margin:0 0 8px;color:#A17A2C;font-size:11px;font-weight:700;letter-spacing:2px;">HAIRSTYLE LABORATORY</p><h1 style="margin:0 0 18px;font-family:Georgia,serif;font-size:32px;line-height:1.1;">Your booking is confirmed</h1><p style="margin:0 0 8px;font-size:15px;line-height:1.6;">Hello, ${safeName}. Your booking is confirmed. Add the attached invitation to your calendar to keep the visit at hand.</p><p style="margin:0 0 24px;font-size:15px;line-height:1.6;">Ваша запись подтверждена. Добавьте прикреплённое приглашение в календарь, чтобы не забыть о визите.</p><div style="background:#FFFFFF;border:1px solid #E4DED5;padding:24px;"><table style="border-collapse:collapse;width:100%;">${bookingDetailsHtml(details)}</table></div></div></body></html>`,
+    html: `<!doctype html><html><body style="margin:0;background:#F7F5F1;font-family:Arial,sans-serif;color:#17191E;"><div style="max-width:600px;margin:0 auto;padding:36px 24px;"><p style="margin:0 0 8px;color:#A17A2C;font-size:11px;font-weight:700;letter-spacing:2px;">HAIRSTYLE LABORATORY</p><h1 style="margin:0 0 18px;font-family:Georgia,serif;font-size:32px;line-height:1.1;">Your booking is confirmed</h1><p style="margin:0 0 8px;font-size:15px;line-height:1.6;">Hello, ${safeName}. Your booking is confirmed. Add the attached invitation to your calendar to keep the visit at hand.</p><p style="margin:0 0 24px;font-size:15px;line-height:1.6;">Ваша запись подтверждена. Добавьте прикреплённое приглашение в календарь, чтобы не забыть о визите.</p><div style="background:#FFFFFF;border:1px solid #E4DED5;padding:24px;"><table style="border-collapse:collapse;width:100%;">${bookingDetailsHtml(details, true)}</table></div><p style="margin:20px 0 0;font-size:14px;"><a href="https://maps.google.com/?q=${encodeURIComponent(ENV.studioAddress)}" target="_blank" style="color:#A17A2C;font-weight:600;text-decoration:underline;">Open studio location in Google Maps →</a></p></div></body></html>`,
   };
 }
 

@@ -720,10 +720,23 @@ export default function Booking() {
           <button
             type="submit"
             className="btn-primary"
-            style={{ width: '100%' }}
+            style={{ width: '100%', position: 'relative', overflow: 'hidden' }}
             disabled={createBookingMutation.isPending}
           >
-            {createBookingMutation.isPending ? '...' : c.submit}
+            {createBookingMutation.isPending ? (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{
+                  width: '0.875rem',
+                  height: '0.875rem',
+                  border: '2px solid currentColor',
+                  borderTopColor: 'transparent',
+                  borderRadius: '50%',
+                  display: 'inline-block',
+                  animation: 'spin 0.8s linear infinite',
+                }} />
+                {language === 'ru' ? 'Отправка заявки...' : 'Sending request...'}
+              </span>
+            ) : c.submit}
           </button>
         </form>
       </div>
