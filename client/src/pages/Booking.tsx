@@ -671,6 +671,11 @@ export default function Booking() {
                   borderBottomColor: focusedField === 'email' ? 'hsl(var(--foreground))' : 'hsl(var(--border))',
                 }}
               />
+              <p style={{ margin: '0.55rem 0 0', color: 'hsl(var(--muted-foreground))', fontSize: '0.75rem', lineHeight: 1.45 }}>
+                {language === 'ru'
+                  ? 'После подтверждения записи на этот email придут все детали визита и адрес: Armenia, Yerevan, Pushkin 44. Проверьте также папку «Спам».'
+                  : 'After confirmation, all appointment details and the address — Armenia, Yerevan, Pushkin 44 — will be sent to this email. Please check your spam folder too.'}
+              </p>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.5rem' }}>
               <div>

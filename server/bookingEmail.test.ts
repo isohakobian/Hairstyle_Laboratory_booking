@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildAppointmentReminderEmail, buildBookingCancelledEmail, buildBookingRescheduledEmail, buildClientBookingEmail, buildConfiguredReviewRequestEmail, buildOwnerBookingEmail, buildRepeatFollowUpEmail, buildReviewRequestEmail, buildWeeklyBookingSummaryEmail } from "./bookingEmail";
+import { buildAppointmentReminderEmail, buildBookingCancelledEmail, buildBookingRescheduledEmail, buildClientBookingEmail, buildClientConfirmationEmail, buildConfiguredReviewRequestEmail, buildOwnerBookingEmail, buildRepeatFollowUpEmail, buildReviewRequestEmail, buildWeeklyBookingSummaryEmail } from "./bookingEmail";
 
 const booking = {
   referenceNumber: "ABC123",
@@ -29,6 +29,13 @@ describe("booking email templates", () => {
     expect(email.text).toContain("Спасибо за вашу запись");
     expect(email.html).toContain("Isaac &lt;Client&gt;");
     expect(email.html).not.toContain("Isaac <Client>");
+  });
+
+  it("includes the studio address in the confirmed client email", () => {
+    const email = buildClientConfirmationEmail(booking);
+
+    expect(email.text).toContain("Location: Armenia, Yerevan, Pushkin 44");
+    expect(email.html).toContain("Armenia, Yerevan, Pushkin 44");
   });
 
   it("creates a warm first-person review request from Isaac", () => {

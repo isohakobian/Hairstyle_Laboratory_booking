@@ -68,6 +68,7 @@ describe("Booking form", () => {
     const { container } = render(<Booking />);
 
     const catalogText = container.textContent ?? "";
+    expect(screen.getByText(/После подтверждения записи на этот email|After confirmation, all appointment details/i)).toBeTruthy();
     expect(catalogText.indexOf("Моделирование бороды")).toBeLessThan(catalogText.indexOf("Стрижка"));
     expect(screen.queryByRole("button", { name: /Bio Perm|Биохимическая завивка/i })).toBeNull();
 

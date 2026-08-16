@@ -18,13 +18,13 @@ vi.mock("@/components/BookingEmailHistory", () => ({ default: () => <div>Client 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
     admin: {
-      bookings: { useQuery: () => ({ data: [{ id: 1, status: "confirmed", clientName: "Alex", referenceNumber: "REF001", serviceName: "Haircut", serviceSummary: "Haircut", totalDurationMinutes: 45, totalPriceSummary: "15,000 ֏", bookingDate: "2099-12-30", bookingTime: "14:00", clientPhone: "+37455000000", clientEmail: "alex@example.com", comment: null, createdAt: new Date(), completedAt: new Date() }], isLoading: false, isError: false, refetch: vi.fn() }) },
+      bookings: { useQuery: () => ({ data: [{ id: 1, status: "confirmed", clientName: "Alex", referenceNumber: "REF001", serviceName: "Haircut", serviceSummary: "Haircut", totalDurationMinutes: 45, totalPriceSummary: "15,000 ֏", bookingDate: "2099-12-30", bookingTime: "14:00", clientPhone: "+37455000000", clientEmail: "alex@example.com", clientInstagram: "alex.style", comment: null, createdAt: new Date(), completedAt: new Date() }], isLoading: false, isError: false, refetch: vi.fn() }) },
       today: { useQuery: () => ({ data: { date: '2099-12-30', bookings: [{ id: 1, status: 'confirmed', clientName: 'Alex', bookingTime: '14:00' }], pendingCount: 0, confirmedCount: 1, freeWindows: [{ startTime: '09:00', endTime: '14:00' }] } }) },
       weeklyBookingStats: { useQuery: () => ({ data: { newBookings: 8, cancelledBookings: 2, pendingBookings: 1, confirmedBookings: 4, completedBookings: 6, emailDeliveryErrors: 1 } }) },
       emailDeliveryErrors: { useQuery: () => ({ data: [{ bookingId: 1, referenceNumber: 'REF001', clientName: 'Alex', clientEmail: 'alex@example.com', bookingDate: '2099-12-30', bookingTime: '14:00', services: 'Haircut', notificationType: 'booking-confirmed', errorMessage: '550 5.1.1 User unknown', failedAt: new Date() }] }) },
       bookingReminderSettings: { useQuery: () => ({ data: { firstOffsetMinutes: 1440, firstEnabled: 'yes', secondOffsetMinutes: 120, secondEnabled: 'yes' }, isLoading: false, refetch: vi.fn() }) },
       saveBookingReminderSettings: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
-      bookingPage: { useQuery: () => ({ data: { items: [{ id: 1, status: dashboardMockState.showCancelledBooking ? "cancelled" : "confirmed", clientName: "Alex", referenceNumber: "REF001", serviceName: "Haircut", serviceSummary: "Haircut", totalDurationMinutes: 45, totalPriceSummary: "15,000 ֏", bookingDate: "2099-12-30", bookingTime: "14:00", clientPhone: "+37455000000", clientEmail: "alex@example.com", comment: null, createdAt: new Date(), completedAt: dashboardMockState.showCancelledBooking ? null : new Date(), cancellationReason: dashboardMockState.showCancelledBooking ? "Plans changed" : null, hasEmailDeliveryFailure: true }], total: 30, page: 1, pageSize: 15 }, isLoading: false, isError: false }) },
+      bookingPage: { useQuery: () => ({ data: { items: [{ id: 1, status: dashboardMockState.showCancelledBooking ? "cancelled" : "confirmed", clientName: "Alex", referenceNumber: "REF001", serviceName: "Haircut", serviceSummary: "Haircut", totalDurationMinutes: 45, totalPriceSummary: "15,000 ֏", bookingDate: "2099-12-30", bookingTime: "14:00", clientPhone: "+37455000000", clientEmail: "alex@example.com", clientInstagram: "alex.style", comment: null, createdAt: new Date(), completedAt: dashboardMockState.showCancelledBooking ? null : new Date(), cancellationReason: dashboardMockState.showCancelledBooking ? "Plans changed" : null, hasEmailDeliveryFailure: true }], total: 30, page: 1, pageSize: 15 }, isLoading: false, isError: false }) },
       reviews: { useQuery: () => ({ data: [], refetch: vi.fn() }) },
       confirmBooking: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       declineBooking: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
@@ -80,6 +80,7 @@ describe("AdminDashboard navigation", () => {
     ]));
     const calendarLink = screen.getByRole('link', { name: 'Добавить в Google Календарь' });
     expect(calendarLink.getAttribute('href')).toContain('calendar.google.com/calendar/render');
+    expect(screen.getByText('@alex.style')).toBeTruthy();
     expect(screen.getByText("Client email history")).toBeTruthy();
     expect(screen.getByText("Ошибка email")).toBeTruthy();
     expect(screen.getByText("Отправить запрос на отзыв")).toBeTruthy();

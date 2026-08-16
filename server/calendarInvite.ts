@@ -1,4 +1,5 @@
 import type { BookingEmailDetails } from "./bookingEmail";
+import { ENV } from "./_core/env";
 
 function escapeIcs(value: string) {
   return value
@@ -26,7 +27,7 @@ export function buildCalendarInvite(details: BookingEmailDetails) {
     `Booking reference: ${details.referenceNumber}`,
     `Services: ${details.serviceName}`,
     details.totalPriceSummary ? `Price: ${details.totalPriceSummary}` : null,
-    "Hairstyle Laboratory",
+    `Location: ${ENV.studioAddress}`,
   ].filter(Boolean).join("\n");
 
   return [
@@ -42,7 +43,7 @@ export function buildCalendarInvite(details: BookingEmailDetails) {
     `DTEND;TZID=Asia/Yerevan:${formatLocalDateTime(end)}`,
     `SUMMARY:${escapeIcs(`Hairstyle Laboratory — ${details.serviceName}`)}`,
     `DESCRIPTION:${escapeIcs(description)}`,
-    "LOCATION:Hairstyle Laboratory",
+    `LOCATION:${escapeIcs(ENV.studioAddress)}`,
     "STATUS:CONFIRMED",
     "END:VEVENT",
     "END:VCALENDAR",

@@ -1,3 +1,5 @@
+import { STUDIO_ADDRESS } from '../../../shared/const';
+
 export type CalendarInviteDetails = {
   referenceNumber: string;
   serviceName: string;
@@ -29,6 +31,7 @@ export function createCalendarInvite(details: CalendarInviteDetails) {
     `Booking reference: ${details.referenceNumber}`,
     `Services: ${details.serviceName}`,
     details.totalPriceSummary ? `Price: ${details.totalPriceSummary}` : null,
+    `Location: ${STUDIO_ADDRESS}`,
   ].filter(Boolean).join("\n");
 
   return [
@@ -43,7 +46,7 @@ export function createCalendarInvite(details: CalendarInviteDetails) {
     `DTEND;TZID=Asia/Yerevan:${localDateTime(end)}`,
     `SUMMARY:${escapeIcs(`Hairstyle Laboratory — ${details.serviceName}`)}`,
     `DESCRIPTION:${escapeIcs(description)}`,
-    "LOCATION:Hairstyle Laboratory",
+    `LOCATION:${escapeIcs(STUDIO_ADDRESS)}`,
     "END:VEVENT",
     "END:VCALENDAR",
     "",
