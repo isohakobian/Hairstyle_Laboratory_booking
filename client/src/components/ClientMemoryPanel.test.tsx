@@ -17,6 +17,8 @@ vi.mock('@/lib/trpc', () => ({
   trpc: {
     admin: {
       clientMemory: { useQuery: () => ({ data: clientMemory, isLoading: false, refetch: vi.fn() }) },
+      clientCrmPreference: { useQuery: () => ({ data: { newsletterConsented: 'no' }, refetch: vi.fn() }) },
+      saveClientCrmPreference: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       updateClientMemory: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       uploadVisitMedia: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       visitMediaUrl: { useQuery: () => ({ data: null }) },

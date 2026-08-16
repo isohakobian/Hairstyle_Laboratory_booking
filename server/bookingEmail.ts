@@ -542,3 +542,67 @@ export async function sendRepeatFollowUpEmail(details: BookingEmailDetails, book
     headers: { "X-Booking-Reference": details.referenceNumber },
   });
 }
+
+export type CrmBroadcastContent = {
+  clientName: string;
+  subjectRu: string;
+  subjectEn: string;
+  bodyRu: string;
+  bodyEn: string;
+  actionUrl?: string | null;
+  actionLabelRu?: string | null;
+  actionLabelEn?: string | null;
+};
+
+export function buildCrmBroadcastEmail(content: CrmBroadcastContent): EmailMessage {
+  const safeName = escapeHtml(content.clientName);
+  const subject = content.subjectEn.trim() || content.subjectRu.trim() || "A note from Isaac";
+  const actionUrl = content.actionUrl ? escapeHtml(content.actionUrl) : null;
+  const action = actionUrl ? `<a href="${actionUrl}" style="display:inline-block;margin-top:8px;background:#17191E;color:#FFFFFF;text-decoration:none;padding:14px 20px;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">${escapeHtml(content.actionLabelEn || content.actionLabelRu || "Open / Открыть")}</a>` : "";
+  return {
+    subject,
+    text: [`Hi, ${content.clientName}.`, content.bodyEn, content.actionUrl ? `${content.actionLabelEn || "Open"}: ${content.actionUrl}` : "", "", `Здравствуйте, ${content.clientName}.`, content.bodyRu, content.actionUrl ? `${content.actionLabelRu || "Открыть"}: ${content.actionUrl}` : "", "", "Isaac"].filter(Boolean).join("\n"),
+    html: `<!doctype html><html><body style="margin:0;background:#F7F5F1;font-family:Arial,sans-serif;color:#17191E;"><div style="max-width:600px;margin:0 auto;padding:36px 24px;"><p style="margin:0 0 8px;color:#A17A2C;font-size:11px;font-weight:700;letter-spacing:2px;">ISAAC HAKOBIAN</p><h1 style="margin:0 0 18px;font-family:Georgia,serif;font-size:32px;line-height:1.1;">${escapeHtml(subject)}</h1><p style="margin:0 0 8px;font-size:15px;line-height:1.7;">Hi, ${safeName}.</p><p style="margin:0 0 16px;font-size:15px;line-height:1.7;">${reviewTemplateHtml(content.bodyEn)}</p><p style="margin:0 0 24px;font-size:15px;line-height:1.7;">${reviewTemplateHtml(content.bodyRu)}</p>${action}<p style="margin:26px 0 0;font-size:15px;line-height:1.6;">See you soon,<br><strong>Isaac</strong></p></div></body></html>`,
+  };
+}
+
+export function buildPostVisitCheckInEmail(clientName: string, bookingUrl: string): EmailMessage {
+  return buildCrmBroadcastEmail({
+    clientName,
+    subjectRu: "Как вам результат? — Isaac",
+    subjectEn: "How are you liking the result? — Isaac",
+    bodyRu: "Прошло две недели после вашего визита. Надеюсь, вам нравится форма и результат. Если захотите обновить стрижку или бороду, я буду рад снова вас видеть.",
+    bodyEn: "It has been two weeks since your visit. I hope you are enjoying the shape and the result. If you feel ready for a refresh, I would be happy to see you again.",
+    actionUrl: bookingUrl,
+    actionLabelRu: "Выбрать новое время",
+    actionLabelEn: "Choose a new time",
+  });
+}
+
+export function buildBirthdayGreetingEmail(clientName: string, bookingUrl: string): EmailMessage {
+  return buildCrmBroadcastEmail({
+    clientName,
+    subjectRu: "С днём рождения — Isaac",
+    subjectEn: "Happy birthday — Isaac",
+    bodyRu: "Поздравляю вас с днём рождения! Желаю хорошего года, уверенности и людей, рядом с которыми легко быть собой. Если захотите обновить образ, буду рад видеть вас.",
+    bodyEn: "Happy birthday. I wish you a strong year, confidence, and people around you who make it easy to be yourself. If you feel like refreshing your look, I would be happy to see you.",
+    actionUrl: bookingUrl,
+    actionLabelRu: "Записаться",
+    actionLabelEn: "Book a visit",
+  });
+}
+
+export async function sendCrmEmail(recipientEmail: string, email: EmailMessage, notificationType: string) {
+  if (process.env.NODE_ENV === "test") return { skipped: true } as const;
+  const config = getMailTransport();
+  if (!config) return { skipped: true } as const;
+  return config.transport.sendMail({
+    from: `Isaac Hakobian <${config.user}>`,
+    to: recipientEmail,
+    replyTo: config.user,
+    subject: email.subject,
+    text: email.text,
+    html: email.html,
+    headers: { "X-CRM-Email-Type": notificationType },
+  });
+}

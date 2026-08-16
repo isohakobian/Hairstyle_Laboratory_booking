@@ -169,6 +169,27 @@
       "when": 1786909739449,
       "tag": "0023_fat_fabian_cortez",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "5",
+      "when": 1786911313588,
+      "tag": "0024_useful_sasquatch",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "5",
+      "when": 1786911587496,
+      "tag": "0025_faulty_madame_masque",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "5",
+      "when": 1786912257449,
+      "tag": "0026_good_bulldozer",
+      "breakpoints": true
     }
   ]
 }

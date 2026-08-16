@@ -227,3 +227,14 @@
 - [x] Show a refined thank-you modal upon successful booking with an Instagram link
 - [x] Display published real client reviews on the booking page to build trust
 - [x] Add a bilingual FAQ section on the booking page covering cancellation rules, studio address, preparation, and confirmation
+
+## Email-CRM Channel & Automated Campaigns
+- [x] Update FAQ studio address copy to focus on Isaac's personal working location (Armenia, Yerevan, Pushkin 44)
+- [x] Add database schema for client notification preferences, marketing consent, and CRM campaign history
+- [x] Create admin CRM campaign manager for broadcast news and vacation announcements with audience filters
+- [x] Implement automated 14-day post-visit check-in email in Isaac's warm first-person voice
+- [x] Implement automated birthday greeting email sent from Isaac on the client's birthday
+- [x] Add safety check to prevent marketing emails from going to clients with active upcoming bookings or revoked consent
+- [x] Add campaign history and delivery status tracking in the admin dashboard
+- [x] Add CRM automation tests and mobile/desktop visual verification
+- [ ] Enable the daily CRM Heartbeat schedule after the user confirms deployment and production activation

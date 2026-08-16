@@ -50,6 +50,8 @@ export default function ClientMemoryPanel({ clientId, language, onClose }: Props
   const ru = language === 'ru';
   const [, setLocation] = useLocation();
   const { data: memory, isLoading, refetch } = trpc.admin.clientMemory.useQuery({ clientId });
+  const { data: crmPreference, refetch: refetchCrmPreference } = trpc.admin.clientCrmPreference.useQuery({ clientId });
+  const [newsletterConsented, setNewsletterConsented] = useState(false);
   const [values, setValues] = useState({
     birthday: '', instagram: '', preferredHairLength: '', preferredBeardShape: '', preferredStyling: '', dislikes: '', skinSensitivity: '', stylistNotes: '',
   });
@@ -68,8 +70,16 @@ export default function ClientMemoryPanel({ clientId, language, onClose }: Props
     });
   }, [memory?.profile]);
 
+  useEffect(() => {
+    setNewsletterConsented(crmPreference?.newsletterConsented === 'yes');
+  }, [crmPreference?.newsletterConsented]);
+
   const updateMutation = trpc.admin.updateClientMemory.useMutation({
     onSuccess: () => { toast.success(ru ? 'Карточка клиента сохранена' : 'Client profile saved'); refetch(); },
+    onError: error => toast.error(error.message),
+  });
+  const crmPreferenceMutation = trpc.admin.saveClientCrmPreference.useMutation({
+    onSuccess: () => { toast.success(ru ? 'Согласие на новости обновлено' : 'News consent updated'); void refetchCrmPreference(); },
     onError: error => toast.error(error.message),
   });
   const uploadMutation = trpc.admin.uploadVisitMedia.useMutation({
@@ -166,6 +176,16 @@ export default function ClientMemoryPanel({ clientId, language, onClose }: Props
       </div>
       <label style={{ display: 'grid', gap: '0.4rem', marginBottom: '1.25rem' }}><span style={labelStyle}>{ru ? 'Заметки Isaac' : 'Isaac’s notes'}</span><textarea value={values.stylistNotes} onChange={event => change('stylistNotes', event.target.value)} placeholder={ru ? 'Например: в следующий раз короче по бокам; отращивает длину.' : 'For example: shorter on the sides next time; growing length.'} rows={4} style={{ ...inputStyle, border: '1px solid hsl(var(--border))', padding: '0.75rem', resize: 'vertical' }} /></label>
       <button type="button" className="btn-primary" onClick={save} disabled={updateMutation.isPending}>{updateMutation.isPending ? '...' : (ru ? 'Сохранить карточку' : 'Save profile')}</button>
+
+      <div style={{ marginTop: '1.25rem', padding: '0.9rem 1rem', border: '1px solid hsl(var(--border))', background: 'hsl(var(--secondary))' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.8rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <label style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', fontSize: '0.75rem', lineHeight: 1.45, cursor: 'pointer' }}>
+            <input type="checkbox" checked={newsletterConsented} onChange={event => setNewsletterConsented(event.target.checked)} style={{ marginTop: '0.15rem' }} />
+            <span>{ru ? 'Разрешены новости, отпуск и персональные CRM-письма' : 'News, vacation notices, and personal CRM emails are allowed'}</span>
+          </label>
+          <button type="button" className="btn-outline" onClick={() => crmPreferenceMutation.mutate({ clientId, newsletterConsented: newsletterConsented ? 'yes' : 'no' })} disabled={crmPreferenceMutation.isPending} style={{ fontSize: '0.5625rem', padding: '0.5rem 0.7rem' }}>{ru ? 'Сохранить согласие' : 'Save consent'}</button>
+        </div>
+      </div>
 
       <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid hsl(var(--border))' }}>
         <p style={{ ...labelStyle, margin: '0 0 1rem', color: 'var(--gold-mid)' }}>{ru ? 'История визитов и фото' : 'Visit history and photos'}</p>

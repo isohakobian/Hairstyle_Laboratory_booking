@@ -1,0 +1,1 @@
+ALTER TABLE `crmCampaigns` MODIFY COLUMN `audienceFilter` varchar(50) NOT NULL DEFAULT 'upcoming_booking';

@@ -10,10 +10,10 @@ import {
   getReviewTokenByHash, markReviewTokenUsed,
   getPublishedReviews, getAllReviews, updateReviewPublished, createManagedService, setServiceActive, updateManagedService,
   createBookingStatusRecoveryToken, claimBookingStatusRecoveryToken, getSafeBookingStatusesByEmail,
-  deleteBookingAndRelatedData, declineBookingForInvalidReceipt, getAdminTodaySummary, getBookingReminderSettings, getBookingsWithUnresolvedEmailFailures, getUnresolvedEmailDeliveryErrors, getClientDirectory, getClientEmailDeliveryHistory, getLatestBookingRescheduleEvent, getBookingPage, getManualDepositSettings, getReviewRequestDashboard, getReviewRequestEmailTemplate, getReviewRequestPage, getReviewRequestStats, getWeeklyBookingSummary, recordClientEmailDelivery, saveBookingReminderSettings, saveManualDepositSettings, saveReviewRequestEmailTemplate, updateManualDepositStatus,
+  deleteBookingAndRelatedData, declineBookingForInvalidReceipt, getAdminTodaySummary, getBookingReminderSettings, getBookingsWithUnresolvedEmailFailures, getUnresolvedEmailDeliveryErrors, getClientDirectory, getClientEmailDeliveryHistory, getLatestBookingRescheduleEvent, getBookingPage, getManualDepositSettings, getReviewRequestDashboard, getReviewRequestEmailTemplate, getReviewRequestPage, getReviewRequestStats, getWeeklyBookingSummary, recordClientEmailDelivery, saveBookingReminderSettings, saveManualDepositSettings, saveReviewRequestEmailTemplate, updateManualDepositStatus, getCrmCampaigns, getCrmCampaignById, createCrmCampaign, updateCrmCampaign, getCrmCampaignDeliveries, getCrmCampaignStats, recordCrmCampaignDelivery, getCrmRecipients, saveClientCrmPreference, getClientCrmPreference, CrmAudienceFilter,
 } from "./db";
 import { TRPCError } from "@trpc/server";
-import { buildAppointmentReminderEmail, buildBookingCancelledEmail, buildBookingDeclinedEmail, buildBookingRescheduledEmail, buildClientBookingEmail, buildClientConfirmationEmail, sendAppointmentReminderEmail, sendBookingCancelledEmail, sendBookingDeclinedEmail, sendBookingEmails, sendBookingRescheduledEmail, sendBookingStatusRecoveryEmail, sendClientBookingRequestEmail, sendConfirmedBookingEmail, sendReviewRequestEmail } from "./bookingEmail";
+import { buildAppointmentReminderEmail, buildBookingCancelledEmail, buildBookingDeclinedEmail, buildBookingRescheduledEmail, buildClientBookingEmail, buildClientConfirmationEmail, buildCrmBroadcastEmail, sendAppointmentReminderEmail, sendBookingCancelledEmail, sendBookingDeclinedEmail, sendBookingEmails, sendBookingRescheduledEmail, sendBookingStatusRecoveryEmail, sendClientBookingRequestEmail, sendConfirmedBookingEmail, sendReviewRequestEmail, sendCrmEmail } from "./bookingEmail";
 import { createReviewTokenValue, getBookingStatusRecoveryExpiry, getReviewTokenExpiry, hashReviewToken } from "./reviewToken";
 import { blockDates, clearAvailabilityForDates, getAvailabilityWindows, getAvailableSlots, getPublicAvailableDates, setAvailabilityForDates } from "./availability";
 import { completeBooking, createBookingEvent, findOrCreateClient, getClientMemory, getSignedVisitMediaUrl, recordReviewRequest, rescheduleBooking, updateClientProfile, uploadVisitMedia } from "./clientMemory";
@@ -71,6 +71,40 @@ async function resendClientBookingNotification(bookingId: number) {
     await recordClientEmailDelivery({ bookingId: booking.id, recipientEmail: booking.clientEmail, notificationType, deliveryStatus: "failed", errorMessage: message, isManualResend: "yes", emailSubject: preview.subject, emailText: preview.text });
     throw error;
   }
+}
+
+async function sendCrmCampaignById(campaignId: number) {
+  const campaign = await getCrmCampaignById(campaignId);
+  if (!campaign) throw new TRPCError({ code: "NOT_FOUND", message: "CRM campaign not found" });
+  const recipients = await getCrmRecipients(campaign.audienceFilter as CrmAudienceFilter, campaign.targetServiceId);
+  const limitedRecipients = recipients.slice(0, 200);
+  await updateCrmCampaign(campaign.id, { status: "sending", totalRecipients: limitedRecipients.length, sentCount: 0, errorCount: 0 });
+  let sentCount = 0;
+  let errorCount = 0;
+  for (const client of limitedRecipients) {
+    if (!client.email) continue;
+    const email = buildCrmBroadcastEmail({
+      clientName: client.name,
+      subjectRu: campaign.subjectRu,
+      subjectEn: campaign.subjectEn,
+      bodyRu: campaign.bodyRu,
+      bodyEn: campaign.bodyEn,
+      actionUrl: PUBLIC_BOOKING_URL,
+      actionLabelRu: "Выбрать время",
+      actionLabelEn: "Choose a time",
+    });
+    try {
+      const result = await sendCrmEmail(client.email, email, `crm-campaign-${campaign.id}`);
+      const skipped = Boolean(result && typeof result === "object" && "skipped" in result && result.skipped);
+      await recordCrmCampaignDelivery({ campaignId: campaign.id, clientId: client.id, recipientEmail: client.email, deliveryStatus: skipped ? "skipped" : "sent", emailSubject: email.subject, emailText: email.text });
+      if (!skipped) sentCount += 1;
+    } catch (error) {
+      errorCount += 1;
+      await recordCrmCampaignDelivery({ campaignId: campaign.id, clientId: client.id, recipientEmail: client.email, deliveryStatus: "failed", errorMessage: error instanceof Error ? error.message : "Unknown CRM email error", emailSubject: email.subject, emailText: email.text }).catch(() => undefined);
+    }
+  }
+  await updateCrmCampaign(campaign.id, { status: errorCount > 0 ? "failed" : "completed", sentCount, errorCount });
+  return { campaignId: campaign.id, totalRecipients: limitedRecipients.length, sentCount, errorCount, capped: recipients.length > limitedRecipients.length };
 }
 
 const managedServiceInput = z.object({
@@ -168,6 +202,7 @@ export const appRouter = router({
         instagram: z.string().max(100).optional(),
         comment: z.string().optional(),
         policyAccepted: z.boolean().optional(),
+        newsletterConsented: z.boolean().optional(),
         receipt: z.object({
           fileName: z.string().min(1).max(255),
           mimeType: z.enum(["image/jpeg", "image/png", "image/webp"]),
@@ -236,6 +271,7 @@ export const appRouter = router({
           birthday: input.birthday,
           instagram: input.instagram?.trim().replace(/^@/, "") || undefined,
         });
+        await saveClientCrmPreference(client.id, input.newsletterConsented === true ? "yes" : "no");
 
         try {
           await createBookingWithServices({
@@ -570,6 +606,44 @@ export const appRouter = router({
       }))
       .query(({ input }) => getBookingPage(input)),
     announcements: adminMiddleware.query(() => getAllAnnouncements()),
+    crmCampaigns: adminMiddleware.query(() => getCrmCampaigns()),
+    crmCampaignDeliveries: adminMiddleware
+      .input(z.object({ campaignId: z.number().int().positive() }))
+      .query(({ input }) => getCrmCampaignDeliveries(input.campaignId)),
+    crmAudiencePreview: adminMiddleware
+      .input(z.object({ audienceFilter: z.enum(["newsletter_consented", "upcoming_booking", "recent_6m", "specific_service"]), targetServiceId: z.number().int().positive().nullable().optional() }))
+      .query(({ input }) => getCrmRecipients(input.audienceFilter, input.targetServiceId)),
+    crmCampaignStats: adminMiddleware
+      .input(z.object({ campaignId: z.number().int().positive() }))
+      .query(({ input }) => getCrmCampaignStats(input.campaignId)),
+    saveCrmCampaign: adminMiddleware
+      .input(z.object({
+        id: z.number().int().positive().optional(),
+        title: z.string().trim().min(1).max(255),
+        subjectRu: z.string().trim().min(1).max(255),
+        subjectEn: z.string().trim().min(1).max(255),
+        bodyRu: z.string().trim().min(1).max(6000),
+        bodyEn: z.string().trim().min(1).max(6000),
+        audienceFilter: z.enum(["newsletter_consented", "upcoming_booking", "recent_6m", "specific_service"]),
+        targetServiceId: z.number().int().positive().nullable().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...values } = input;
+        if (id) {
+          await updateCrmCampaign(id, values);
+          return { id };
+        }
+        return { id: await createCrmCampaign(values) };
+      }),
+    sendCrmCampaign: adminMiddleware
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(({ input }) => sendCrmCampaignById(input.id)),
+    clientCrmPreference: adminMiddleware
+      .input(z.object({ clientId: z.number().int().positive() }))
+      .query(({ input }) => getClientCrmPreference(input.clientId)),
+    saveClientCrmPreference: adminMiddleware
+      .input(z.object({ clientId: z.number().int().positive(), newsletterConsented: z.enum(["yes", "no"]) }))
+      .mutation(({ input }) => saveClientCrmPreference(input.clientId, input.newsletterConsented)),
     services: adminMiddleware.query(() => getAllServices(true)),
 
     saveService: adminMiddleware

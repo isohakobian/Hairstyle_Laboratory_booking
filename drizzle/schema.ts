@@ -352,3 +352,54 @@ export const manualDepositSettings = mysqlTable("manualDepositSettings", {
 
 export type ManualDepositSettings = typeof manualDepositSettings.$inferSelect;
 export type InsertManualDepositSettings = typeof manualDepositSettings.$inferInsert;
+
+// CRM Campaign History & Targeted Broadcasts
+export const crmCampaigns = mysqlTable("crmCampaigns", {
+  id: int("id").autoincrement().primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  subjectRu: varchar("subjectRu", { length: 255 }).notNull(),
+  subjectEn: varchar("subjectEn", { length: 255 }).notNull(),
+  bodyRu: text("bodyRu").notNull(),
+  bodyEn: text("bodyEn").notNull(),
+  audienceFilter: varchar("audienceFilter", { length: 50 }).notNull().default("upcoming_booking"), // upcoming_booking, recent_6m, specific_service, newsletter_consented
+  targetServiceId: int("targetServiceId"),
+  status: mysqlEnum("status", ["draft", "sending", "completed", "failed"]).notNull().default("draft"),
+  totalRecipients: int("totalRecipients").notNull().default(0),
+  sentCount: int("sentCount").notNull().default(0),
+  errorCount: int("errorCount").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CrmCampaign = typeof crmCampaigns.$inferSelect;
+export type InsertCrmCampaign = typeof crmCampaigns.$inferInsert;
+
+// Client CRM consent and preferences tracking
+export const clientCrmPreferences = mysqlTable("clientCrmPreferences", {
+  id: int("id").autoincrement().primaryKey(),
+  clientId: int("clientId").notNull().unique(),
+  newsletterConsented: mysqlEnum("newsletterConsented", ["yes", "no"]).notNull().default("no"),
+  last14DayFollowUpSentAt: timestamp("last14DayFollowUpSentAt"),
+  lastBirthdayGreetingYear: int("lastBirthdayGreetingYear"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ClientCrmPreference = typeof clientCrmPreferences.$inferSelect;
+
+export const crmCampaignDeliveries = mysqlTable("crmCampaignDeliveries", {
+  id: int("id").autoincrement().primaryKey(),
+  campaignId: int("campaignId").notNull(),
+  clientId: int("clientId").notNull(),
+  recipientEmail: varchar("recipientEmail", { length: 320 }).notNull(),
+  deliveryStatus: mysqlEnum("deliveryStatus", ["sent", "failed", "skipped"]).notNull(),
+  errorMessage: varchar("errorMessage", { length: 1000 }),
+  emailSubject: varchar("emailSubject", { length: 500 }).notNull(),
+  emailText: text("emailText").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [
+  index("crmCampaignDeliveries_campaignId_idx").on(table.campaignId),
+  index("crmCampaignDeliveries_clientId_idx").on(table.clientId),
+]);
+
+export type CrmCampaignDelivery = typeof crmCampaignDeliveries.$inferSelect;

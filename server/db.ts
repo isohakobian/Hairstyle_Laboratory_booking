@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, gte, inArray, isNotNull, isNull, like, lt, lte, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, InsertBooking, InsertBookingService, users, services, bookings, bookingServices, reviewTokens, bookingStatusRecoveryTokens, bookingEvents, visitMedia, reviewRequestHistory, clientEmailDeliveries, reviews, clients, emailTemplates, availabilityWindows, manualDepositSettings, automationEmailDeliveries, bookingReminderDeliveries, bookingReminderSettings } from "../drizzle/schema";
+import { InsertUser, InsertBooking, InsertBookingService, users, services, bookings, bookingServices, reviewTokens, bookingStatusRecoveryTokens, bookingEvents, visitMedia, reviewRequestHistory, clientEmailDeliveries, reviews, clients, emailTemplates, availabilityWindows, manualDepositSettings, automationEmailDeliveries, bookingReminderDeliveries, bookingReminderSettings, crmCampaigns, clientCrmPreferences, crmCampaignDeliveries, CrmCampaign, ClientCrmPreference } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -1076,4 +1076,144 @@ export async function markReviewTokenUsed(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   return db.update(reviewTokens).set({ usedAt: new Date() }).where(and(eq(reviewTokens.id, id), isNull(reviewTokens.usedAt)));
+}
+
+export type CrmAudienceFilter = "newsletter_consented" | "upcoming_booking" | "recent_6m" | "specific_service";
+
+export type CrmCampaignInput = {
+  title: string;
+  subjectRu: string;
+  subjectEn: string;
+  bodyRu: string;
+  bodyEn: string;
+  audienceFilter: CrmAudienceFilter;
+  targetServiceId?: number | null;
+};
+
+function getYerevanDateString(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Yerevan", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(date);
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find(item => item.type === type)?.value ?? "";
+  return `${part("year")}-${part("month")}-${part("day")}`;
+}
+
+export async function getCrmRecipients(filter: CrmAudienceFilter, targetServiceId?: number | null) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.select({ client: clients, preference: clientCrmPreferences })
+    .from(clients)
+    .leftJoin(clientCrmPreferences, eq(clientCrmPreferences.clientId, clients.id));
+  const today = getYerevanDateString();
+  const upcomingRows = filter === "upcoming_booking"
+    ? await db.select({ clientId: bookings.clientId }).from(bookings).where(and(gte(bookings.bookingDate, today), or(eq(bookings.status, "pending"), eq(bookings.status, "confirmed"))))
+    : [];
+  const recentRows = filter === "recent_6m"
+    ? await db.select({ clientId: bookings.clientId }).from(bookings).where(and(gte(bookings.completedAt, new Date(Date.now() - 183 * 24 * 60 * 60 * 1000)), eq(bookings.status, "confirmed")))
+    : [];
+  const serviceRows = filter === "specific_service" && targetServiceId
+    ? await db.select({ clientId: bookings.clientId }).from(bookings).innerJoin(bookingServices, eq(bookingServices.bookingId, bookings.id)).where(eq(bookingServices.serviceId, targetServiceId))
+    : [];
+  const eligibleIds = new Set((filter === "upcoming_booking" ? upcomingRows : filter === "recent_6m" ? recentRows : serviceRows).map(row => row.clientId).filter((id): id is number => typeof id === "number"));
+  return rows
+    .map(row => ({ ...row.client, newsletterConsented: row.preference?.newsletterConsented === "yes" }))
+    .filter(client => {
+      if (!client.email) return false;
+      if (filter === "newsletter_consented") return client.newsletterConsented;
+      if (filter === "upcoming_booking") return eligibleIds.has(client.id);
+      return client.newsletterConsented && eligibleIds.has(client.id);
+    });
+}
+
+export async function getCrmCampaigns() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(crmCampaigns).orderBy(desc(crmCampaigns.createdAt), desc(crmCampaigns.id));
+}
+
+export async function createCrmCampaign(input: CrmCampaignInput) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(crmCampaigns).values({
+    ...input,
+    targetServiceId: input.targetServiceId ?? null,
+    status: "draft",
+  });
+  return Number(result[0].insertId);
+}
+
+export async function getCrmCampaignById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(crmCampaigns).where(eq(crmCampaigns.id, id)).limit(1);
+  return result[0];
+}
+
+export async function updateCrmCampaign(id: number, changes: Partial<CrmCampaignInput> & { status?: "draft" | "sending" | "completed" | "failed"; totalRecipients?: number; sentCount?: number; errorCount?: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(crmCampaigns).set(changes).where(eq(crmCampaigns.id, id));
+}
+
+export async function recordCrmCampaignDelivery(input: {
+  campaignId: number;
+  clientId: number;
+  recipientEmail: string;
+  deliveryStatus: "sent" | "failed" | "skipped";
+  errorMessage?: string | null;
+  emailSubject: string;
+  emailText: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.insert(crmCampaignDeliveries).values(input);
+}
+
+export async function getCrmCampaignDeliveries(campaignId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(crmCampaignDeliveries).where(eq(crmCampaignDeliveries.campaignId, campaignId)).orderBy(desc(crmCampaignDeliveries.createdAt), desc(crmCampaignDeliveries.id));
+}
+
+export async function getCrmCampaignStats(campaignId: number) {
+  const db = await getDb();
+  if (!db) return { sent: 0, failed: 0, skipped: 0 };
+  const rows = await db.select({ status: crmCampaignDeliveries.deliveryStatus, count: count() }).from(crmCampaignDeliveries).where(eq(crmCampaignDeliveries.campaignId, campaignId)).groupBy(crmCampaignDeliveries.deliveryStatus);
+  return {
+    sent: Number(rows.find(row => row.status === "sent")?.count ?? 0),
+    failed: Number(rows.find(row => row.status === "failed")?.count ?? 0),
+    skipped: Number(rows.find(row => row.status === "skipped")?.count ?? 0),
+  };
+}
+
+export async function getClientCrmPreference(clientId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(clientCrmPreferences).where(eq(clientCrmPreferences.clientId, clientId)).limit(1);
+  return rows[0];
+}
+
+export async function saveClientCrmPreference(clientId: number, newsletterConsented: "yes" | "no") {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(clientCrmPreferences).values({ clientId, newsletterConsented }).onDuplicateKeyUpdate({ set: { newsletterConsented } });
+  return getClientCrmPreference(clientId);
+}
+
+export async function getPostVisitCrmCandidates(start: Date, end: Date) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.select({ booking: bookings, client: clients, preference: clientCrmPreferences })
+    .from(bookings)
+    .innerJoin(clients, eq(clients.id, bookings.clientId))
+    .leftJoin(clientCrmPreferences, eq(clientCrmPreferences.clientId, clients.id))
+    .where(and(eq(bookings.status, "confirmed"), gte(bookings.completedAt, start), lt(bookings.completedAt, end), isNotNull(bookings.clientEmail)));
+  const upcoming = await db.select({ clientId: bookings.clientId }).from(bookings).where(and(gte(bookings.bookingDate, getYerevanDateString()), or(eq(bookings.status, "pending"), eq(bookings.status, "confirmed"))));
+  const upcomingIds = new Set(upcoming.map(row => row.clientId).filter((id): id is number => typeof id === "number"));
+  return rows.filter(row => row.preference?.newsletterConsented === "yes" && !upcomingIds.has(row.client.id));
+}
+
+export async function getBirthdayCrmCandidates(monthDay: string) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.select({ client: clients, preference: clientCrmPreferences }).from(clients).leftJoin(clientCrmPreferences, eq(clientCrmPreferences.clientId, clients.id));
+  return rows.filter(row => row.client.email && row.client.birthday?.slice(5) === monthDay && row.preference?.newsletterConsented === "yes");
 }

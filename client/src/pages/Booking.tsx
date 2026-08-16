@@ -88,6 +88,7 @@ const copy: Record<Lang, {
   receiptLabel: string;
   receiptHint: string;
   policyAccepted: string;
+  newsletterConsent: string;
   receiptReady: string;
   referencePhotoLabel: string;
   referencePhotoHint: string;
@@ -156,6 +157,7 @@ const copy: Record<Lang, {
     receiptLabel: 'Фото чека об оплате (JPEG, PNG, WebP)',
     receiptHint: 'Нажмите, чтобы выбрать файл чека (до 5 МБ)',
     policyAccepted: 'Я ознакомлен(а) и согласен(а) с правилами отмены и неявки',
+    newsletterConsent: 'Хочу получать от Исаака редкие новости, уведомления об отпуске и персональные напоминания по email',
     receiptReady: 'Чек прикреплен',
     referencePhotoLabel: 'Фото-референс желаемого результата (необязательно)',
     referencePhotoHint: 'Загрузите фото примера стрижки или бороды (до 8 МБ)',
@@ -167,8 +169,8 @@ const copy: Record<Lang, {
     faqTitle: 'Частые вопросы',
     faqs: [
       {
-        q: 'Где находится студия?',
-        a: 'Студия Hairstyle Laboratory расположена по адресу: Armenia, Yerevan, Pushkin 44. Точный адрес и ссылка на карту приходят на ваш email сразу после подтверждения записи.',
+        q: 'Где я принимаю?',
+        a: 'Сейчас я работаю по адресу: Armenia, Yerevan, Pushkin 44. Точный адрес и ссылка на карту приходят на ваш email сразу после подтверждения записи.',
       },
       {
         q: 'Как подтверждается запись?',
@@ -241,6 +243,7 @@ const copy: Record<Lang, {
     receiptLabel: 'Payment Receipt Photo (JPEG, PNG, WebP)',
     receiptHint: 'Click to select receipt file (up to 5 MB)',
     policyAccepted: 'I have read and agree to the cancellation and no-show policy',
+    newsletterConsent: 'I would like to receive occasional news, vacation notices, and personal follow-ups from Isaac by email',
     receiptReady: 'Receipt attached',
     referencePhotoLabel: 'Reference Photo of Desired Result (Optional)',
     referencePhotoHint: 'Upload an example photo of your desired cut or style (up to 8 MB)',
@@ -252,8 +255,8 @@ const copy: Record<Lang, {
     faqTitle: 'Frequently Asked Questions',
     faqs: [
       {
-        q: 'Where is the studio located?',
-        a: 'Hairstyle Laboratory is located at: Armenia, Yerevan, Pushkin 44. The exact address and map link are sent to your email immediately upon booking confirmation.',
+        q: 'Where do I work?',
+        a: 'I am currently working at: Armenia, Yerevan, Pushkin 44. The exact address and map link are sent to your email immediately upon booking confirmation.',
       },
       {
         q: 'How is my appointment confirmed?',
@@ -321,6 +324,7 @@ export default function Booking() {
   const [paymentReceipt, setPaymentReceipt] = useState<PaymentReceiptDraft | null>(null);
   const [referencePhoto, setReferencePhoto] = useState<ReferencePhotoDraft | null>(null);
   const [policyAccepted, setPolicyAccepted] = useState(false);
+  const [newsletterConsented, setNewsletterConsented] = useState(false);
 
   const { data: publishedReviews } = trpc.reviews.published.useQuery();
 
@@ -418,6 +422,7 @@ export default function Booking() {
         instagram: clientInstagram.trim() || undefined,
         comment: comment.trim() || undefined,
         policyAccepted,
+        newsletterConsented,
         receipt: manualDepositRequired && paymentReceipt ? paymentReceipt : undefined,
         referencePhoto: referencePhoto ? referencePhoto : undefined,
       });
@@ -682,6 +687,10 @@ export default function Booking() {
                 <label style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', marginTop: '0.85rem', fontSize: '0.75rem', lineHeight: 1.45, cursor: 'pointer' }}>
                   <input type="checkbox" checked={policyAccepted} onChange={event => setPolicyAccepted(event.target.checked)} style={{ marginTop: '0.15rem' }} />
                   <span>{c.policyAccepted}</span>
+                </label>
+                <label style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', marginTop: '0.75rem', fontSize: '0.75rem', lineHeight: 1.45, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={newsletterConsented} onChange={event => setNewsletterConsented(event.target.checked)} style={{ marginTop: '0.15rem' }} />
+                  <span>{c.newsletterConsent}</span>
                 </label>
               </section>
             )}

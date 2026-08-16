@@ -10,6 +10,7 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { repeatFollowUpHandler } from "../handlers/repeatFollowUp";
 import { appointmentReminderHandler, weeklyBookingSummaryHandler } from "../handlers/scheduledEmails";
+import { crmAutomationsHandler } from "../handlers/crmAutomations";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -49,6 +50,7 @@ async function startServer() {
   app.post("/api/scheduled/repeat-follow-up", repeatFollowUpHandler);
   app.post("/api/scheduled/appointment-reminders", appointmentReminderHandler);
   app.post("/api/scheduled/weekly-booking-summary", weeklyBookingSummaryHandler);
+  app.post("/api/scheduled/crm-automations", crmAutomationsHandler);
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);

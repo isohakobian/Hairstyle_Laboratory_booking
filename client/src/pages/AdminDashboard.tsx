@@ -18,11 +18,12 @@ import ServiceManager from '@/components/ServiceManager';
 import ReviewRequestTemplateEditor from '@/components/ReviewRequestTemplateEditor';
 import ManualDepositSettingsEditor from '@/components/ManualDepositSettingsEditor';
 import BookingReminderSettingsEditor from '@/components/BookingReminderSettingsEditor';
+import CrmManager from '@/components/CrmManager';
 import BookingEmailHistory from '@/components/BookingEmailHistory';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink } from '@/components/ui/pagination';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
-type Tab = 'bookings' | 'calendar' | 'schedule' | 'services' | 'reviews' | 'clients' | 'news' | 'payment' | 'settings';
+type Tab = 'bookings' | 'calendar' | 'schedule' | 'services' | 'reviews' | 'clients' | 'news' | 'crm' | 'payment' | 'settings';
 type BookingStatusFilter = 'all' | 'pending' | 'confirmed' | 'declined' | 'cancelled';
 type BookingSort = 'appointmentAsc' | 'appointmentDesc' | 'newest' | 'statusAsc';
 type ReviewRequestStatusFilter = 'all' | 'awaiting' | 'received';
@@ -31,7 +32,7 @@ type ReviewRequestSort = 'sentDesc' | 'sentAsc' | 'receivedDesc';
 function getInitialTab(): Tab {
   if (typeof window === 'undefined') return 'bookings';
   const tab = new URLSearchParams(window.location.search).get('section');
-  return tab === 'calendar' || tab === 'schedule' || tab === 'services' || tab === 'reviews' || tab === 'clients' || tab === 'news' || tab === 'payment' || tab === 'settings' ? tab : 'bookings';
+  return tab === 'calendar' || tab === 'schedule' || tab === 'services' || tab === 'reviews' || tab === 'clients' || tab === 'news' || tab === 'crm' || tab === 'payment' || tab === 'settings' ? tab : 'bookings';
 }
 
 const labelStyle: React.CSSProperties = {
@@ -352,6 +353,7 @@ export default function AdminDashboard() {
     { id: 'reviews', label: language === 'ru' ? 'Отзывы' : 'Reviews', description: language === 'ru' ? 'Модерация обратной связи' : 'Feedback moderation', count: allReviews?.length ?? 0 },
     { id: 'clients', label: language === 'ru' ? 'Клиенты' : 'Clients', description: language === 'ru' ? 'Память о клиенте' : 'Client memory' },
     { id: 'news', label: language === 'ru' ? 'Новости' : 'Notices', description: language === 'ru' ? 'Новости и отпуск' : 'News and vacation' },
+    { id: 'crm', label: language === 'ru' ? 'CRM' : 'CRM', description: language === 'ru' ? 'Email-уведомления клиентам' : 'Client email communication' },
     { id: 'payment', label: language === 'ru' ? 'Предоплата' : 'Deposit', description: language === 'ru' ? 'Реквизиты, чеки и политика' : 'Details, receipts, and policy' },
     { id: 'settings', label: language === 'ru' ? 'Настройки' : 'Settings', description: language === 'ru' ? 'Время email-напоминаний' : 'Email reminder timing' },
   ];
@@ -802,6 +804,16 @@ export default function AdminDashboard() {
                 : 'Create a bilingual notice, set its dates, and publish it. It appears on the right side of the home hero only during its active period.'}
             </p>
             <AnnouncementManager language={language as 'ru' | 'en'} />
+          </div>
+        )}
+
+        {activeTab === 'crm' && (
+          <div>
+            <div style={{ marginBottom: '1.25rem' }}>
+              <p style={{ ...labelStyle, margin: '0 0 0.4rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Коммуникации' : 'Communication'}</p>
+              <h3 style={{ margin: 0, fontStyle: 'italic' }}>{language === 'ru' ? 'Email CRM для клиентов' : 'Client email CRM'}</h3>
+            </div>
+            <CrmManager language={language as 'ru' | 'en'} />
           </div>
         )}
 
