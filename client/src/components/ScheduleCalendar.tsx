@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
 
@@ -73,6 +73,15 @@ export default function ScheduleCalendar({ language }: Props) {
     },
     onError: error => toast.error(error.message),
   });
+  const clearMutation = trpc.admin.clearAvailability.useMutation({
+    onSuccess: () => {
+      toast.success(language === 'ru' ? 'Статус снят, слоты удалены. Существующие заявки не изменены.' : 'Status cleared and slots removed. Existing bookings were not changed.');
+      setSelectedDates([]);
+      setBlockReason('');
+      refresh();
+    },
+    onError: error => toast.error(error.message),
+  });
 
   const blockedSet = useMemo(() => new Set((blockedDates ?? []).map(entry => entry.date)), [blockedDates]);
   const windowMap = useMemo(() => {
@@ -85,7 +94,7 @@ export default function ScheduleCalendar({ language }: Props) {
   const selectedSet = useMemo(() => new Set(selectedDates), [selectedDates]);
   const days = getDaysInMonth(viewYear, viewMonth);
   const firstDayOffset = getMondayOffset(days[0]);
-  const isPending = openMutation.isPending || closeMutation.isPending;
+  const isPending = openMutation.isPending || closeMutation.isPending || clearMutation.isPending;
   const datesReady = selectedDates.length > 0;
 
   const toggleDate = (ymd: string) => {
@@ -98,6 +107,7 @@ export default function ScheduleCalendar({ language }: Props) {
   };
   const openSelected = () => openMutation.mutate({ dates: selectedDates, startTime, endTime, slotIntervalMinutes });
   const closeSelected = () => closeMutation.mutate({ dates: selectedDates, reason: blockReason.trim() || undefined });
+  const clearSelected = () => clearMutation.mutate({ dates: selectedDates });
 
   return (
     <div>
@@ -155,7 +165,7 @@ export default function ScheduleCalendar({ language }: Props) {
           {datesReady && <button type="button" className="btn-ghost" onClick={() => setSelectedDates([])} style={{ fontSize: '0.625rem', padding: 0 }}>{language === 'ru' ? 'Очистить выбор' : 'Clear selection'}</button>}
         </div>
         <p style={{ margin: '0 0 1rem', color: 'hsl(var(--muted-foreground))', fontSize: '0.8125rem', lineHeight: 1.5 }}>
-          {language === 'ru' ? 'Выдели несколько дат. Открытие добавит точные рабочие часы; закрытие уберёт слоты и скроет дни от клиентов.' : 'Select multiple dates. Opening adds exact working hours; closing removes slots and hides the days from clients.'}
+          {language === 'ru' ? 'Выдели несколько дат. Открытие добавит рабочие часы; закрытие уберёт слоты и отметит день красным. «Снять статус» уберёт и отметку, и вручную заданные слоты — существующие заявки останутся без изменений.' : 'Select multiple dates. Opening adds working hours; closing removes slots and marks the day red. “Clear status” removes both the marker and manually configured slots; existing bookings are unchanged.'}
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(8rem, 1fr))', gap: '0.75rem', marginBottom: '1rem' }}>
           <label style={{ display: 'grid', gap: '0.4rem' }}><span style={labelStyle}>{language === 'ru' ? 'Начало' : 'Start'}</span><input type="time" value={startTime} onChange={event => setStartTime(event.target.value)} style={{ padding: '0.6rem', background: 'transparent', border: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))' }} /></label>
@@ -163,14 +173,15 @@ export default function ScheduleCalendar({ language }: Props) {
           <label style={{ display: 'grid', gap: '0.4rem' }}><span style={labelStyle}>{language === 'ru' ? 'Шаг слота' : 'Slot interval'}</span><select value={slotIntervalMinutes} onChange={event => setSlotIntervalMinutes(Number(event.target.value))} style={{ padding: '0.6rem', background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))' }}><option value={30}>30 {language === 'ru' ? 'мин' : 'min'}</option><option value={15}>15 {language === 'ru' ? 'мин' : 'min'}</option><option value={60}>60 {language === 'ru' ? 'мин' : 'min'}</option></select></label>
         </div>
         <input value={blockReason} onChange={event => setBlockReason(event.target.value)} placeholder={language === 'ru' ? 'Причина закрытия: отпуск, выходной…' : 'Closing reason: vacation, day off…'} style={{ width: '100%', marginBottom: '1rem', padding: '0.65rem 0', background: 'transparent', border: 'none', borderBottom: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))', outline: 'none' }} />
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(11rem, 1fr))', gap: '0.75rem' }}>
           <button type="button" className="btn-primary" onClick={openSelected} disabled={!datesReady || isPending}>{language === 'ru' ? 'Открыть выбранные дни' : 'Open selected days'}</button>
           <button type="button" className="btn-outline" onClick={closeSelected} disabled={!datesReady || isPending}>{language === 'ru' ? 'Закрыть выбранные дни' : 'Close selected days'}</button>
+          <button type="button" className="btn-ghost" onClick={clearSelected} disabled={!datesReady || isPending} style={{ border: '1px solid hsl(var(--border))' }}>{language === 'ru' ? 'Снять статус и слоты' : 'Clear status and slots'}</button>
         </div>
       </div>
 
       <div style={{ display: 'flex', gap: '1rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
-        {[{ color: 'hsl(142 50% 40%)', label: language === 'ru' ? 'Открыт со слотами' : 'Open with slots' }, { color: 'hsl(0 60% 50%)', label: language === 'ru' ? 'Закрыт' : 'Closed' }, { color: 'var(--gold-mid)', label: language === 'ru' ? 'Выбран' : 'Selected' }].map(item => <div key={item.label} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}><span style={{ width: '7px', height: '7px', borderRadius: '50%', background: item.color }} /><span style={labelStyle}>{item.label}</span></div>)}
+        {[{ color: 'hsl(142 50% 40%)', label: language === 'ru' ? 'Открыт со слотами' : 'Open with slots' }, { color: 'hsl(0 60% 50%)', label: language === 'ru' ? 'Закрыт' : 'Closed' }, { color: 'var(--gold-mid)', label: language === 'ru' ? 'Выбран' : 'Selected' }, { color: 'hsl(var(--muted-foreground))', label: language === 'ru' ? 'Без статуса' : 'No status' }].map(item => <div key={item.label} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}><span style={{ width: '7px', height: '7px', borderRadius: '50%', background: item.color }} /><span style={labelStyle}>{item.label}</span></div>)}
       </div>
     </div>
   );

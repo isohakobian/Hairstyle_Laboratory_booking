@@ -207,3 +207,7 @@
 - [x] Export unresolved email delivery errors to a CSV file with booking and delivery details
 - [x] Show clear, detailed email delivery error reasons in the admin dashboard
 - [x] Add regression coverage for email-error CSV export and error-reason display
+- [x] Audit availability day and slot states for open, closed, and reset scenarios
+- [x] Let admin clear a day’s availability status and remove its manually configured slots
+- [x] Verify reset availability is reflected consistently in the admin calendar and public booking flow
+- [x] Add a ScheduleCalendar UI regression proving reset removes the open or closed day state

@@ -15,7 +15,7 @@ import {
 import { TRPCError } from "@trpc/server";
 import { buildAppointmentReminderEmail, buildBookingCancelledEmail, buildBookingDeclinedEmail, buildBookingRescheduledEmail, buildClientBookingEmail, buildClientConfirmationEmail, sendAppointmentReminderEmail, sendBookingCancelledEmail, sendBookingDeclinedEmail, sendBookingEmails, sendBookingRescheduledEmail, sendBookingStatusRecoveryEmail, sendClientBookingRequestEmail, sendConfirmedBookingEmail, sendReviewRequestEmail } from "./bookingEmail";
 import { createReviewTokenValue, getBookingStatusRecoveryExpiry, getReviewTokenExpiry, hashReviewToken } from "./reviewToken";
-import { blockDates, getAvailabilityWindows, getAvailableSlots, getPublicAvailableDates, setAvailabilityForDates } from "./availability";
+import { blockDates, clearAvailabilityForDates, getAvailabilityWindows, getAvailableSlots, getPublicAvailableDates, setAvailabilityForDates } from "./availability";
 import { completeBooking, createBookingEvent, findOrCreateClient, getClientMemory, getSignedVisitMediaUrl, recordReviewRequest, rescheduleBooking, updateClientProfile, uploadVisitMedia } from "./clientMemory";
 import { getActiveAnnouncements, getAllAnnouncements, saveAnnouncement, setAnnouncementPublished, uploadAnnouncementImage } from "./announcements";
 import { getManualDepositReceiptUrl, storeManualDepositReceipt } from "./manualDeposit";
@@ -711,6 +711,13 @@ export const appRouter = router({
       .input(z.object({ dates: z.array(z.string()).min(1).max(62), reason: z.string().max(255).optional() }))
       .mutation(async ({ input }) => {
         await blockDates(input.dates, input.reason);
+        return { success: true };
+      }),
+
+    clearAvailability: adminMiddleware
+      .input(z.object({ dates: z.array(z.string()).min(1).max(62) }))
+      .mutation(async ({ input }) => {
+        await clearAvailabilityForDates(input.dates);
         return { success: true };
       }),
 

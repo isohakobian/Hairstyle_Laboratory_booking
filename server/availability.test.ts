@@ -1,4 +1,4 @@
-import { blockDates, getAvailableSlots, getPublicAvailableDates, setAvailabilityForDates } from './availability';
+import { blockDates, clearAvailabilityForDates, getAvailableSlots, getBlockedDates, getPublicAvailableDates, setAvailabilityForDates } from './availability';
 import { createBookingWithServices } from './db';
 import { clearExampleTestBookings } from './testCleanup';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -25,6 +25,14 @@ describe('availability', () => {
     expect(await getAvailableSlots(dates[0], 30)).toEqual([]);
     expect(await getPublicAvailableDates()).not.toContain(dates[0]);
     expect(await getPublicAvailableDates()).toContain(dates[1]);
+  });
+
+  it('clears both the closed marker and manually configured slots without touching booking records', async () => {
+    await clearAvailabilityForDates([dates[0]]);
+
+    expect(await getAvailableSlots(dates[0], 30)).toEqual([]);
+    expect(await getPublicAvailableDates()).not.toContain(dates[0]);
+    expect((await getBlockedDates()).map(entry => entry.date)).not.toContain(dates[0]);
   });
 
   it('rejects a direct overlapping insert while allowing an appointment after the full combined interval', async () => {

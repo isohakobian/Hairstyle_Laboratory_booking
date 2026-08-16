@@ -103,6 +103,17 @@ export async function blockDates(dates: string[], reason?: string) {
   });
 }
 
+export async function clearAvailabilityForDates(dates: string[]) {
+  const uniqueDates = Array.from(new Set(dates));
+  if (uniqueDates.length === 0) throw new Error("Select at least one date");
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.transaction(async (tx) => {
+    await tx.delete(availabilityWindows).where(inArray(availabilityWindows.date, uniqueDates));
+    await tx.delete(blockedDates).where(inArray(blockedDates.date, uniqueDates));
+  });
+}
+
 export async function getBlockedDates() {
   const db = await getDb();
   if (!db) return [];
