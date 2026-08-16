@@ -223,3 +223,6 @@
 - [x] Make studio address a clickable Google Maps link in client confirmation emails
 - [x] Include client Instagram handle in owner notification emails for new bookings
 - [x] Add a refined loading animation and disable double-submission on the booking form
+- [x] Allow clients to attach a reference photo when booking
+- [x] Show a refined thank-you modal upon successful booking with an Instagram link
+- [x] Display published real client reviews on the booking page to build trust

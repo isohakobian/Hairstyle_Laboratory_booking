@@ -25,6 +25,12 @@ type PaymentReceiptDraft = {
   base64Data: string;
 };
 
+type ReferencePhotoDraft = {
+  fileName: string;
+  mimeType: 'image/jpeg' | 'image/png' | 'image/webp';
+  base64Data: string;
+};
+
 function readFileAsBase64(file: File) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -82,6 +88,13 @@ const copy: Record<Lang, {
   receiptHint: string;
   policyAccepted: string;
   receiptReady: string;
+  referencePhotoLabel: string;
+  referencePhotoHint: string;
+  referencePhotoReady: string;
+  reviewsTitle: string;
+  thankYouModalTitle: string;
+  thankYouModalText: string;
+  instagramBtn: string;
   haircut: string;
   beard: string;
   bioPerm: string;
@@ -113,34 +126,41 @@ const copy: Record<Lang, {
     name: 'Ваше имя',
     phone: 'Телефон / WhatsApp',
     email: 'Email для подтверждения',
-    birthday: 'Дата рождения (необязательно)',
-    instagram: 'Instagram (необязательно)',
-    comment: 'Комментарий (необязательно)',
-    noOpenDates: 'Сейчас нет открытых дат для онлайн-записи. Свяжитесь с Isaac напрямую.',
-    noOpenSlots: 'На эту дату нет свободных слотов для выбранных услуг.',
-    chooseServicesFirst: 'Сначала выберите услугу, чтобы увидеть доступное время.',
-    submit: 'Отправить заявку',
-    back: '← Назад',
+    birthday: 'Дата рождения',
+    instagram: 'Instagram (@username)',
+    comment: 'Комментарий к записи',
+    noOpenDates: 'К сожалению, пока нет открытых для записи дней. Проверьте позже или напишите в Instagram.',
+    noOpenSlots: 'На выбранный день нет свободных окон. Пожалуйста, выберите другую дату.',
+    chooseServicesFirst: 'Сначала выберите хотя бы одну услугу.',
+    submit: 'Отправить заявку на запись',
+    back: 'На главную',
     sentTitle: 'Заявка отправлена',
-    sentSub: 'Ожидает подтверждения мастером.',
-    statusLabel: 'Статус: ожидает подтверждения мастером',
-    refLabel: 'Номер заявки',
-    checkStatus: 'Проверить статус',
+    sentSub: 'Спасибо за доверие. Мы получили вашу заявку и подтвердим время на указанный email.',
+    statusLabel: 'Проверить статус',
+    refLabel: 'Код вашей записи',
+    checkStatus: 'Посмотреть статус и адрес',
     backHome: 'На главную',
     addToCalendar: 'Добавить в календарь',
-    copyReference: 'Скопировать номер заявки',
-    copyStatusLink: 'Скопировать ссылку на статус',
-    saved: 'Сохранено',
-    copyFailed: 'Не удалось скопировать. Сохраните номер заявки вручную.',
-    repeatReady: 'Повторная запись: данные клиента и прошлые услуги подставлены. Проверьте их и выберите дату и время.',
-    manualDepositTitle: 'Предоплата и чек',
-    manualDepositInstructions: 'Для этой услуги нужна предоплата. Переведите сумму по реквизитам ниже и прикрепите фото чека к заявке. Isaac проверит оплату перед подтверждением визита.',
+    copyReference: 'Копировать код',
+    copyStatusLink: 'Копировать ссылку статуса',
+    saved: 'Скопировано в буфер обмена',
+    copyFailed: 'Не удалось скопировать',
+    repeatReady: 'Данные визита и услуги заполнены из вашей истории.',
+    manualDepositTitle: 'Предоплата за бронирование',
+    manualDepositInstructions: 'Для подтверждения этой услуги необходима предоплата. Переведите сумму на карту, загрузите скриншот чека, и Isaac подтвердит запись.',
     manualDepositRecipient: 'Получатель',
-    manualDepositCard: 'Карта / реквизиты',
-    receiptLabel: 'Фото чека об оплате',
-    receiptHint: 'JPEG, PNG или WebP · до 5 МБ',
-    policyAccepted: 'Я прочитал(а) и принимаю условия отмены и неявки.',
-    receiptReady: 'Чек прикреплён',
+    manualDepositCard: 'Номер карты / Счет',
+    receiptLabel: 'Фото чека об оплате (JPEG, PNG, WebP)',
+    receiptHint: 'Нажмите, чтобы выбрать файл чека (до 5 МБ)',
+    policyAccepted: 'Я ознакомлен(а) и согласен(а) с правилами отмены и неявки',
+    receiptReady: 'Чек прикреплен',
+    referencePhotoLabel: 'Фото-референс желаемого результата (необязательно)',
+    referencePhotoHint: 'Загрузите фото примера стрижки или бороды (до 8 МБ)',
+    referencePhotoReady: 'Референс прикреплен',
+    reviewsTitle: 'Отзывы клиентов',
+    thankYouModalTitle: 'Спасибо за запись!',
+    thankYouModalText: 'Ваша заявка успешно принята. Скоро я проверю время и отправлю подтверждение с точным адресом на ваш email.',
+    instagramBtn: 'Перейти в Instagram @isaac_hakobian',
     haircut: 'Стрижка',
     beard: 'Моделирование бороды',
     bioPerm: 'Биохимическая завивка',
@@ -160,48 +180,55 @@ const copy: Record<Lang, {
     title: 'Booking',
     sub: 'Select service, date and time',
     selectService: 'Services',
-    selectServiceHint: 'Select one or more services. Each service can be selected only once.',
-    selectionSummary: 'Your visit',
-    totalDuration: 'Total duration',
-    totalPrice: 'Estimated price',
+    selectServiceHint: 'You can select multiple services. Each service can only be selected once.',
+    selectionSummary: 'Your Visit',
+    totalDuration: 'Total Duration',
+    totalPrice: 'Estimated Price',
     loadingServices: 'Loading services…',
-    servicesUnavailable: 'Services are temporarily unavailable. Refresh the page and try again.',
-    noServicesAvailable: 'There are no services available for online booking right now. Please contact Isaac directly.',
+    servicesUnavailable: 'Services are temporarily unavailable. Please refresh and try again.',
+    noServicesAvailable: 'No services available for online booking right now. Please contact Isaac directly.',
     selectDate: 'Date',
     selectTime: 'Time',
-    name: 'Your name',
+    name: 'Your Name',
     phone: 'Phone / WhatsApp',
-    email: 'Confirmation email',
-    birthday: 'Birthday (optional)',
-    instagram: 'Instagram (optional)',
-    comment: 'Comment (optional)',
-    noOpenDates: 'There are no open dates for online booking right now. Please contact Isaac directly.',
-    noOpenSlots: 'There are no open slots for the selected services on this date.',
-    chooseServicesFirst: 'Select a service first to see available times.',
-    submit: 'Submit booking',
-    back: '← Back',
-    sentTitle: 'Request sent',
-    sentSub: 'Awaiting stylist confirmation.',
-    statusLabel: 'Status: awaiting stylist confirmation',
-    refLabel: 'Reference number',
-    checkStatus: 'Check status',
-    backHome: 'Back to home',
-    addToCalendar: 'Add to calendar',
-    copyReference: 'Copy reference number',
-    copyStatusLink: 'Copy status link',
-    saved: 'Saved',
-    copyFailed: 'Could not copy. Please save the reference number manually.',
-    repeatReady: 'Repeat visit: client details and previous services are filled in. Review them, then choose a date and time.',
-    manualDepositTitle: 'Deposit and receipt',
-    manualDepositInstructions: 'This service requires a deposit. Transfer the amount using the details below and attach a photo of the receipt to your request. Isaac will verify the payment before confirming the visit.',
+    email: 'Confirmation Email',
+    birthday: 'Birthday',
+    instagram: 'Instagram (@username)',
+    comment: 'Appointment Note',
+    noOpenDates: 'No booking dates are currently open. Please check back later or reach out on Instagram.',
+    noOpenSlots: 'No available time slots on this date. Please select another day.',
+    chooseServicesFirst: 'Please select at least one service first.',
+    submit: 'Submit Booking Request',
+    back: 'Home',
+    sentTitle: 'Request Sent',
+    sentSub: 'Thank you for your trust. We have received your request and will confirm your time via email.',
+    statusLabel: 'Check Status',
+    refLabel: 'Your Reference Code',
+    checkStatus: 'View Status & Address',
+    backHome: 'Home',
+    addToCalendar: 'Add to Calendar',
+    copyReference: 'Copy Code',
+    copyStatusLink: 'Copy Status Link',
+    saved: 'Copied to clipboard',
+    copyFailed: 'Could not copy',
+    repeatReady: 'Visit details and services loaded from your history.',
+    manualDepositTitle: 'Booking Deposit',
+    manualDepositInstructions: 'A deposit is required to secure this service. Transfer the amount, upload your receipt screenshot, and Isaac will confirm.',
     manualDepositRecipient: 'Recipient',
-    manualDepositCard: 'Card / payment details',
-    receiptLabel: 'Payment receipt photo',
-    receiptHint: 'JPEG, PNG, or WebP · up to 5 MB',
-    policyAccepted: 'I have read and accept the cancellation and no-show policy.',
+    manualDepositCard: 'Card / Account',
+    receiptLabel: 'Payment Receipt Photo (JPEG, PNG, WebP)',
+    receiptHint: 'Click to select receipt file (up to 5 MB)',
+    policyAccepted: 'I have read and agree to the cancellation and no-show policy',
     receiptReady: 'Receipt attached',
+    referencePhotoLabel: 'Reference Photo of Desired Result (Optional)',
+    referencePhotoHint: 'Upload an example photo of your desired cut or style (up to 8 MB)',
+    referencePhotoReady: 'Reference photo attached',
+    reviewsTitle: 'Client Reviews',
+    thankYouModalTitle: 'Thank You for Booking!',
+    thankYouModalText: 'Your request has been received. I will review the time and send confirmation with the precise address to your email soon.',
+    instagramBtn: 'Visit Instagram @isaac_hakobian',
     haircut: 'Haircut',
-    beard: 'Beard modeling',
+    beard: 'Beard Modeling',
     bioPerm: 'Bio Perm',
     deposit: 'Deposit',
     errors: {
@@ -251,7 +278,10 @@ export default function Booking() {
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [repeatDraftApplied, setRepeatDraftApplied] = useState(false);
   const [paymentReceipt, setPaymentReceipt] = useState<PaymentReceiptDraft | null>(null);
+  const [referencePhoto, setReferencePhoto] = useState<ReferencePhotoDraft | null>(null);
   const [policyAccepted, setPolicyAccepted] = useState(false);
+
+  const { data: publishedReviews } = trpc.reviews.published.useQuery();
 
   const createBookingMutation = trpc.bookings.create.useMutation();
   const { data: databaseServices, isLoading: servicesLoading, isError: servicesError } = trpc.services.list.useQuery();
@@ -348,6 +378,7 @@ export default function Booking() {
         comment: comment.trim() || undefined,
         policyAccepted,
         receipt: manualDepositRequired && paymentReceipt ? paymentReceipt : undefined,
+        referencePhoto: referencePhoto ? referencePhoto : undefined,
       });
       if (result) {
         setReferenceNumber(result.referenceNumber);
@@ -396,32 +427,65 @@ export default function Booking() {
     }
   };
 
+  const selectReferencePhoto = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      toast.error(language === 'ru' ? 'Поддерживаются JPEG, PNG и WebP' : 'JPEG, PNG, and WebP are supported');
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error(language === 'ru' ? 'Фото должно быть меньше 8 МБ' : 'Photo must be smaller than 8 MB');
+      return;
+    }
+    try {
+      setReferencePhoto({ fileName: file.name, mimeType: file.type as ReferencePhotoDraft['mimeType'], base64Data: await readFileAsBase64(file) });
+    } catch {
+      toast.error(language === 'ru' ? 'Не удалось прочитать референс' : 'Reference photo could not be read');
+    }
+  };
+
   const minDate = new Date().toISOString().split('T')[0];
   const maxDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
   if (submitted) {
     return (
-      <div style={{ minHeight: '100vh', backgroundColor: 'hsl(var(--background))', display: 'flex', alignItems: 'center' }}>
-        <div className="container" style={{ maxWidth: '32rem', margin: '0 auto', textAlign: 'center', padding: '4rem 1.5rem' }}>
-          <div className="fade-up">
-            {/* Check icon */}
-            <div style={{ width: '3rem', height: '3rem', border: '1px solid hsl(var(--foreground))', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2.5rem' }}>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <div style={{ minHeight: '100vh', backgroundColor: 'hsl(var(--background))', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem 1rem' }}>
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          backdropFilter: 'blur(5px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 50,
+          padding: '1.5rem',
+        }}>
+          <div className="fade-up" style={{
+            backgroundColor: 'hsl(var(--card))',
+            border: '1px solid hsl(var(--border))',
+            maxWidth: '34rem',
+            width: '100%',
+            padding: '3rem 2.5rem',
+            textAlign: 'center',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
+          }}>
+            <div style={{ width: '3.5rem', height: '3.5rem', border: '1px solid var(--gold-mid)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2rem', color: 'var(--gold-mid)' }}>
+              <svg width="20" height="20" viewBox="0 0 16 16" fill="none">
                 <polyline points="3,8 7,12 13,4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
 
-            <h2 style={{ marginBottom: '1rem', fontStyle: 'italic' }}>{c.sentTitle}</h2>
-            <p style={{ marginBottom: '0.5rem' }}>{manualDepositRequired && paymentReceipt ? (language === 'ru' ? 'Чек загружен вместе с заявкой. Isaac проверит оплату и подтвердит визит.' : 'Your receipt was uploaded with the request. Isaac will verify the payment and confirm the visit.') : c.sentSub}</p>
-            <p className="label-caps" style={{ marginBottom: '3rem' }}>{c.statusLabel}</p>
+            <p className="label-caps" style={{ marginBottom: '0.5rem', color: 'var(--gold-mid)' }}>Hairstyle Laboratory</p>
+            <h2 style={{ marginBottom: '1rem', fontStyle: 'italic', fontSize: '2.25rem' }}>{c.thankYouModalTitle}</h2>
+            <p style={{ marginBottom: '1.75rem', color: 'hsl(var(--muted-foreground))', fontSize: '0.9375rem', lineHeight: 1.6 }}>{c.thankYouModalText}</p>
 
-            <div style={{ borderTop: '1px solid hsl(var(--border))', borderBottom: '1px solid hsl(var(--border))', padding: '1.5rem 0', marginBottom: '3rem' }}>
-              <p className="label-caps" style={{ marginBottom: '0.5rem' }}>{c.refLabel}</p>
+            <div style={{ borderTop: '1px solid hsl(var(--border))', borderBottom: '1px solid hsl(var(--border))', padding: '1.25rem 0', marginBottom: '2rem' }}>
+              <p className="label-caps" style={{ marginBottom: '0.35rem' }}>{c.refLabel}</p>
               <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '2rem', fontWeight: 400, color: 'hsl(var(--foreground))', letterSpacing: '0.1em', margin: 0 }}>
                 {referenceNumber}
-              </p>
-              <p style={{ margin: '0.875rem 0 0', color: 'hsl(var(--muted-foreground))', fontSize: '0.8125rem', lineHeight: 1.5 }}>
-                {language === 'ru' ? 'Сохраните номер или ссылку — по ним можно в любой момент проверить статус записи.' : 'Save the number or link to check your booking status at any time.'}
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.625rem', marginTop: '1rem' }}>
                 <button className="btn-outline" onClick={() => copyToClipboard(referenceNumber)} style={{ padding: '0.7rem 0.5rem', fontSize: '0.625rem' }}>{c.copyReference}</button>
@@ -429,7 +493,7 @@ export default function Booking() {
               </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
               {calendarInvite && (
                 <button className="btn-outline" onClick={() => downloadCalendarInvite(calendarInvite)}>
                   {c.addToCalendar}
@@ -438,10 +502,14 @@ export default function Booking() {
               <button className="btn-primary" onClick={() => setLocation(`/status?ref=${encodeURIComponent(referenceNumber)}`)}>
                 {c.checkStatus}
               </button>
-              <button className="btn-ghost" onClick={() => setLocation('/')}>
-                {c.backHome}
-              </button>
+              <a href="https://instagram.com/isaac_hakobian" target="_blank" rel="noopener noreferrer" className="btn-outline" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', textDecoration: 'none' }}>
+                {c.instagramBtn}
+              </a>
             </div>
+
+            <button className="btn-ghost" onClick={() => setLocation('/')} style={{ fontSize: '0.75rem' }}>
+              {c.backHome}
+            </button>
           </div>
         </div>
       </div>

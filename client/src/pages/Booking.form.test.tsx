@@ -43,6 +43,9 @@ vi.mock("@/lib/trpc", () => ({
     manualDeposit: {
       settings: { useQuery: () => ({ data: { isEnabled: 'no', recipientName: '', cardDetails: '', policyRu: '', policyEn: '' } }) },
     },
+    reviews: {
+      published: { useQuery: () => ({ data: [] }) },
+    },
   },
 }));
 
@@ -109,7 +112,7 @@ describe("Booking form", () => {
 
     const { container } = render(<Booking />);
 
-    expect(screen.getByText('Повторная запись: данные клиента и прошлые услуги подставлены. Проверьте их и выберите дату и время.')).toBeTruthy();
+    expect(screen.getByText('Данные визита и услуги заполнены из вашей истории.')).toBeTruthy();
     expect(screen.getByRole('button', { name: /Стрижка/i }).getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByRole('button', { name: /Моделирование бороды/i }).getAttribute('aria-pressed')).toBe('true');
     expect(container.querySelector('input[type="text"]')?.getAttribute('value')).toBe('Repeat Client');

@@ -19,6 +19,7 @@ import { blockDates, clearAvailabilityForDates, getAvailabilityWindows, getAvail
 import { completeBooking, createBookingEvent, findOrCreateClient, getClientMemory, getSignedVisitMediaUrl, recordReviewRequest, rescheduleBooking, updateClientProfile, uploadVisitMedia } from "./clientMemory";
 import { getActiveAnnouncements, getAllAnnouncements, saveAnnouncement, setAnnouncementPublished, uploadAnnouncementImage } from "./announcements";
 import { getManualDepositReceiptUrl, storeManualDepositReceipt } from "./manualDeposit";
+import { getReferencePhotoUrl, storeReferencePhoto } from "./referencePhoto";
 
 // Admin middleware
 const adminMiddleware = protectedProcedure.use(async ({ ctx, next }) => {
@@ -172,6 +173,11 @@ export const appRouter = router({
           mimeType: z.enum(["image/jpeg", "image/png", "image/webp"]),
           base64Data: z.string().min(1).max(7_000_000),
         }).optional(),
+        referencePhoto: z.object({
+          fileName: z.string().min(1).max(255),
+          mimeType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+          base64Data: z.string().min(1).max(11_000_000),
+        }).optional(),
       }))
       .mutation(async ({ input }) => {
         const uniqueServiceIds = Array.from(new Set(input.serviceIds));
@@ -220,6 +226,9 @@ export const appRouter = router({
         const receipt = input.receipt
           ? await storeManualDepositReceipt({ referenceNumber, ...input.receipt })
           : null;
+        const referencePhoto = input.referencePhoto
+          ? await storeReferencePhoto({ referenceNumber, ...input.referencePhoto })
+          : null;
         const client = await findOrCreateClient({
           name: input.clientName.trim(),
           phone: input.clientPhone.trim(),
@@ -250,6 +259,9 @@ export const appRouter = router({
             manualDepositReceiptKey: receipt?.storageKey ?? null,
             manualDepositReceiptFileName: receipt?.fileName ?? null,
             manualDepositReceiptMimeType: receipt?.mimeType ?? null,
+            referencePhotoKey: referencePhoto?.storageKey ?? null,
+            referencePhotoFileName: referencePhoto?.fileName ?? null,
+            referencePhotoMimeType: referencePhoto?.mimeType ?? null,
           }, services.map((service) => ({
             serviceId: service.id,
             serviceName: service.nameEn,
@@ -451,6 +463,13 @@ export const appRouter = router({
     clientEmailHistory: adminMiddleware
       .input(z.object({ bookingId: z.number().int().positive() }))
       .query(({ input }) => getClientEmailDeliveryHistory(input.bookingId)),
+    referencePhotoUrl: adminMiddleware
+      .input(z.object({ bookingId: z.number().int().positive() }))
+      .query(async ({ input }) => {
+        const booking = await getBookingById(input.bookingId);
+        if (!booking || !booking.referencePhotoKey) return null;
+        return getReferencePhotoUrl(booking.referencePhotoKey);
+      }),
     resendBookingNotification: adminMiddleware
       .input(z.object({ bookingId: z.number().int().positive() }))
       .mutation(async ({ input }) => {
