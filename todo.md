@@ -226,4 +226,4 @@
 - [x] Allow clients to attach a reference photo when booking
 - [x] Show a refined thank-you modal upon successful booking with an Instagram link
 - [x] Display published real client reviews on the booking page to build trust
-- [ ] Add a bilingual FAQ section on the booking page covering cancellation rules, studio address, preparation, and confirmation
+- [x] Add a bilingual FAQ section on the booking page covering cancellation rules, studio address, preparation, and confirmation
