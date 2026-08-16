@@ -211,3 +211,6 @@
 - [x] Let admin clear a day’s availability status and remove its manually configured slots
 - [x] Verify reset availability is reflected consistently in the admin calendar and public booking flow
 - [x] Add a ScheduleCalendar UI regression proving reset removes the open or closed day state
+- [x] Add an admin booking button that opens a prefilled Google Calendar event
+- [x] Include appointment time, combined duration, services, and client contact details in the Google Calendar event
+- [x] Add regression coverage for Google Calendar event URL generation

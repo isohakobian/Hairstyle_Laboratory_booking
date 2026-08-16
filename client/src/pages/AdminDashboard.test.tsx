@@ -78,6 +78,8 @@ describe("AdminDashboard navigation", () => {
     expect(dashboardMockState.downloadCsv).toHaveBeenCalledWith('hairstyle-laboratory-email-errors.csv', expect.arrayContaining([
       expect.objectContaining({ client_email: 'alex@example.com', error_category: 'invalid-address', error_reason: 'Неверный или недоступный адрес', technical_error: '550 5.1.1 User unknown' }),
     ]));
+    const calendarLink = screen.getByRole('link', { name: 'Добавить в Google Календарь' });
+    expect(calendarLink.getAttribute('href')).toContain('calendar.google.com/calendar/render');
     expect(screen.getByText("Client email history")).toBeTruthy();
     expect(screen.getByText("Ошибка email")).toBeTruthy();
     expect(screen.getByText("Отправить запрос на отзыв")).toBeTruthy();

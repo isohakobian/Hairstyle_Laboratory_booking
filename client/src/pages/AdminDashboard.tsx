@@ -8,6 +8,7 @@ import { getLoginUrl } from '@/const';
 import { getReviewRequestErrorMessage } from '@/lib/emailDeliveryError';
 import { getDeliveryErrorDetails } from '@/lib/emailDeliveryError';
 import { downloadCsv } from '@/lib/csvExport';
+import { buildGoogleCalendarBookingUrl } from '@/lib/googleCalendar';
 import { Loader2, Trash2 } from 'lucide-react';
 import ScheduleCalendar from '@/components/ScheduleCalendar';
 import BookingCalendar from '@/components/BookingCalendar';
@@ -565,6 +566,17 @@ export default function AdminDashboard() {
                         >
                           {language === 'ru' ? 'Открыть память о клиенте →' : 'Open client memory →'}
                         </button>
+                      )}
+                      {(booking.status === 'pending' || booking.status === 'confirmed') && (
+                        <a
+                          href={buildGoogleCalendarBookingUrl(booking)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="btn-outline"
+                          style={{ display: 'inline-flex', alignItems: 'center', margin: '0 0 1rem', fontSize: '0.625rem', padding: '0.625rem 1rem', textDecoration: 'none' }}
+                        >
+                          {language === 'ru' ? 'Добавить в Google Календарь' : 'Add to Google Calendar'}
+                        </a>
                       )}
                       {booking.status === 'pending' && (
                         <div style={{ display: 'flex', gap: '0.75rem' }}>
