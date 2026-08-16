@@ -214,3 +214,9 @@
 - [x] Add an admin booking button that opens a prefilled Google Calendar event
 - [x] Include appointment time, combined duration, services, and client contact details in the Google Calendar event
 - [x] Add regression coverage for Google Calendar event URL generation
+- [ ] Include client Instagram handle and studio address in Google Calendar event URL generation
+- [ ] Show client Instagram directly in the admin booking card
+- [ ] Add regression test for Instagram handle and location in Google Calendar URL
+- [ ] Include studio address (Armenia, Yerevan, Pushkin 44) in client confirmation emails
+- [ ] Add client Instagram handle to admin booking cards and Google Calendar event details
+- [ ] Add notice in the booking form that address and appointment details will be sent via email upon confirmation

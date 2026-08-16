@@ -1,7 +1,10 @@
+import { STUDIO_ADDRESS } from '../../../shared/const';
+
 export type GoogleCalendarBooking = {
   clientName: string;
   clientPhone?: string | null;
   clientEmail?: string | null;
+  clientInstagram?: string | null;
   bookingDate: string;
   bookingTime: string;
   totalDurationMinutes?: number | null;
@@ -31,6 +34,7 @@ export function buildGoogleCalendarBookingUrl(booking: GoogleCalendarBooking) {
     `Услуги: ${services}`,
     booking.clientPhone ? `Телефон: ${booking.clientPhone}` : null,
     booking.clientEmail ? `Email: ${booking.clientEmail}` : null,
+    booking.clientInstagram ? `Instagram: @${booking.clientInstagram.replace(/^@/, '')}` : null,
     booking.referenceNumber ? `Код записи: ${booking.referenceNumber}` : null,
     booking.comment ? `Комментарий: ${booking.comment}` : null,
   ].filter(Boolean).join('\n');
@@ -40,6 +44,7 @@ export function buildGoogleCalendarBookingUrl(booking: GoogleCalendarBooking) {
     dates: `${formatCalendarDate(start)}/${formatCalendarDate(end)}`,
     ctz: 'Asia/Yerevan',
     details,
+    location: STUDIO_ADDRESS,
   });
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }

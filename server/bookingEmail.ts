@@ -1,6 +1,7 @@
 import nodemailer from "nodemailer";
 import { buildCalendarInvite } from "./calendarInvite";
 import { getReviewRequestEmailTemplate, type ReviewRequestEmailTemplateInput, type WeeklyBookingSummary } from "./db";
+import { ENV } from "./_core/env";
 
 export type BookingEmailDetails = {
   referenceNumber: string;
@@ -40,6 +41,7 @@ function bookingDetailsHtml(details: BookingEmailDetails) {
     ["Date", details.bookingDate],
     ["Time", details.bookingTime],
     ["Reference", details.referenceNumber],
+    ["Location", ENV.studioAddress],
   ];
 
   return rows.map(([label, value]) => (
@@ -55,6 +57,7 @@ function bookingDetailsText(details: BookingEmailDetails) {
     `Date: ${details.bookingDate}`,
     `Time: ${details.bookingTime}`,
     `Reference: ${details.referenceNumber}`,
+    `Location: ${ENV.studioAddress}`,
   ].join("\n");
 }
 

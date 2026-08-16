@@ -539,6 +539,7 @@ export default function AdminDashboard() {
                           { label: language === 'ru' ? 'Стоимость' : 'Price', value: booking.totalPriceSummary || '—' },
                           { label: language === 'ru' ? 'Телефон' : 'Phone', value: booking.clientPhone },
                           ...(booking.clientEmail ? [{ label: 'Email', value: booking.clientEmail }] : []),
+                          ...(booking.clientInstagram ? [{ label: 'Instagram', value: `@${booking.clientInstagram.replace(/^@/, '')}` }] : []),
                         ].map(row => (
                           <div key={row.label}>
                             <p style={{ ...labelStyle, margin: '0 0 0.25rem', fontSize: '0.5625rem' }}>{row.label}</p>

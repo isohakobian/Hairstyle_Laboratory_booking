@@ -266,7 +266,13 @@ export async function getSafeBookingStatusesByEmail(email: string) {
 export async function getAllBookings() {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(bookings).orderBy(desc(bookings.createdAt));
+  const items = await db.select().from(bookings).orderBy(desc(bookings.createdAt));
+  const clientIds = items.map(item => item.clientId).filter((id): id is number => Boolean(id));
+  const clientRows = clientIds.length
+    ? await db.select({ id: clients.id, instagram: clients.instagram }).from(clients).where(inArray(clients.id, clientIds))
+    : [];
+  const instagramByClientId = new Map(clientRows.map(client => [client.id, client.instagram]));
+  return items.map(item => ({ ...item, clientInstagram: item.clientId ? instagramByClientId.get(item.clientId) ?? null : null }));
 }
 
 export type BookingPageInput = {
@@ -301,13 +307,22 @@ export async function getBookingPage(input: BookingPageInput) {
     db.select({ total: count() }).from(bookings).where(where),
   ]);
   const bookingIds = items.map(item => item.id);
+  const clientIds = items.map(item => item.clientId).filter((id): id is number => Boolean(id));
+  const clientRows = clientIds.length
+    ? await db.select({ id: clients.id, instagram: clients.instagram }).from(clients).where(inArray(clients.id, clientIds))
+    : [];
+  const instagramByClientId = new Map(clientRows.map(client => [client.id, client.instagram]));
   const deliveryAttempts = bookingIds.length
     ? await db.select({ bookingId: clientEmailDeliveries.bookingId, deliveryStatus: clientEmailDeliveries.deliveryStatus }).from(clientEmailDeliveries).where(inArray(clientEmailDeliveries.bookingId, bookingIds)).orderBy(desc(clientEmailDeliveries.createdAt), desc(clientEmailDeliveries.id))
     : [];
   const latestDeliveryByBooking = new Map<number, string>();
   deliveryAttempts.forEach(item => { if (!latestDeliveryByBooking.has(item.bookingId)) latestDeliveryByBooking.set(item.bookingId, item.deliveryStatus); });
   const failedBookingIds = new Set(Array.from(latestDeliveryByBooking.entries()).filter(([, status]) => status === "failed").map(([bookingId]) => bookingId));
-  return { items: items.map(item => ({ ...item, hasEmailDeliveryFailure: failedBookingIds.has(item.id) })), total: Number(totalResult[0]?.total ?? 0), page, pageSize };
+  return { items: items.map(item => ({
+    ...item,
+    clientInstagram: item.clientId ? instagramByClientId.get(item.clientId) ?? null : null,
+    hasEmailDeliveryFailure: failedBookingIds.has(item.id),
+  })), total: Number(totalResult[0]?.total ?? 0), page, pageSize };
 }
 
 export async function getBookingsWithUnresolvedEmailFailures(limit = 50) {
