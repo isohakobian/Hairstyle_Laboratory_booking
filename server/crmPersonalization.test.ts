@@ -21,4 +21,18 @@ describe("CRM campaign personalization", () => {
     expect(email.html).not.toContain("{{clientName}}");
     expect(email.html).not.toContain("{{bookingUrl}}");
   });
+
+  it("renders an optional stored banner URL in the outgoing email", () => {
+    const email = buildCrmBroadcastEmail({
+      clientName: "Alex",
+      subjectRu: "Новость",
+      subjectEn: "News",
+      bodyRu: "Текст",
+      bodyEn: "Copy",
+      imageUrl: "/manus-storage/public/crm-campaign-media/banner.webp",
+    });
+
+    expect(email.html).toContain('src="https://isaacbarber-axczkyb2.manus.space/manus-storage/public/crm-campaign-media/banner.webp"');
+    expect(email.text).toContain("Campaign image: https://isaacbarber-axczkyb2.manus.space/manus-storage/public/crm-campaign-media/banner.webp");
+  });
 });

@@ -13,6 +13,7 @@ type CampaignForm = {
   subjectEn: string;
   bodyRu: string;
   bodyEn: string;
+  imageUrl: string;
   audienceFilter: AudienceFilter;
   targetServiceId: string;
 };
@@ -23,6 +24,7 @@ const emptyForm = (): CampaignForm => ({
   subjectEn: '',
   bodyRu: '',
   bodyEn: '',
+  imageUrl: '',
   audienceFilter: 'upcoming_booking',
   targetServiceId: '',
 });
@@ -31,6 +33,19 @@ const PREVIEW_CLIENT_NAME = 'Alex';
 const PREVIEW_BOOKING_URL = 'https://isaacbarber-axczkyb2.manus.space/booking';
 function renderCampaignPreview(value: string) {
   return value.replaceAll('{{clientName}}', PREVIEW_CLIENT_NAME).replaceAll('{{bookingUrl}}', PREVIEW_BOOKING_URL);
+}
+
+function readFileAsBase64(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const payload = String(reader.result || '').split(',')[1];
+      if (payload) resolve(payload);
+      else reject(new Error('Image could not be read'));
+    };
+    reader.onerror = () => reject(new Error('Image could not be read'));
+    reader.readAsDataURL(file);
+  });
 }
 
 export default function CrmManager({ language }: { language: Language }) {
@@ -76,10 +91,19 @@ export default function CrmManager({ language }: { language: Language }) {
     onError: error => toast.error(error.message),
   });
 
+  const uploadMutation = trpc.admin.uploadCrmCampaignImage.useMutation({
+    onSuccess: asset => {
+      setForm(current => ({ ...current, imageUrl: asset.url }));
+      toast.success(ru ? 'Баннер добавлен. Сохраните кампанию.' : 'Banner added. Save the campaign.');
+    },
+    onError: error => toast.error(error.message),
+  });
+
   const update = (key: keyof CampaignForm, value: string) => setForm(current => ({ ...current, [key]: value }));
   const submit = () => saveMutation.mutate({
     ...(editingId ? { id: editingId } : {}),
     ...form,
+    imageUrl: form.imageUrl || null,
     targetServiceId: form.audienceFilter === 'specific_service' && form.targetServiceId ? Number(form.targetServiceId) : null,
   });
 
@@ -92,9 +116,32 @@ export default function CrmManager({ language }: { language: Language }) {
       subjectEn: campaign.subjectEn,
       bodyRu: campaign.bodyRu,
       bodyEn: campaign.bodyEn,
+      imageUrl: campaign.imageUrl ?? '',
       audienceFilter: campaign.audienceFilter as AudienceFilter,
       targetServiceId: campaign.targetServiceId ? String(campaign.targetServiceId) : '',
     });
+  };
+
+  const uploadImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      toast.error(ru ? 'Поддерживаются JPEG, PNG и WebP' : 'JPEG, PNG, and WebP are supported');
+      event.target.value = '';
+      return;
+    }
+    if (file.size > 1_200_000) {
+      toast.error(ru ? 'Баннер должен быть не больше 1,2 МБ' : 'Banner must be 1.2 MB or smaller');
+      event.target.value = '';
+      return;
+    }
+    try {
+      uploadMutation.mutate({ fileName: file.name, mimeType: file.type as 'image/jpeg' | 'image/png' | 'image/webp', base64Data: await readFileAsBase64(file) });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : (ru ? 'Не удалось прочитать изображение' : 'Image could not be read'));
+    } finally {
+      event.target.value = '';
+    }
   };
 
   const inputStyle: React.CSSProperties = { width: '100%', padding: '0.7rem 0', background: 'transparent', border: 'none', borderBottom: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))', outline: 'none', fontFamily: "'Inter', sans-serif", fontSize: '0.875rem' };
@@ -128,6 +175,18 @@ export default function CrmManager({ language }: { language: Language }) {
           <label style={{ display: 'grid', gap: '0.4rem' }}><span style={labelStyle}>EN · Body</span><textarea value={form.bodyEn} onChange={event => update('bodyEn', event.target.value)} rows={6} style={{ ...inputStyle, border: '1px solid hsl(var(--border))', padding: '0.75rem', resize: 'vertical' }} /></label>
         </div>
         <p style={{ margin: '-0.25rem 0 0', color: 'hsl(var(--muted-foreground))', fontSize: '0.75rem', lineHeight: 1.5 }}>{ru ? 'Персонализация: вставь {{clientName}} для имени клиента. Также доступна ссылка {{bookingUrl}}.' : 'Personalization: use {{clientName}} for the client name. You can also use {{bookingUrl}} for the booking link.'}</p>
+        <div style={{ padding: '0.9rem', border: '1px solid hsl(var(--border))', background: 'hsl(var(--secondary))' }}>
+          <p style={{ ...labelStyle, margin: '0 0 0.55rem' }}>{ru ? 'Баннер или изображение (необязательно)' : 'Banner or image (optional)'}</p>
+          <div style={{ display: 'flex', gap: '0.9rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            {form.imageUrl ? <img src={form.imageUrl} alt={ru ? 'Предпросмотр CRM-баннера' : 'CRM banner preview'} style={{ width: '7rem', height: '4.5rem', objectFit: 'cover', border: '1px solid hsl(var(--border))' }} /> : <div aria-hidden="true" style={{ width: '7rem', height: '4.5rem', display: 'grid', placeItems: 'center', border: '1px dashed hsl(var(--border))', color: 'hsl(var(--muted-foreground))', fontSize: '0.7rem' }}>{ru ? 'Баннер' : 'Banner'}</div>}
+            <label style={{ display: 'grid', gap: '0.35rem', minWidth: 'min(100%, 17rem)' }}>
+              <span style={{ ...labelStyle, fontSize: '0.5625rem' }}>{ru ? 'JPEG, PNG или WebP · до 1,2 МБ' : 'JPEG, PNG, or WebP · up to 1.2 MB'}</span>
+              <input type="file" accept="image/jpeg,image/png,image/webp" disabled={uploadMutation.isPending} onChange={uploadImage} style={{ fontSize: '0.75rem', maxWidth: '100%' }} />
+            </label>
+            {form.imageUrl && <button type="button" className="btn-ghost" onClick={() => update('imageUrl', '')} style={{ fontSize: '0.625rem', padding: 0 }}>{ru ? 'Убрать баннер' : 'Remove banner'}</button>}
+          </div>
+          {uploadMutation.isPending && <p aria-live="polite" style={{ ...labelStyle, margin: '0.6rem 0 0', fontSize: '0.5625rem' }}>{ru ? 'Загружаю баннер…' : 'Uploading banner…'}</p>}
+        </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(15rem, 1fr))', gap: '1rem' }}>
           <label style={{ display: 'grid', gap: '0.4rem' }}><span style={labelStyle}>{ru ? 'Аудитория' : 'Audience'}</span><select value={form.audienceFilter} onChange={event => update('audienceFilter', event.target.value)} style={{ ...inputStyle, background: 'hsl(var(--card))' }}>{(['upcoming_booking', 'newsletter_consented', 'recent_6m', 'specific_service'] as AudienceFilter[]).map(value => <option key={value} value={value}>{audienceLabel(value)}</option>)}</select></label>
           {form.audienceFilter === 'specific_service' && <label style={{ display: 'grid', gap: '0.4rem' }}><span style={labelStyle}>{ru ? 'Услуга' : 'Service'}</span><select value={form.targetServiceId} onChange={event => update('targetServiceId', event.target.value)} style={{ ...inputStyle, background: 'hsl(var(--card))' }}><option value="">—</option>{(services ?? []).map(service => <option key={service.id} value={service.id}>{service.nameRu} / {service.nameEn}</option>)}</select></label>}
@@ -149,7 +208,7 @@ export default function CrmManager({ language }: { language: Language }) {
     <section>
       <div style={{ marginBottom: '0.9rem' }}><p style={{ ...labelStyle, margin: '0 0 0.35rem', color: 'var(--gold-mid)' }}>{ru ? 'История' : 'History'}</p><h3 style={{ margin: 0, fontFamily: "'Playfair Display', serif", fontStyle: 'italic' }}>{ru ? 'Кампании и доставки' : 'Campaigns and deliveries'}</h3></div>
       {campaignsLoading ? <p style={labelStyle}>{ru ? 'Загрузка…' : 'Loading…'}</p> : (campaigns ?? []).length === 0 ? <p style={labelStyle}>{ru ? 'Кампаний пока нет.' : 'No campaigns yet.'}</p> : <div style={{ display: 'grid', gap: '0.75rem' }}>{campaigns?.map(campaign => <article key={campaign.id} style={{ padding: '1rem', border: selectedCampaignId === campaign.id ? '1px solid var(--gold-mid)' : '1px solid hsl(var(--border))', background: 'hsl(var(--card))' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.8rem', flexWrap: 'wrap' }}><div><p style={{ margin: 0, fontWeight: 700 }}>{campaign.title}</p><p style={{ margin: '0.25rem 0 0', color: 'hsl(var(--muted-foreground))', fontSize: '0.75rem' }}>{campaign.subjectEn} · {audienceLabel(campaign.audienceFilter as AudienceFilter)}</p></div><span style={{ ...labelStyle, color: campaign.status === 'completed' ? 'hsl(142 50% 40%)' : campaign.status === 'failed' ? 'hsl(0 60% 50%)' : 'hsl(var(--muted-foreground))' }}>{campaign.status}</span></div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.8rem', flexWrap: 'wrap' }}><div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>{campaign.imageUrl && <img src={campaign.imageUrl} alt="" style={{ width: '3.25rem', height: '2.25rem', objectFit: 'cover', border: '1px solid hsl(var(--border))' }} />}<div><p style={{ margin: 0, fontWeight: 700 }}>{campaign.title}</p><p style={{ margin: '0.25rem 0 0', color: 'hsl(var(--muted-foreground))', fontSize: '0.75rem' }}>{campaign.subjectEn} · {audienceLabel(campaign.audienceFilter as AudienceFilter)}</p></div></div><span style={{ ...labelStyle, color: campaign.status === 'completed' ? 'hsl(142 50% 40%)' : campaign.status === 'failed' ? 'hsl(0 60% 50%)' : 'hsl(var(--muted-foreground))' }}>{campaign.status}</span></div>
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.75rem' }}><button type="button" className="btn-ghost" style={{ fontSize: '0.625rem', padding: 0 }} onClick={() => editCampaign(campaign)}>{ru ? 'Открыть' : 'Open'}</button><button type="button" className="btn-primary" style={{ fontSize: '0.625rem', padding: '0.45rem 0.65rem' }} disabled={sendMutation.isPending || campaign.status === 'sending'} onClick={() => { if (window.confirm(ru ? 'Отправить это письмо выбранной аудитории?' : 'Send this email to the selected audience?')) { setSelectedCampaignId(campaign.id); sendMutation.mutate({ id: campaign.id }); } }}>{sendMutation.isPending ? (ru ? 'Отправляю…' : 'Sending…') : (ru ? 'Отправить' : 'Send')}</button><button type="button" className="btn-outline" style={{ fontSize: '0.625rem', padding: '0.45rem 0.65rem' }} onClick={() => setSelectedCampaignId(campaign.id)}>{ru ? 'История доставок' : 'Delivery history'}</button></div>
         {selectedCampaignId === campaign.id && <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid hsl(var(--border))' }}><p style={{ ...labelStyle, margin: '0 0 0.6rem' }}>{ru ? `Отправлено ${campaignStats?.sent ?? campaign.sentCount}, ошибок ${campaignStats?.failed ?? campaign.errorCount}` : `Sent ${campaignStats?.sent ?? campaign.sentCount}, errors ${campaignStats?.failed ?? campaign.errorCount}`}</p>{(deliveries ?? []).length === 0 ? <p style={{ margin: 0, color: 'hsl(var(--muted-foreground))', fontSize: '0.75rem' }}>{ru ? 'История пока пуста.' : 'No delivery history yet.'}</p> : <div style={{ display: 'grid', gap: '0.4rem' }}>{deliveries?.slice(0, 20).map(delivery => <div key={delivery.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', flexWrap: 'wrap', fontSize: '0.75rem' }}><span>{delivery.recipientEmail}</span><span style={{ color: delivery.deliveryStatus === 'failed' ? 'hsl(0 60% 50%)' : delivery.deliveryStatus === 'sent' ? 'hsl(142 50% 40%)' : 'hsl(var(--muted-foreground))' }}>{delivery.deliveryStatus}{delivery.errorMessage ? ` · ${delivery.errorMessage}` : ''}</span></div>)}</div>}</div>}
       </article>)}</div>}
@@ -162,6 +221,7 @@ export default function CrmManager({ language }: { language: Language }) {
           <button type="button" className="btn-ghost" onClick={() => setShowPreviewModal(false)} style={{ position: 'absolute', top: '1.25rem', right: '1.25rem', padding: 0 }}><X size={18} /></button>
           <p style={{ ...labelStyle, margin: '0 0 0.4rem', color: 'var(--gold-mid)' }}>{ru ? 'Предпросмотр рассылки' : 'Broadcast preview'}</p>
           <h3 style={{ margin: '0 0 1rem', fontFamily: "'Playfair Display', serif" }}>{form.title || (ru ? 'Без названия' : 'Untitled')}</h3>
+          {form.imageUrl && <img src={form.imageUrl} alt={ru ? 'Баннер кампании' : 'Campaign banner'} style={{ display: 'block', width: '100%', maxHeight: '15rem', objectFit: 'cover', margin: '0 0 1rem', border: '1px solid hsl(var(--border))' }} />}
           
           <div style={{ display: 'grid', gap: '1rem', background: 'hsl(var(--secondary))', padding: '1.25rem', border: '1px solid hsl(var(--border))', fontSize: '0.85rem' }}>
             <div>

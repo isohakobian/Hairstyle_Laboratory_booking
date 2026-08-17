@@ -361,6 +361,7 @@ export const crmCampaigns = mysqlTable("crmCampaigns", {
   subjectEn: varchar("subjectEn", { length: 255 }).notNull(),
   bodyRu: text("bodyRu").notNull(),
   bodyEn: text("bodyEn").notNull(),
+  imageUrl: varchar("imageUrl", { length: 1000 }),
   audienceFilter: varchar("audienceFilter", { length: 50 }).notNull().default("upcoming_booking"), // upcoming_booking, recent_6m, specific_service, newsletter_consented
   targetServiceId: int("targetServiceId"),
   status: mysqlEnum("status", ["draft", "sending", "completed", "failed"]).notNull().default("draft"),

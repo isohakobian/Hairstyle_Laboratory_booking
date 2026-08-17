@@ -1144,6 +1144,7 @@ export type CrmCampaignInput = {
   subjectEn: string;
   bodyRu: string;
   bodyEn: string;
+  imageUrl?: string | null;
   audienceFilter: CrmAudienceFilter;
   targetServiceId?: number | null;
 };
@@ -1192,6 +1193,7 @@ export async function createCrmCampaign(input: CrmCampaignInput) {
   if (!db) throw new Error("Database not available");
   const result = await db.insert(crmCampaigns).values({
     ...input,
+    imageUrl: input.imageUrl ?? null,
     targetServiceId: input.targetServiceId ?? null,
     status: "draft",
   });

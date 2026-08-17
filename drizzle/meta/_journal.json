@@ -190,6 +190,13 @@
       "when": 1786912257449,
       "tag": "0026_good_bulldozer",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "5",
+      "when": 1786950664357,
+      "tag": "0027_slim_thor",
+      "breakpoints": true
     }
   ]
 }

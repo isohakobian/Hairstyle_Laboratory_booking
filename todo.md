@@ -251,3 +251,10 @@
 - [x] Update backend CRM campaign dispatcher to personalize subject and body per recipient client
 - [x] Add interactive template variable helper and live preview with mock client name in admin CRM workspace
 - [x] Verify test suite and ensure clean TypeScript build
+
+## CRM Campaign Images & Access
+- [x] Add an optional image or banner field to manual CRM campaigns
+- [x] Store CRM banner images securely and render them in email previews and outgoing messages
+- [x] Add upload, replace, and remove controls for CRM campaign images
+- [x] Add a clearer direct CRM entry point in the admin dashboard
+- [x] Verify the banner workflow, responsive CRM UI, and delivery rendering

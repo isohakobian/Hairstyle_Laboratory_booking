@@ -353,7 +353,7 @@ export default function AdminDashboard() {
     { id: 'reviews', label: language === 'ru' ? 'Отзывы' : 'Reviews', description: language === 'ru' ? 'Модерация обратной связи' : 'Feedback moderation', count: allReviews?.length ?? 0 },
     { id: 'clients', label: language === 'ru' ? 'Клиенты' : 'Clients', description: language === 'ru' ? 'Память о клиенте' : 'Client memory' },
     { id: 'news', label: language === 'ru' ? 'Новости' : 'Notices', description: language === 'ru' ? 'Новости и отпуск' : 'News and vacation' },
-    { id: 'crm', label: language === 'ru' ? 'CRM' : 'CRM', description: language === 'ru' ? 'Email-уведомления клиентам' : 'Client email communication' },
+    { id: 'crm', label: language === 'ru' ? 'CRM' : 'CRM', description: language === 'ru' ? 'Рассылки, баннеры и шаблоны' : 'Campaigns, banners, and templates' },
     { id: 'payment', label: language === 'ru' ? 'Предоплата' : 'Deposit', description: language === 'ru' ? 'Реквизиты, чеки и политика' : 'Details, receipts, and policy' },
     { id: 'settings', label: language === 'ru' ? 'Настройки' : 'Settings', description: language === 'ru' ? 'Время email-напоминаний' : 'Email reminder timing' },
   ];
@@ -384,6 +384,9 @@ export default function AdminDashboard() {
           <p style={{ margin: '0.75rem 0 0', maxWidth: '40rem', color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem', lineHeight: 1.6 }}>
             {language === 'ru' ? 'Управляйте заявками, расписанием и отзывами в одном понятном рабочем пространстве.' : 'Manage bookings, availability, and feedback from one clear workspace.'}
           </p>
+          <button type="button" className="btn-primary" onClick={() => selectTab('crm')} style={{ marginTop: '1rem', fontSize: '0.625rem' }}>
+            {language === 'ru' ? 'Открыть CRM и рассылки' : 'Open CRM and campaigns'}
+          </button>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2.5rem' }}>

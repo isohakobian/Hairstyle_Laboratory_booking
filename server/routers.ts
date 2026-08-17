@@ -20,6 +20,7 @@ import { completeBooking, createBookingEvent, findOrCreateClient, getClientMemor
 import { getActiveAnnouncements, getAllAnnouncements, saveAnnouncement, setAnnouncementPublished, uploadAnnouncementImage } from "./announcements";
 import { getManualDepositReceiptUrl, storeManualDepositReceipt } from "./manualDeposit";
 import { getReferencePhotoUrl, storeReferencePhoto } from "./referencePhoto";
+import { uploadCrmCampaignImage } from "./crmCampaignMedia";
 
 // Admin middleware
 const adminMiddleware = protectedProcedure.use(async ({ ctx, next }) => {
@@ -89,6 +90,7 @@ async function sendCrmCampaignById(campaignId: number) {
       subjectEn: campaign.subjectEn,
       bodyRu: campaign.bodyRu,
       bodyEn: campaign.bodyEn,
+      imageUrl: campaign.imageUrl,
       actionUrl: PUBLIC_BOOKING_URL,
       actionLabelRu: "Выбрать время",
       actionLabelEn: "Choose a time",
@@ -624,6 +626,7 @@ export const appRouter = router({
         subjectEn: z.string().trim().min(1).max(255),
         bodyRu: z.string().trim().min(1).max(6000),
         bodyEn: z.string().trim().min(1).max(6000),
+        imageUrl: z.string().trim().max(1000).nullable().optional(),
         audienceFilter: z.enum(["newsletter_consented", "upcoming_booking", "recent_6m", "specific_service"]),
         targetServiceId: z.number().int().positive().nullable().optional(),
       }))
@@ -635,6 +638,13 @@ export const appRouter = router({
         }
         return { id: await createCrmCampaign(values) };
       }),
+    uploadCrmCampaignImage: adminMiddleware
+      .input(z.object({
+        fileName: z.string().min(1).max(255),
+        mimeType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+        base64Data: z.string().min(1).max(1_700_000),
+      }))
+      .mutation(({ input }) => uploadCrmCampaignImage(input)),
     sendCrmCampaign: adminMiddleware
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(({ input }) => sendCrmCampaignById(input.id)),

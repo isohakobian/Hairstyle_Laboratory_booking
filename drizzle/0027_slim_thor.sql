@@ -1,0 +1,1 @@
+ALTER TABLE `crmCampaigns` ADD `imageUrl` varchar(1000);
