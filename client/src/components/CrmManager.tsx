@@ -27,6 +27,12 @@ const emptyForm = (): CampaignForm => ({
   targetServiceId: '',
 });
 
+const PREVIEW_CLIENT_NAME = 'Alex';
+const PREVIEW_BOOKING_URL = 'https://isaacbarber-axczkyb2.manus.space/booking';
+function renderCampaignPreview(value: string) {
+  return value.replaceAll('{{clientName}}', PREVIEW_CLIENT_NAME).replaceAll('{{bookingUrl}}', PREVIEW_BOOKING_URL);
+}
+
 export default function CrmManager({ language }: { language: Language }) {
   const ru = language === 'ru';
   const [form, setForm] = useState<CampaignForm>(emptyForm);
@@ -121,6 +127,7 @@ export default function CrmManager({ language }: { language: Language }) {
           <label style={{ display: 'grid', gap: '0.4rem' }}><span style={labelStyle}>RU · {ru ? 'Текст' : 'Body'}</span><textarea value={form.bodyRu} onChange={event => update('bodyRu', event.target.value)} rows={6} style={{ ...inputStyle, border: '1px solid hsl(var(--border))', padding: '0.75rem', resize: 'vertical' }} /></label>
           <label style={{ display: 'grid', gap: '0.4rem' }}><span style={labelStyle}>EN · Body</span><textarea value={form.bodyEn} onChange={event => update('bodyEn', event.target.value)} rows={6} style={{ ...inputStyle, border: '1px solid hsl(var(--border))', padding: '0.75rem', resize: 'vertical' }} /></label>
         </div>
+        <p style={{ margin: '-0.25rem 0 0', color: 'hsl(var(--muted-foreground))', fontSize: '0.75rem', lineHeight: 1.5 }}>{ru ? 'Персонализация: вставь {{clientName}} для имени клиента. Также доступна ссылка {{bookingUrl}}.' : 'Personalization: use {{clientName}} for the client name. You can also use {{bookingUrl}} for the booking link.'}</p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(15rem, 1fr))', gap: '1rem' }}>
           <label style={{ display: 'grid', gap: '0.4rem' }}><span style={labelStyle}>{ru ? 'Аудитория' : 'Audience'}</span><select value={form.audienceFilter} onChange={event => update('audienceFilter', event.target.value)} style={{ ...inputStyle, background: 'hsl(var(--card))' }}>{(['upcoming_booking', 'newsletter_consented', 'recent_6m', 'specific_service'] as AudienceFilter[]).map(value => <option key={value} value={value}>{audienceLabel(value)}</option>)}</select></label>
           {form.audienceFilter === 'specific_service' && <label style={{ display: 'grid', gap: '0.4rem' }}><span style={labelStyle}>{ru ? 'Услуга' : 'Service'}</span><select value={form.targetServiceId} onChange={event => update('targetServiceId', event.target.value)} style={{ ...inputStyle, background: 'hsl(var(--card))' }}><option value="">—</option>{(services ?? []).map(service => <option key={service.id} value={service.id}>{service.nameRu} / {service.nameEn}</option>)}</select></label>}
@@ -159,20 +166,20 @@ export default function CrmManager({ language }: { language: Language }) {
           <div style={{ display: 'grid', gap: '1rem', background: 'hsl(var(--secondary))', padding: '1.25rem', border: '1px solid hsl(var(--border))', fontSize: '0.85rem' }}>
             <div>
               <p style={{ ...labelStyle, margin: '0 0 0.2rem' }}>RU · {ru ? 'Тема' : 'Subject'}</p>
-              <p style={{ margin: 0, fontWeight: 700 }}>{form.subjectRu || '—'}</p>
+              <p style={{ margin: 0, fontWeight: 700 }}>{form.subjectRu ? renderCampaignPreview(form.subjectRu) : '—'}</p>
             </div>
             <div>
               <p style={{ ...labelStyle, margin: '0 0 0.2rem' }}>RU · {ru ? 'Текст' : 'Body'}</p>
-              <div style={{ margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{form.bodyRu || '—'}</div>
+              <div style={{ margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{form.bodyRu ? renderCampaignPreview(form.bodyRu) : '—'}</div>
             </div>
             <hr style={{ border: 'none', borderTop: '1px solid hsl(var(--border))', margin: '0.5rem 0' }} />
             <div>
               <p style={{ ...labelStyle, margin: '0 0 0.2rem' }}>EN · Subject</p>
-              <p style={{ margin: 0, fontWeight: 700 }}>{form.subjectEn || '—'}</p>
+              <p style={{ margin: 0, fontWeight: 700 }}>{form.subjectEn ? renderCampaignPreview(form.subjectEn) : '—'}</p>
             </div>
             <div>
               <p style={{ ...labelStyle, margin: '0 0 0.2rem' }}>EN · Body</p>
-              <div style={{ margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{form.bodyEn || '—'}</div>
+              <div style={{ margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{form.bodyEn ? renderCampaignPreview(form.bodyEn) : '—'}</div>
             </div>
             <div>
               <p style={{ ...labelStyle, margin: '0 0 0.2rem' }}>{ru ? 'Аудитория' : 'Audience'}</p>
@@ -180,6 +187,7 @@ export default function CrmManager({ language }: { language: Language }) {
             </div>
           </div>
 
+          <p style={{ margin: '1rem 0 0', color: 'hsl(var(--muted-foreground))', fontSize: '0.72rem' }}>{ru ? `Пример показан для клиента «${PREVIEW_CLIENT_NAME}». При отправке имя подставится отдельно для каждого получателя.` : `Preview uses “${PREVIEW_CLIENT_NAME}”. During sending, each recipient receives their own name.`}</p>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem' }}>
             <button type="button" className="btn-outline" onClick={() => setShowPreviewModal(false)} style={{ fontSize: '0.625rem' }}>{ru ? 'Закрыть' : 'Close'}</button>
           </div>

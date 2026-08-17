@@ -245,3 +245,9 @@
 - [x] Implement live preview modal for manual CRM broadcast campaigns before sending
 - [x] Add automated template integration to daily CRM scheduled automations
 - [x] Add Vitest regression tests and verify UI previews
+
+## CRM Campaign Personalization
+- [x] Support dynamic client name substitution (`{{clientName}}`) in manual CRM broadcast campaigns
+- [x] Update backend CRM campaign dispatcher to personalize subject and body per recipient client
+- [x] Add interactive template variable helper and live preview with mock client name in admin CRM workspace
+- [x] Verify test suite and ensure clean TypeScript build

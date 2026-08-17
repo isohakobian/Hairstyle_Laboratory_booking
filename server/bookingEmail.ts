@@ -554,15 +554,25 @@ export type CrmBroadcastContent = {
   actionLabelEn?: string | null;
 };
 
+function renderCrmVariables(value: string, content: CrmBroadcastContent) {
+  return value
+    .replaceAll("{{clientName}}", content.clientName)
+    .replaceAll("{{bookingUrl}}", content.actionUrl || "");
+}
+
 export function buildCrmBroadcastEmail(content: CrmBroadcastContent): EmailMessage {
+  const bodyEn = renderCrmVariables(content.bodyEn, content);
+  const bodyRu = renderCrmVariables(content.bodyRu, content);
+  const subjectEn = renderCrmVariables(content.subjectEn, content);
+  const subjectRu = renderCrmVariables(content.subjectRu, content);
   const safeName = escapeHtml(content.clientName);
-  const subject = content.subjectEn.trim() || content.subjectRu.trim() || "A note from Isaac";
+  const subject = subjectEn.trim() || subjectRu.trim() || "A note from Isaac";
   const actionUrl = content.actionUrl ? escapeHtml(content.actionUrl) : null;
   const action = actionUrl ? `<a href="${actionUrl}" style="display:inline-block;margin-top:8px;background:#17191E;color:#FFFFFF;text-decoration:none;padding:14px 20px;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">${escapeHtml(content.actionLabelEn || content.actionLabelRu || "Open / Открыть")}</a>` : "";
   return {
     subject,
-    text: [`Hi, ${content.clientName}.`, content.bodyEn, content.actionUrl ? `${content.actionLabelEn || "Open"}: ${content.actionUrl}` : "", "", `Здравствуйте, ${content.clientName}.`, content.bodyRu, content.actionUrl ? `${content.actionLabelRu || "Открыть"}: ${content.actionUrl}` : "", "", "Isaac"].filter(Boolean).join("\n"),
-    html: `<!doctype html><html><body style="margin:0;background:#F7F5F1;font-family:Arial,sans-serif;color:#17191E;"><div style="max-width:600px;margin:0 auto;padding:36px 24px;"><p style="margin:0 0 8px;color:#A17A2C;font-size:11px;font-weight:700;letter-spacing:2px;">ISAAC HAKOBIAN</p><h1 style="margin:0 0 18px;font-family:Georgia,serif;font-size:32px;line-height:1.1;">${escapeHtml(subject)}</h1><p style="margin:0 0 8px;font-size:15px;line-height:1.7;">Hi, ${safeName}.</p><p style="margin:0 0 16px;font-size:15px;line-height:1.7;">${reviewTemplateHtml(content.bodyEn)}</p><p style="margin:0 0 24px;font-size:15px;line-height:1.7;">${reviewTemplateHtml(content.bodyRu)}</p>${action}<p style="margin:26px 0 0;font-size:15px;line-height:1.6;">See you soon,<br><strong>Isaac</strong></p></div></body></html>`,
+    text: [`Hi, ${content.clientName}.`, bodyEn, content.actionUrl ? `${content.actionLabelEn || "Open"}: ${content.actionUrl}` : "", "", `Здравствуйте, ${content.clientName}.`, bodyRu, content.actionUrl ? `${content.actionLabelRu || "Открыть"}: ${content.actionUrl}` : "", "", "Isaac"].filter(Boolean).join("\n"),
+    html: `<!doctype html><html><body style="margin:0;background:#F7F5F1;font-family:Arial,sans-serif;color:#17191E;"><div style="max-width:600px;margin:0 auto;padding:36px 24px;"><p style="margin:0 0 8px;color:#A17A2C;font-size:11px;font-weight:700;letter-spacing:2px;">ISAAC HAKOBIAN</p><h1 style="margin:0 0 18px;font-family:Georgia,serif;font-size:32px;line-height:1.1;">${escapeHtml(subject)}</h1><p style="margin:0 0 8px;font-size:15px;line-height:1.7;">Hi, ${safeName}.</p><p style="margin:0 0 16px;font-size:15px;line-height:1.7;">${reviewTemplateHtml(bodyEn)}</p><p style="margin:0 0 24px;font-size:15px;line-height:1.7;">${reviewTemplateHtml(bodyRu)}</p>${action}<p style="margin:26px 0 0;font-size:15px;line-height:1.6;">See you soon,<br><strong>Isaac</strong></p></div></body></html>`,
   };
 }
 
