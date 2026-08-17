@@ -237,4 +237,4 @@
 - [x] Add safety check to prevent marketing emails from going to clients with active upcoming bookings or revoked consent
 - [x] Add campaign history and delivery status tracking in the admin dashboard
 - [x] Add CRM automation tests and mobile/desktop visual verification
-- [ ] Enable the daily CRM Heartbeat schedule after the user confirms deployment and production activation
+- [x] Enable the daily CRM Heartbeat schedule after the user confirms deployment and production activation
