@@ -1169,7 +1169,14 @@ export async function getCrmRecipients(filter: CrmAudienceFilter, targetServiceI
     ? await db.select({ clientId: bookings.clientId }).from(bookings).where(and(gte(bookings.completedAt, new Date(Date.now() - 183 * 24 * 60 * 60 * 1000)), eq(bookings.status, "confirmed")))
     : [];
   const serviceRows = filter === "specific_service" && targetServiceId
-    ? await db.select({ clientId: bookings.clientId }).from(bookings).innerJoin(bookingServices, eq(bookingServices.bookingId, bookings.id)).where(eq(bookingServices.serviceId, targetServiceId))
+    ? await db.select({ clientId: bookings.clientId })
+      .from(bookings)
+      .leftJoin(bookingServices, eq(bookingServices.bookingId, bookings.id))
+      .where(and(
+        eq(bookings.status, "confirmed"),
+        isNotNull(bookings.completedAt),
+        or(eq(bookings.serviceId, targetServiceId), eq(bookingServices.serviceId, targetServiceId)),
+      ))
     : [];
   const eligibleIds = new Set((filter === "upcoming_booking" ? upcomingRows : filter === "recent_6m" ? recentRows : serviceRows).map(row => row.clientId).filter((id): id is number => typeof id === "number"));
   return rows

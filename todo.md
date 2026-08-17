@@ -270,3 +270,9 @@
 - [x] Support safe HTML rendering in automated email deliveries and preview modals
 - [x] Add clear toolbar actions for formatting selection in bilingual template textareas
 - [x] Add regression tests and verify rich text layout in email clients and previews
+
+## CRM Service Segmentation
+- [x] Update backend `getCrmRecipients` to match bookings tied to a specific managed service ID
+- [x] Add service name details in audience preview list so Isaac can verify targeted clients
+- [x] Add audience count feedback and service selector in the CRM campaign builder
+- [x] Add Vitest tests for service-targeted CRM campaigns and verify UI delivery

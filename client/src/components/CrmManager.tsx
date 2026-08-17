@@ -166,6 +166,7 @@ export default function CrmManager({ language }: { language: Language }) {
     recent_6m: ru ? 'Были у меня за последние 6 месяцев' : 'Visited in the last 6 months',
     specific_service: ru ? 'Пользователи конкретной услуги' : 'Clients of a specific service',
   }[value]);
+  const selectedService = services?.find(service => String(service.id) === form.targetServiceId);
 
   return <div style={{ display: 'grid', gap: '2rem' }}>
     <section style={{ padding: '1.25rem', border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))' }}>
@@ -204,8 +205,14 @@ export default function CrmManager({ language }: { language: Language }) {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(15rem, 1fr))', gap: '1rem' }}>
           <label style={{ display: 'grid', gap: '0.4rem' }}><span style={labelStyle}>{ru ? 'Аудитория' : 'Audience'}</span><select value={form.audienceFilter} onChange={event => update('audienceFilter', event.target.value)} style={{ ...inputStyle, background: 'hsl(var(--card))' }}>{(['upcoming_booking', 'newsletter_consented', 'recent_6m', 'specific_service'] as AudienceFilter[]).map(value => <option key={value} value={value}>{audienceLabel(value)}</option>)}</select></label>
-          {form.audienceFilter === 'specific_service' && <label style={{ display: 'grid', gap: '0.4rem' }}><span style={labelStyle}>{ru ? 'Услуга' : 'Service'}</span><select value={form.targetServiceId} onChange={event => update('targetServiceId', event.target.value)} style={{ ...inputStyle, background: 'hsl(var(--card))' }}><option value="">—</option>{(services ?? []).map(service => <option key={service.id} value={service.id}>{service.nameRu} / {service.nameEn}</option>)}</select></label>}
+          {form.audienceFilter === 'specific_service' && <label style={{ display: 'grid', gap: '0.4rem' }}><span style={labelStyle}>{ru ? 'Оказанная услуга' : 'Completed service'}</span><select value={form.targetServiceId} onChange={event => update('targetServiceId', event.target.value)} style={{ ...inputStyle, background: 'hsl(var(--card))' }}><option value="">{ru ? 'Выбери процедуру' : 'Choose a service'}</option>{(services ?? []).map(service => <option key={service.id} value={service.id}>{service.nameRu} / {service.nameEn}</option>)}</select></label>}
         </div>
+        {form.audienceFilter === 'specific_service' && form.targetServiceId && <div style={{ padding: '0.85rem 1rem', border: '1px solid color-mix(in srgb, var(--gold-mid) 45%, hsl(var(--border)))', background: 'color-mix(in srgb, var(--gold-mid) 7%, hsl(var(--card)))' }}>
+          <p style={{ ...labelStyle, margin: '0 0 0.35rem', color: 'var(--gold-mid)' }}>{ru ? 'Проверка сегмента' : 'Segment check'}</p>
+          <p style={{ margin: '0 0 0.35rem', fontSize: '0.82rem', fontWeight: 600 }}>{selectedService ? `${selectedService.nameRu} / ${selectedService.nameEn}` : (ru ? 'Услуга загружается…' : 'Loading service…')}</p>
+          <p style={{ margin: 0, color: 'hsl(var(--muted-foreground))', fontSize: '0.75rem', lineHeight: 1.5 }}>{ru ? `Только клиенты с подтверждённым завершённым визитом по этой услуге. Найдено: ${previewRecipients?.length ?? 0}.` : `Only clients with a confirmed completed visit for this service. Found: ${previewRecipients?.length ?? 0}.`}</p>
+          {(previewRecipients?.length ?? 0) > 0 && <p style={{ margin: '0.35rem 0 0', color: 'hsl(var(--muted-foreground))', fontSize: '0.72rem' }}>{ru ? `Примеры: ${previewRecipients?.slice(0, 5).map(client => client.name).join(', ')}${(previewRecipients?.length ?? 0) > 5 ? '…' : ''}` : `Examples: ${previewRecipients?.slice(0, 5).map(client => client.name).join(', ')}${(previewRecipients?.length ?? 0) > 5 ? '…' : ''}`}</p>}
+        </div>}
       </div>
 
       <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '1.2rem', alignItems: 'center' }}>
