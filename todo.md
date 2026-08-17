@@ -258,3 +258,9 @@
 - [x] Add upload, replace, and remove controls for CRM campaign images
 - [x] Add a clearer direct CRM entry point in the admin dashboard
 - [x] Verify the banner workflow, responsive CRM UI, and delivery rendering
+
+## CRM Test Send & Banner Guidance
+- [x] Add a protected admin-only test-send procedure that sends the current CRM campaign to Isaac's admin email
+- [x] Add a test-send button with loading and success/error feedback in the CRM workspace
+- [x] Add recommended email banner dimensions and format guidance next to the upload control
+- [x] Add regression tests and verify the test-send workflow and responsive guidance UI

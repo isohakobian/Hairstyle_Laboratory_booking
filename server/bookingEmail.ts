@@ -579,6 +579,15 @@ export function buildCrmBroadcastEmail(content: CrmBroadcastContent): EmailMessa
   };
 }
 
+export function buildCrmTestEmail(content: Omit<CrmBroadcastContent, "clientName">, clientName: string): EmailMessage {
+  return buildCrmBroadcastEmail({
+    ...content,
+    clientName,
+    subjectRu: `[TEST] ${content.subjectRu}`,
+    subjectEn: `[TEST] ${content.subjectEn}`,
+  });
+}
+
 export type CrmTemplateInput = {
   subjectRu: string;
   subjectEn: string;

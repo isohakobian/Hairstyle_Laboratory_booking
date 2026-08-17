@@ -91,6 +91,11 @@ export default function CrmManager({ language }: { language: Language }) {
     onError: error => toast.error(error.message),
   });
 
+  const testSendMutation = trpc.admin.sendTestCrmCampaign.useMutation({
+    onSuccess: result => toast.success(ru ? `Тестовое письмо отправлено на ${result.recipientEmail}` : `Test email sent to ${result.recipientEmail}`),
+    onError: error => toast.error(error.message),
+  });
+
   const uploadMutation = trpc.admin.uploadCrmCampaignImage.useMutation({
     onSuccess: asset => {
       setForm(current => ({ ...current, imageUrl: asset.url }));
@@ -144,6 +149,15 @@ export default function CrmManager({ language }: { language: Language }) {
     }
   };
 
+  const sendTest = () => {
+    if (!form.subjectRu.trim() || !form.subjectEn.trim() || !form.bodyRu.trim() || !form.bodyEn.trim()) {
+      toast.error(ru ? 'Заполни обе темы и оба текста перед тестовой отправкой.' : 'Complete both subjects and both message bodies before sending a test.');
+      return;
+    }
+    if (!window.confirm(ru ? 'Отправить тестовое письмо только на твой admin email?' : 'Send this test email only to your admin email?')) return;
+    testSendMutation.mutate({ subjectRu: form.subjectRu, subjectEn: form.subjectEn, bodyRu: form.bodyRu, bodyEn: form.bodyEn, imageUrl: form.imageUrl || null });
+  };
+
   const inputStyle: React.CSSProperties = { width: '100%', padding: '0.7rem 0', background: 'transparent', border: 'none', borderBottom: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))', outline: 'none', fontFamily: "'Inter', sans-serif", fontSize: '0.875rem' };
   const labelStyle: React.CSSProperties = { fontFamily: "'Inter', sans-serif", fontSize: '0.625rem', fontWeight: 600, letterSpacing: '0.13em', textTransform: 'uppercase', color: 'hsl(var(--muted-foreground))' };
   const audienceLabel = (value: AudienceFilter) => ({
@@ -182,6 +196,7 @@ export default function CrmManager({ language }: { language: Language }) {
             <label style={{ display: 'grid', gap: '0.35rem', minWidth: 'min(100%, 17rem)' }}>
               <span style={{ ...labelStyle, fontSize: '0.5625rem' }}>{ru ? 'JPEG, PNG или WebP · до 1,2 МБ' : 'JPEG, PNG, or WebP · up to 1.2 MB'}</span>
               <input type="file" accept="image/jpeg,image/png,image/webp" disabled={uploadMutation.isPending} onChange={uploadImage} style={{ fontSize: '0.75rem', maxWidth: '100%' }} />
+              <span style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.7rem', lineHeight: 1.45 }}>{ru ? 'Рекомендуемый размер: 1200 × 600 px. Универсальный вариант для desktop и mobile: 1200 × 800 px. Сохраняй файл до 1,2 МБ.' : 'Recommended: 1200 × 600 px. Universal desktop/mobile option: 1200 × 800 px. Keep the file under 1.2 MB.'}</span>
             </label>
             {form.imageUrl && <button type="button" className="btn-ghost" onClick={() => update('imageUrl', '')} style={{ fontSize: '0.625rem', padding: 0 }}>{ru ? 'Убрать баннер' : 'Remove banner'}</button>}
           </div>
@@ -196,6 +211,7 @@ export default function CrmManager({ language }: { language: Language }) {
       <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '1.2rem', alignItems: 'center' }}>
         <button type="button" className="btn-primary" onClick={submit} disabled={saveMutation.isPending}>{saveMutation.isPending ? (ru ? 'Сохраняю…' : 'Saving…') : (editingId ? (ru ? 'Сохранить изменения' : 'Save changes') : (ru ? 'Сохранить черновик' : 'Save draft'))}</button>
         <button type="button" className="btn-outline" onClick={() => setShowPreviewModal(true)} style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.625rem' }}><Eye size={13} />{ru ? 'Предпросмотр письма' : 'Preview email'}</button>
+        <button type="button" className="btn-outline" onClick={sendTest} disabled={testSendMutation.isPending || uploadMutation.isPending} style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.625rem', borderColor: 'var(--gold-mid)', color: 'var(--gold-mid)' }}>{testSendMutation.isPending && <Loader2 size={13} className="animate-spin" />}{testSendMutation.isPending ? (ru ? 'Отправляю тест…' : 'Sending test…') : (ru ? 'Отправить тест мне' : 'Send test to me')}</button>
       </div>
     </section>
 

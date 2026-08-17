@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCrmBroadcastEmail } from "./bookingEmail";
+import { buildCrmBroadcastEmail, buildCrmTestEmail } from "./bookingEmail";
 
 describe("CRM campaign personalization", () => {
   it("replaces client name and booking URL in subject and bilingual body", () => {
@@ -20,6 +20,20 @@ describe("CRM campaign personalization", () => {
     expect(email.html).toContain("Hi Alex, book here: https://example.com/booking");
     expect(email.html).not.toContain("{{clientName}}");
     expect(email.html).not.toContain("{{bookingUrl}}");
+  });
+
+  it("marks a test email without changing the campaign body", () => {
+    const email = buildCrmTestEmail({
+      subjectRu: "Новость",
+      subjectEn: "News",
+      bodyRu: "Текст {{clientName}}",
+      bodyEn: "Copy for {{clientName}}",
+      actionUrl: "https://example.com/booking",
+    }, "Isaac");
+
+    expect(email.subject).toBe("[TEST] News");
+    expect(email.text).toContain("Copy for Isaac");
+    expect(email.html).toContain("[TEST] News");
   });
 
   it("renders an optional stored banner URL in the outgoing email", () => {

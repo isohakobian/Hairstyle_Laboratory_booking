@@ -13,7 +13,7 @@ import {
   deleteBookingAndRelatedData, declineBookingForInvalidReceipt, getAdminTodaySummary, getBookingReminderSettings, getBookingsWithUnresolvedEmailFailures, getUnresolvedEmailDeliveryErrors, getClientDirectory, getClientEmailDeliveryHistory, getLatestBookingRescheduleEvent, getBookingPage, getManualDepositSettings, getReviewRequestDashboard, getReviewRequestEmailTemplate, getReviewRequestPage, getReviewRequestStats, getWeeklyBookingSummary, recordClientEmailDelivery, saveBookingReminderSettings, saveManualDepositSettings,   saveReviewRequestEmailTemplate, getPostVisitEmailTemplate, savePostVisitEmailTemplate, getBirthdayEmailTemplate, saveBirthdayEmailTemplate, updateManualDepositStatus, getCrmCampaigns, getCrmCampaignById, createCrmCampaign, updateCrmCampaign, getCrmCampaignDeliveries, getCrmCampaignStats, recordCrmCampaignDelivery, getCrmRecipients, saveClientCrmPreference, getClientCrmPreference, CrmAudienceFilter,
 } from "./db";
 import { TRPCError } from "@trpc/server";
-import { buildAppointmentReminderEmail, buildBookingCancelledEmail, buildBookingDeclinedEmail, buildBookingRescheduledEmail, buildClientBookingEmail, buildClientConfirmationEmail, buildCrmBroadcastEmail, sendAppointmentReminderEmail, sendBookingCancelledEmail, sendBookingDeclinedEmail, sendBookingEmails, sendBookingRescheduledEmail, sendBookingStatusRecoveryEmail, sendClientBookingRequestEmail, sendConfirmedBookingEmail, sendReviewRequestEmail, sendCrmEmail } from "./bookingEmail";
+import { buildAppointmentReminderEmail, buildBookingCancelledEmail, buildBookingDeclinedEmail, buildBookingRescheduledEmail, buildClientBookingEmail, buildClientConfirmationEmail, buildCrmBroadcastEmail, buildCrmTestEmail, sendAppointmentReminderEmail, sendBookingCancelledEmail, sendBookingDeclinedEmail, sendBookingEmails, sendBookingRescheduledEmail, sendBookingStatusRecoveryEmail, sendClientBookingRequestEmail, sendConfirmedBookingEmail, sendReviewRequestEmail, sendCrmEmail } from "./bookingEmail";
 import { createReviewTokenValue, getBookingStatusRecoveryExpiry, getReviewTokenExpiry, hashReviewToken } from "./reviewToken";
 import { blockDates, clearAvailabilityForDates, getAvailabilityWindows, getAvailableSlots, getPublicAvailableDates, setAvailabilityForDates } from "./availability";
 import { completeBooking, createBookingEvent, findOrCreateClient, getClientMemory, getSignedVisitMediaUrl, recordReviewRequest, rescheduleBooking, updateClientProfile, uploadVisitMedia } from "./clientMemory";
@@ -107,6 +107,29 @@ async function sendCrmCampaignById(campaignId: number) {
   }
   await updateCrmCampaign(campaign.id, { status: errorCount > 0 ? "failed" : "completed", sentCount, errorCount });
   return { campaignId: campaign.id, totalRecipients: limitedRecipients.length, sentCount, errorCount, capped: recipients.length > limitedRecipients.length };
+}
+
+async function sendCrmCampaignTestToAdmin(input: {
+  subjectRu: string;
+  subjectEn: string;
+  bodyRu: string;
+  bodyEn: string;
+  imageUrl?: string | null;
+}, adminEmail: string | null | undefined, adminName: string | null | undefined) {
+  if (!adminEmail) throw new TRPCError({ code: "BAD_REQUEST", message: "Your admin account does not have an email address" });
+  const email = buildCrmTestEmail({
+    subjectRu: input.subjectRu,
+    subjectEn: input.subjectEn,
+    bodyRu: input.bodyRu,
+    bodyEn: input.bodyEn,
+    imageUrl: input.imageUrl,
+    actionUrl: PUBLIC_BOOKING_URL,
+    actionLabelRu: "Выбрать время",
+    actionLabelEn: "Choose a time",
+  }, adminName || "Isaac");
+  const result = await sendCrmEmail(adminEmail, email, "crm-campaign-test");
+  const skipped = Boolean(result && typeof result === "object" && "skipped" in result && result.skipped);
+  return { success: true, skipped, recipientEmail: adminEmail, subject: email.subject };
 }
 
 const managedServiceInput = z.object({
@@ -648,6 +671,15 @@ export const appRouter = router({
     sendCrmCampaign: adminMiddleware
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(({ input }) => sendCrmCampaignById(input.id)),
+    sendTestCrmCampaign: adminMiddleware
+      .input(z.object({
+        subjectRu: z.string().trim().min(1).max(255),
+        subjectEn: z.string().trim().min(1).max(255),
+        bodyRu: z.string().trim().min(1).max(6000),
+        bodyEn: z.string().trim().min(1).max(6000),
+        imageUrl: z.string().trim().max(1000).nullable().optional(),
+      }))
+      .mutation(({ input, ctx }) => sendCrmCampaignTestToAdmin(input, ctx.user.email, ctx.user.name)),
     clientCrmPreference: adminMiddleware
       .input(z.object({ clientId: z.number().int().positive() }))
       .query(({ input }) => getClientCrmPreference(input.clientId)),
