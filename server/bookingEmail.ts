@@ -566,6 +566,47 @@ export function buildCrmBroadcastEmail(content: CrmBroadcastContent): EmailMessa
   };
 }
 
+export type CrmTemplateInput = {
+  subjectRu: string;
+  subjectEn: string;
+  bodyRu: string;
+  bodyEn: string;
+};
+
+export function buildConfiguredPostVisitEmail(clientName: string, bookingUrl: string, template: CrmTemplateInput): EmailMessage {
+  const subjectEn = template.subjectEn.replaceAll("{{clientName}}", clientName).replaceAll("{{bookingUrl}}", bookingUrl).trim();
+  const subjectRu = template.subjectRu.replaceAll("{{clientName}}", clientName).replaceAll("{{bookingUrl}}", bookingUrl).trim();
+  const bodyEn = template.bodyEn.replaceAll("{{clientName}}", clientName).replaceAll("{{bookingUrl}}", bookingUrl);
+  const bodyRu = template.bodyRu.replaceAll("{{clientName}}", clientName).replaceAll("{{bookingUrl}}", bookingUrl);
+  return buildCrmBroadcastEmail({
+    clientName,
+    subjectRu: subjectRu || subjectEn || "Как вам результат? — Isaac",
+    subjectEn: subjectEn || subjectRu || "How are you liking the result? — Isaac",
+    bodyRu,
+    bodyEn,
+    actionUrl: bookingUrl,
+    actionLabelRu: "Выбрать новое время",
+    actionLabelEn: "Choose a new time",
+  });
+}
+
+export function buildConfiguredBirthdayEmail(clientName: string, bookingUrl: string, template: CrmTemplateInput): EmailMessage {
+  const subjectEn = template.subjectEn.replaceAll("{{clientName}}", clientName).replaceAll("{{bookingUrl}}", bookingUrl).trim();
+  const subjectRu = template.subjectRu.replaceAll("{{clientName}}", clientName).replaceAll("{{bookingUrl}}", bookingUrl).trim();
+  const bodyEn = template.bodyEn.replaceAll("{{clientName}}", clientName).replaceAll("{{bookingUrl}}", bookingUrl);
+  const bodyRu = template.bodyRu.replaceAll("{{clientName}}", clientName).replaceAll("{{bookingUrl}}", bookingUrl);
+  return buildCrmBroadcastEmail({
+    clientName,
+    subjectRu: subjectRu || subjectEn || "С днём рождения — Isaac",
+    subjectEn: subjectEn || subjectRu || "Happy birthday — Isaac",
+    bodyRu,
+    bodyEn,
+    actionUrl: bookingUrl,
+    actionLabelRu: "Записаться",
+    actionLabelEn: "Book a visit",
+  });
+}
+
 export function buildPostVisitCheckInEmail(clientName: string, bookingUrl: string): EmailMessage {
   return buildCrmBroadcastEmail({
     clientName,

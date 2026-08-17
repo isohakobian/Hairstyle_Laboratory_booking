@@ -885,6 +885,8 @@ export async function getReviewRequestStats() {
 }
 
 export const REVIEW_REQUEST_TEMPLATE_KEY = "review-request";
+export const POST_VISIT_TEMPLATE_KEY = "post-visit-14d";
+export const BIRTHDAY_TEMPLATE_KEY = "birthday-greeting";
 
 export type ReviewRequestEmailTemplateInput = {
   subjectRu: string;
@@ -898,6 +900,20 @@ export const defaultReviewRequestEmailTemplate: ReviewRequestEmailTemplateInput 
   subjectEn: "Thank you for your visit — Isaac",
   bodyRu: "Привет, {{clientName}}.\n\nСпасибо за доверие и за ваш визит. Если у вас найдётся минута, буду рад честному отзыву. Это правда помогает мне.\n\nОставить отзыв: {{reviewUrl}}\n\nЕщё раз спасибо,\nIsaac",
   bodyEn: "Hi, {{clientName}}.\n\nThank you for trusting me with your appointment. If you have a minute, I’d love your honest feedback. It really helps me.\n\nLeave your feedback: {{reviewUrl}}\n\nThank you again,\nIsaac",
+};
+
+export const defaultPostVisitEmailTemplate: ReviewRequestEmailTemplateInput = {
+  subjectRu: "Как вам результат? — Isaac",
+  subjectEn: "How are you liking the result? — Isaac",
+  bodyRu: "Привет, {{clientName}}.\n\nПрошло две недели после вашего визита. Надеюсь, вам нравится форма и результат. Если захотите обновить стрижку или бороду, я буду рад снова вас видеть.\n\nЗаписаться: {{bookingUrl}}\n\nIsaac",
+  bodyEn: "Hi, {{clientName}}.\n\nIt has been two weeks since your visit. I hope you are enjoying the shape and the result. If you feel ready for a refresh, I would be happy to see you again.\n\nBook your visit: {{bookingUrl}}\n\nIsaac",
+};
+
+export const defaultBirthdayEmailTemplate: ReviewRequestEmailTemplateInput = {
+  subjectRu: "С днём рождения — Isaac",
+  subjectEn: "Happy birthday — Isaac",
+  bodyRu: "Привет, {{clientName}}.\n\nПоздравляю вас с днём рождения! Желаю хорошего года, уверенности и людей, рядом с которыми легко быть собой. Если захотите обновить образ, буду рад видеть вас.\n\nЗаписаться: {{bookingUrl}}\n\nIsaac",
+  bodyEn: "Hi, {{clientName}}.\n\nHappy birthday. I wish you a strong year, confidence, and people around you who make it easy to be yourself. If you feel like refreshing your look, I would be happy to see you.\n\nBook your visit: {{bookingUrl}}\n\nIsaac",
 };
 
 export async function getReviewRequestEmailTemplate() {
@@ -919,6 +935,48 @@ export async function saveReviewRequestEmailTemplate(input: ReviewRequestEmailTe
   if (!db) throw new Error("Database not available");
   await db.insert(emailTemplates).values({ key: REVIEW_REQUEST_TEMPLATE_KEY, ...input }).onDuplicateKeyUpdate({ set: input });
   return getReviewRequestEmailTemplate();
+}
+
+export async function getPostVisitEmailTemplate() {
+  const db = await getDb();
+  if (!db) return defaultPostVisitEmailTemplate;
+  const saved = (await db.select().from(emailTemplates)
+    .where(eq(emailTemplates.key, POST_VISIT_TEMPLATE_KEY))
+    .limit(1))[0];
+  return saved ? {
+    subjectRu: saved.subjectRu,
+    subjectEn: saved.subjectEn,
+    bodyRu: saved.bodyRu,
+    bodyEn: saved.bodyEn,
+  } : defaultPostVisitEmailTemplate;
+}
+
+export async function savePostVisitEmailTemplate(input: ReviewRequestEmailTemplateInput) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(emailTemplates).values({ key: POST_VISIT_TEMPLATE_KEY, ...input }).onDuplicateKeyUpdate({ set: input });
+  return getPostVisitEmailTemplate();
+}
+
+export async function getBirthdayEmailTemplate() {
+  const db = await getDb();
+  if (!db) return defaultBirthdayEmailTemplate;
+  const saved = (await db.select().from(emailTemplates)
+    .where(eq(emailTemplates.key, BIRTHDAY_TEMPLATE_KEY))
+    .limit(1))[0];
+  return saved ? {
+    subjectRu: saved.subjectRu,
+    subjectEn: saved.subjectEn,
+    bodyRu: saved.bodyRu,
+    bodyEn: saved.bodyEn,
+  } : defaultBirthdayEmailTemplate;
+}
+
+export async function saveBirthdayEmailTemplate(input: ReviewRequestEmailTemplateInput) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(emailTemplates).values({ key: BIRTHDAY_TEMPLATE_KEY, ...input }).onDuplicateKeyUpdate({ set: input });
+  return getBirthdayEmailTemplate();
 }
 
 export const MANUAL_DEPOSIT_SETTINGS_KEY = "manual-deposit";

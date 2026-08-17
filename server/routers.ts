@@ -10,7 +10,7 @@ import {
   getReviewTokenByHash, markReviewTokenUsed,
   getPublishedReviews, getAllReviews, updateReviewPublished, createManagedService, setServiceActive, updateManagedService,
   createBookingStatusRecoveryToken, claimBookingStatusRecoveryToken, getSafeBookingStatusesByEmail,
-  deleteBookingAndRelatedData, declineBookingForInvalidReceipt, getAdminTodaySummary, getBookingReminderSettings, getBookingsWithUnresolvedEmailFailures, getUnresolvedEmailDeliveryErrors, getClientDirectory, getClientEmailDeliveryHistory, getLatestBookingRescheduleEvent, getBookingPage, getManualDepositSettings, getReviewRequestDashboard, getReviewRequestEmailTemplate, getReviewRequestPage, getReviewRequestStats, getWeeklyBookingSummary, recordClientEmailDelivery, saveBookingReminderSettings, saveManualDepositSettings, saveReviewRequestEmailTemplate, updateManualDepositStatus, getCrmCampaigns, getCrmCampaignById, createCrmCampaign, updateCrmCampaign, getCrmCampaignDeliveries, getCrmCampaignStats, recordCrmCampaignDelivery, getCrmRecipients, saveClientCrmPreference, getClientCrmPreference, CrmAudienceFilter,
+  deleteBookingAndRelatedData, declineBookingForInvalidReceipt, getAdminTodaySummary, getBookingReminderSettings, getBookingsWithUnresolvedEmailFailures, getUnresolvedEmailDeliveryErrors, getClientDirectory, getClientEmailDeliveryHistory, getLatestBookingRescheduleEvent, getBookingPage, getManualDepositSettings, getReviewRequestDashboard, getReviewRequestEmailTemplate, getReviewRequestPage, getReviewRequestStats, getWeeklyBookingSummary, recordClientEmailDelivery, saveBookingReminderSettings, saveManualDepositSettings,   saveReviewRequestEmailTemplate, getPostVisitEmailTemplate, savePostVisitEmailTemplate, getBirthdayEmailTemplate, saveBirthdayEmailTemplate, updateManualDepositStatus, getCrmCampaigns, getCrmCampaignById, createCrmCampaign, updateCrmCampaign, getCrmCampaignDeliveries, getCrmCampaignStats, recordCrmCampaignDelivery, getCrmRecipients, saveClientCrmPreference, getClientCrmPreference, CrmAudienceFilter,
 } from "./db";
 import { TRPCError } from "@trpc/server";
 import { buildAppointmentReminderEmail, buildBookingCancelledEmail, buildBookingDeclinedEmail, buildBookingRescheduledEmail, buildClientBookingEmail, buildClientConfirmationEmail, buildCrmBroadcastEmail, sendAppointmentReminderEmail, sendBookingCancelledEmail, sendBookingDeclinedEmail, sendBookingEmails, sendBookingRescheduledEmail, sendBookingStatusRecoveryEmail, sendClientBookingRequestEmail, sendConfirmedBookingEmail, sendReviewRequestEmail, sendCrmEmail } from "./bookingEmail";
@@ -928,6 +928,26 @@ export const appRouter = router({
         bodyEn: z.string().trim().min(1).max(6000),
       }))
       .mutation(({ input }) => saveReviewRequestEmailTemplate(input)),
+
+    postVisitTemplate: adminMiddleware.query(() => getPostVisitEmailTemplate()),
+    savePostVisitTemplate: adminMiddleware
+      .input(z.object({
+        subjectRu: z.string().trim().min(1).max(255),
+        subjectEn: z.string().trim().min(1).max(255),
+        bodyRu: z.string().trim().min(1).max(6000),
+        bodyEn: z.string().trim().min(1).max(6000),
+      }))
+      .mutation(({ input }) => savePostVisitEmailTemplate(input)),
+
+    birthdayTemplate: adminMiddleware.query(() => getBirthdayEmailTemplate()),
+    saveBirthdayTemplate: adminMiddleware
+      .input(z.object({
+        subjectRu: z.string().trim().min(1).max(255),
+        subjectEn: z.string().trim().min(1).max(255),
+        bodyRu: z.string().trim().min(1).max(6000),
+        bodyEn: z.string().trim().min(1).max(6000),
+      }))
+      .mutation(({ input }) => saveBirthdayEmailTemplate(input)),
 
     publishReview: adminMiddleware
       .input(z.object({ id: z.number(), publish: z.boolean() }))

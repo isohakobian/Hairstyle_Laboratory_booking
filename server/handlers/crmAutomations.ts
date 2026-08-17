@@ -2,12 +2,14 @@ import type { Request, Response } from "express";
 import {
   claimAutomationEmailDelivery,
   getBirthdayCrmCandidates,
+  getBirthdayEmailTemplate,
   getPostVisitCrmCandidates,
+  getPostVisitEmailTemplate,
   markAutomationEmailDeliverySent,
   recordClientEmailDelivery,
   releaseAutomationEmailDeliveryClaim,
 } from "../db";
-import { buildBirthdayGreetingEmail, buildPostVisitCheckInEmail, sendCrmEmail } from "../bookingEmail";
+import { buildConfiguredBirthdayEmail, buildConfiguredPostVisitEmail, sendCrmEmail } from "../bookingEmail";
 import { sdk } from "../_core/sdk";
 
 const BOOKING_URL = "https://isaacbarber-axczkyb2.manus.space/booking";
@@ -40,7 +42,7 @@ function localDateBounds(date: string) {
 async function runPostVisitCheckIns() {
   const visitDate = getYerevanDateDaysAgo(POST_VISIT_DELAY_DAYS);
   const { start, end } = localDateBounds(visitDate);
-  const candidates = await getPostVisitCrmCandidates(start, end);
+  const [candidates, template] = await Promise.all([getPostVisitCrmCandidates(start, end), getPostVisitEmailTemplate()]);
   let sent = 0;
   let skipped = 0;
   const failures: Array<{ key: string; message: string }> = [];
@@ -57,7 +59,7 @@ async function runPostVisitCheckIns() {
       skipped += 1;
       continue;
     }
-    const email = buildPostVisitCheckInEmail(candidate.client.name, BOOKING_URL);
+    const email = buildConfiguredPostVisitEmail(candidate.client.name, BOOKING_URL, template);
     try {
       const result = await sendCrmEmail(candidate.client.email, email, "crm-post-visit-14-day");
       const skippedDelivery = Boolean(result && typeof result === "object" && "skipped" in result && result.skipped);
@@ -77,7 +79,7 @@ async function runBirthdayGreetings() {
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: YEREVAN_TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
   const year = Number(today.slice(0, 4));
   const monthDay = today.slice(5);
-  const candidates = await getBirthdayCrmCandidates(monthDay);
+  const [candidates, template] = await Promise.all([getBirthdayCrmCandidates(monthDay), getBirthdayEmailTemplate()]);
   let sent = 0;
   let skipped = 0;
   const failures: Array<{ key: string; message: string }> = [];
@@ -93,7 +95,7 @@ async function runBirthdayGreetings() {
       skipped += 1;
       continue;
     }
-    const email = buildBirthdayGreetingEmail(candidate.client.name, BOOKING_URL);
+    const email = buildConfiguredBirthdayEmail(candidate.client.name, BOOKING_URL, template);
     try {
       const result = await sendCrmEmail(candidate.client.email, email, "crm-birthday-greeting");
       const skippedDelivery = Boolean(result && typeof result === "object" && "skipped" in result && result.skipped);

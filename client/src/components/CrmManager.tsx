@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useState, useMemo } from 'react';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Eye, X } from 'lucide-react';
+import CrmTemplateEditor from './CrmTemplateEditor';
 
 type Language = 'ru' | 'en';
 type AudienceFilter = 'newsletter_consented' | 'upcoming_booking' | 'recent_6m' | 'specific_service';
@@ -31,12 +32,16 @@ export default function CrmManager({ language }: { language: Language }) {
   const [form, setForm] = useState<CampaignForm>(emptyForm);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [selectedCampaignId, setSelectedCampaignId] = useState<number | null>(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+
   const { data: campaigns, isLoading: campaignsLoading, refetch: refetchCampaigns } = trpc.admin.crmCampaigns.useQuery();
   const { data: services } = trpc.admin.services.useQuery();
+
   const previewInput = useMemo(() => ({
     audienceFilter: form.audienceFilter,
     targetServiceId: form.audienceFilter === 'specific_service' && form.targetServiceId ? Number(form.targetServiceId) : null,
   }), [form.audienceFilter, form.targetServiceId]);
+
   const { data: previewRecipients, isLoading: previewLoading } = trpc.admin.crmAudiencePreview.useQuery(previewInput);
   const { data: deliveries } = trpc.admin.crmCampaignDeliveries.useQuery(
     { campaignId: selectedCampaignId ?? 0 },
@@ -46,6 +51,7 @@ export default function CrmManager({ language }: { language: Language }) {
     { campaignId: selectedCampaignId ?? 0 },
     { enabled: Boolean(selectedCampaignId) },
   );
+
   const saveMutation = trpc.admin.saveCrmCampaign.useMutation({
     onSuccess: () => {
       toast.success(ru ? 'Кампания сохранена' : 'Campaign saved');
@@ -55,6 +61,7 @@ export default function CrmManager({ language }: { language: Language }) {
     },
     onError: error => toast.error(error.message),
   });
+
   const sendMutation = trpc.admin.sendCrmCampaign.useMutation({
     onSuccess: result => {
       toast.success(ru ? `Отправлено: ${result.sentCount}. Ошибки: ${result.errorCount}.` : `Sent: ${result.sentCount}. Errors: ${result.errorCount}.`);
@@ -69,6 +76,7 @@ export default function CrmManager({ language }: { language: Language }) {
     ...form,
     targetServiceId: form.audienceFilter === 'specific_service' && form.targetServiceId ? Number(form.targetServiceId) : null,
   });
+
   const editCampaign = (campaign: NonNullable<typeof campaigns>[number]) => {
     setEditingId(campaign.id);
     setSelectedCampaignId(campaign.id);
@@ -82,6 +90,7 @@ export default function CrmManager({ language }: { language: Language }) {
       targetServiceId: campaign.targetServiceId ? String(campaign.targetServiceId) : '',
     });
   };
+
   const inputStyle: React.CSSProperties = { width: '100%', padding: '0.7rem 0', background: 'transparent', border: 'none', borderBottom: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))', outline: 'none', fontFamily: "'Inter', sans-serif", fontSize: '0.875rem' };
   const labelStyle: React.CSSProperties = { fontFamily: "'Inter', sans-serif", fontSize: '0.625rem', fontWeight: 600, letterSpacing: '0.13em', textTransform: 'uppercase', color: 'hsl(var(--muted-foreground))' };
   const audienceLabel = (value: AudienceFilter) => ({
@@ -97,10 +106,11 @@ export default function CrmManager({ language }: { language: Language }) {
         <div>
           <p style={{ ...labelStyle, margin: '0 0 0.35rem', color: 'var(--gold-mid)' }}>{ru ? 'Email CRM' : 'Email CRM'}</p>
           <h3 style={{ margin: 0, fontFamily: "'Playfair Display', serif", fontStyle: 'italic' }}>{ru ? 'Новое сообщение клиентам' : 'New client message'}</h3>
-          <p style={{ margin: '0.55rem 0 0', maxWidth: '38rem', color: 'hsl(var(--muted-foreground))', fontSize: '0.8rem', lineHeight: 1.55 }}>{ru ? 'Сначала создай черновик, проверь аудиторию и текст, затем отправь письмо вручную.' : 'Create a draft, check the audience and copy, then send the email manually.'}</p>
+          <p style={{ margin: '0.55rem 0 0', maxWidth: '38rem', color: 'hsl(var(--muted-foreground))', fontSize: '0.8rem', lineHeight: 1.55 }}>{ru ? 'Создай черновик, проверь текст в превью и отправь рассылку выбранной аудитории.' : 'Draft a campaign, inspect the live preview, and broadcast to the selected audience.'}</p>
         </div>
         {previewLoading ? <span style={{ ...labelStyle, display: 'inline-flex', gap: '0.35rem', alignItems: 'center' }}><Loader2 size={12} className="animate-spin" />{ru ? 'Считаю аудиторию…' : 'Counting audience…'}</span> : <span style={{ ...labelStyle, color: 'var(--gold-mid)' }}>{ru ? `${previewRecipients?.length ?? 0} получателей` : `${previewRecipients?.length ?? 0} recipients`}</span>}
       </div>
+
       <div style={{ display: 'grid', gap: '1rem' }}>
         <label style={{ display: 'grid', gap: '0.4rem' }}><span style={labelStyle}>{ru ? 'Название кампании' : 'Campaign name'}</span><input value={form.title} onChange={event => update('title', event.target.value)} placeholder={ru ? 'Например: Отпуск в ноябре' : 'For example: November vacation'} style={inputStyle} /></label>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(15rem, 1fr))', gap: '1rem' }}>
@@ -116,11 +126,18 @@ export default function CrmManager({ language }: { language: Language }) {
           {form.audienceFilter === 'specific_service' && <label style={{ display: 'grid', gap: '0.4rem' }}><span style={labelStyle}>{ru ? 'Услуга' : 'Service'}</span><select value={form.targetServiceId} onChange={event => update('targetServiceId', event.target.value)} style={{ ...inputStyle, background: 'hsl(var(--card))' }}><option value="">—</option>{(services ?? []).map(service => <option key={service.id} value={service.id}>{service.nameRu} / {service.nameEn}</option>)}</select></label>}
         </div>
       </div>
-      <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '1.2rem' }}>
+
+      <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '1.2rem', alignItems: 'center' }}>
         <button type="button" className="btn-primary" onClick={submit} disabled={saveMutation.isPending}>{saveMutation.isPending ? (ru ? 'Сохраняю…' : 'Saving…') : (editingId ? (ru ? 'Сохранить изменения' : 'Save changes') : (ru ? 'Сохранить черновик' : 'Save draft'))}</button>
-        {editingId && <button type="button" className="btn-outline" onClick={() => { setEditingId(null); setForm(emptyForm()); }}>{ru ? 'Новый черновик' : 'New draft'}</button>}
+        <button type="button" className="btn-outline" onClick={() => setShowPreviewModal(true)} style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.625rem' }}><Eye size={13} />{ru ? 'Предпросмотр письма' : 'Preview email'}</button>
       </div>
     </section>
+
+    {/* Template Editors for Automated Birthday & Post-Visit Emails */}
+    <div style={{ padding: '1.25rem', border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))' }}>
+      <CrmTemplateEditor language={language} templateType="postVisit" />
+      <CrmTemplateEditor language={language} templateType="birthday" />
+    </div>
 
     <section>
       <div style={{ marginBottom: '0.9rem' }}><p style={{ ...labelStyle, margin: '0 0 0.35rem', color: 'var(--gold-mid)' }}>{ru ? 'История' : 'History'}</p><h3 style={{ margin: 0, fontFamily: "'Playfair Display', serif", fontStyle: 'italic' }}>{ru ? 'Кампании и доставки' : 'Campaigns and deliveries'}</h3></div>
@@ -130,5 +147,44 @@ export default function CrmManager({ language }: { language: Language }) {
         {selectedCampaignId === campaign.id && <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid hsl(var(--border))' }}><p style={{ ...labelStyle, margin: '0 0 0.6rem' }}>{ru ? `Отправлено ${campaignStats?.sent ?? campaign.sentCount}, ошибок ${campaignStats?.failed ?? campaign.errorCount}` : `Sent ${campaignStats?.sent ?? campaign.sentCount}, errors ${campaignStats?.failed ?? campaign.errorCount}`}</p>{(deliveries ?? []).length === 0 ? <p style={{ margin: 0, color: 'hsl(var(--muted-foreground))', fontSize: '0.75rem' }}>{ru ? 'История пока пуста.' : 'No delivery history yet.'}</p> : <div style={{ display: 'grid', gap: '0.4rem' }}>{deliveries?.slice(0, 20).map(delivery => <div key={delivery.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', flexWrap: 'wrap', fontSize: '0.75rem' }}><span>{delivery.recipientEmail}</span><span style={{ color: delivery.deliveryStatus === 'failed' ? 'hsl(0 60% 50%)' : delivery.deliveryStatus === 'sent' ? 'hsl(142 50% 40%)' : 'hsl(var(--muted-foreground))' }}>{delivery.deliveryStatus}{delivery.errorMessage ? ` · ${delivery.errorMessage}` : ''}</span></div>)}</div>}</div>}
       </article>)}</div>}
     </section>
+
+    {/* Live Preview Modal */}
+    {showPreviewModal && (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '1rem' }}>
+        <div style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', maxWidth: '36rem', width: '100%', padding: '1.75rem', maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}>
+          <button type="button" className="btn-ghost" onClick={() => setShowPreviewModal(false)} style={{ position: 'absolute', top: '1.25rem', right: '1.25rem', padding: 0 }}><X size={18} /></button>
+          <p style={{ ...labelStyle, margin: '0 0 0.4rem', color: 'var(--gold-mid)' }}>{ru ? 'Предпросмотр рассылки' : 'Broadcast preview'}</p>
+          <h3 style={{ margin: '0 0 1rem', fontFamily: "'Playfair Display', serif" }}>{form.title || (ru ? 'Без названия' : 'Untitled')}</h3>
+          
+          <div style={{ display: 'grid', gap: '1rem', background: 'hsl(var(--secondary))', padding: '1.25rem', border: '1px solid hsl(var(--border))', fontSize: '0.85rem' }}>
+            <div>
+              <p style={{ ...labelStyle, margin: '0 0 0.2rem' }}>RU · {ru ? 'Тема' : 'Subject'}</p>
+              <p style={{ margin: 0, fontWeight: 700 }}>{form.subjectRu || '—'}</p>
+            </div>
+            <div>
+              <p style={{ ...labelStyle, margin: '0 0 0.2rem' }}>RU · {ru ? 'Текст' : 'Body'}</p>
+              <div style={{ margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{form.bodyRu || '—'}</div>
+            </div>
+            <hr style={{ border: 'none', borderTop: '1px solid hsl(var(--border))', margin: '0.5rem 0' }} />
+            <div>
+              <p style={{ ...labelStyle, margin: '0 0 0.2rem' }}>EN · Subject</p>
+              <p style={{ margin: 0, fontWeight: 700 }}>{form.subjectEn || '—'}</p>
+            </div>
+            <div>
+              <p style={{ ...labelStyle, margin: '0 0 0.2rem' }}>EN · Body</p>
+              <div style={{ margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{form.bodyEn || '—'}</div>
+            </div>
+            <div>
+              <p style={{ ...labelStyle, margin: '0 0 0.2rem' }}>{ru ? 'Аудитория' : 'Audience'}</p>
+              <p style={{ margin: 0 }}>{audienceLabel(form.audienceFilter)} ({previewRecipients?.length ?? 0} {ru ? 'получателей' : 'recipients'})</p>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem' }}>
+            <button type="button" className="btn-outline" onClick={() => setShowPreviewModal(false)} style={{ fontSize: '0.625rem' }}>{ru ? 'Закрыть' : 'Close'}</button>
+          </div>
+        </div>
+      </div>
+    )}
   </div>;
 }

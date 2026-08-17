@@ -13,9 +13,16 @@ const mocks = vi.hoisted(() => ({
   buildPostVisit: vi.fn(() => ({ subject: "Check in", text: "check in", html: "<p>check in</p>" })),
 }));
 
+const mockTemplates = vi.hoisted(() => ({
+  getPostVisitTemplate: vi.fn(async () => ({ subjectRu: "RU", subjectEn: "EN", bodyRu: "RU", bodyEn: "EN" })),
+  getBirthdayTemplate: vi.fn(async () => ({ subjectRu: "RU", subjectEn: "EN", bodyRu: "RU", bodyEn: "EN" })),
+}));
+
 vi.mock("./db", () => ({
   getBirthdayCrmCandidates: mocks.getBirthday,
   getPostVisitCrmCandidates: mocks.getPostVisit,
+  getBirthdayEmailTemplate: mockTemplates.getBirthdayTemplate,
+  getPostVisitEmailTemplate: mockTemplates.getPostVisitTemplate,
   claimAutomationEmailDelivery: mocks.claim,
   markAutomationEmailDeliverySent: mocks.markSent,
   releaseAutomationEmailDeliveryClaim: mocks.releaseClaim,
@@ -25,6 +32,8 @@ vi.mock("./db", () => ({
 vi.mock("./bookingEmail", () => ({
   buildBirthdayGreetingEmail: mocks.buildBirthday,
   buildPostVisitCheckInEmail: mocks.buildPostVisit,
+  buildConfiguredBirthdayEmail: mocks.buildBirthday,
+  buildConfiguredPostVisitEmail: mocks.buildPostVisit,
   sendCrmEmail: mocks.sendEmail,
 }));
 

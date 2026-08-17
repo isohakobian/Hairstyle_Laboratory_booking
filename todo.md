@@ -238,3 +238,10 @@
 - [x] Add campaign history and delivery status tracking in the admin dashboard
 - [x] Add CRM automation tests and mobile/desktop visual verification
 - [x] Enable the daily CRM Heartbeat schedule after the user confirms deployment and production activation
+
+## CRM Template Editor & Campaign Preview
+- [x] Add editable database-backed email templates for automated birthday greetings and 14-day post-visit check-ins
+- [x] Add admin interface to customize automated email templates in Russian and English
+- [x] Implement live preview modal for manual CRM broadcast campaigns before sending
+- [x] Add automated template integration to daily CRM scheduled automations
+- [x] Add Vitest regression tests and verify UI previews
