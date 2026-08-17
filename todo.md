@@ -264,3 +264,9 @@
 - [x] Add a test-send button with loading and success/error feedback in the CRM workspace
 - [x] Add recommended email banner dimensions and format guidance next to the upload control
 - [x] Add regression tests and verify the test-send workflow and responsive guidance UI
+
+## CRM Rich Text Email Templates
+- [x] Add rich text formatting controls (bold, color, lists) to CRM email template editors
+- [x] Support safe HTML rendering in automated email deliveries and preview modals
+- [x] Add clear toolbar actions for formatting selection in bilingual template textareas
+- [x] Add regression tests and verify rich text layout in email clients and previews

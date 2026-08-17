@@ -236,8 +236,48 @@ function renderReviewTemplate(value: string, details: BookingEmailDetails, revie
     .replaceAll("{{reviewUrl}}", reviewUrl);
 }
 
-function reviewTemplateHtml(value: string) {
-  return escapeHtml(value).replace(/\n/g, "<br>");
+function emailRichTextHtml(value: string) {
+  const allowedTags = new Set(["strong", "b", "em", "ul", "ol", "li", "br", "p", "div", "span", "font"]);
+  const tagPattern = /<\/?(?:strong|b|em|ul|ol|li|br|p|div|span|font)(?:\s+[^>]*?)?\s*\/?>/gi;
+  let result = "";
+  let cursor = 0;
+  for (const match of Array.from(value.matchAll(tagPattern))) {
+    const index = match.index ?? cursor;
+    result += escapeHtml(value.slice(cursor, index)).replace(/\n/g, "<br>");
+    const rawTag = match[0];
+    const parsed = /^<\s*(\/?)\s*([a-z]+)(?:\s+([^>]*?))?\s*\/?>$/i.exec(rawTag);
+    if (!parsed) {
+      cursor = index + rawTag.length;
+      continue;
+    }
+    const closing = Boolean(parsed[1]);
+    const tagName = parsed[2].toLowerCase();
+    const attributes = parsed[3] ?? "";
+    if (allowedTags.has(tagName)) {
+      if (closing) {
+        result += tagName === "br" ? "" : `</${tagName === "font" ? "span" : tagName}>`;
+      } else if (tagName === "span" || tagName === "font") {
+        const colorMatch = attributes.match(/(?:style\s*=\s*["'][^"']*?color\s*:\s*|color\s*=\s*["'])(#[0-9a-f]{3,8}|rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\))[;\s"']*/i);
+        const color = colorMatch?.[1];
+        result += color ? `<span style="color:${color}">` : "<span>";
+      } else {
+        result += `<${tagName}>`;
+      }
+    }
+    cursor = index + rawTag.length;
+  }
+  result += escapeHtml(value.slice(cursor)).replace(/\n/g, "<br>");
+  return result;
+}
+
+function emailRichTextPlain(value: string) {
+  return value
+    .replace(/<br\s*\/?\s*>/gi, "\n")
+    .replace(/<li\b[^>]*>/gi, "• ")
+    .replace(/<\/li>/gi, "\n")
+    .replace(/<\/(?:p|div)>/gi, "\n")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/gi, " ");
 }
 
 export function buildConfiguredReviewRequestEmail(
@@ -254,7 +294,7 @@ export function buildConfiguredReviewRequestEmail(
   return {
     subject: subjectEn || subjectRu || "Thank you for your visit — Isaac",
     text: [bodyEn, bodyRu].filter(Boolean).join("\n\n— — —\n\n"),
-    html: `<!doctype html><html><body style="margin:0;background:#F7F5F1;font-family:Arial,sans-serif;color:#17191E;"><div style="max-width:600px;margin:0 auto;padding:36px 24px;"><p style="margin:0 0 8px;color:#A17A2C;font-size:11px;font-weight:700;letter-spacing:2px;">ISAAC HAKOBIAN</p><h1 style="margin:0 0 18px;font-family:Georgia,serif;font-size:28px;line-height:1.15;">${escapeHtml(subjectEn || subjectRu)}</h1><p style="margin:0 0 16px;font-size:15px;line-height:1.7;">${reviewTemplateHtml(bodyEn)}</p><p style="margin:0 0 24px;font-size:15px;line-height:1.7;">${reviewTemplateHtml(bodyRu)}</p><a href="${safeUrl}" style="display:inline-block;background:#17191E;color:#FFFFFF;text-decoration:none;padding:14px 20px;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">Leave feedback / Оставить отзыв</a></div></body></html>`,
+    html: `<!doctype html><html><body style="margin:0;background:#F7F5F1;font-family:Arial,sans-serif;color:#17191E;"><div style="max-width:600px;margin:0 auto;padding:36px 24px;"><p style="margin:0 0 8px;color:#A17A2C;font-size:11px;font-weight:700;letter-spacing:2px;">ISAAC HAKOBIAN</p><h1 style="margin:0 0 18px;font-family:Georgia,serif;font-size:28px;line-height:1.15;">${escapeHtml(subjectEn || subjectRu)}</h1><div style="margin:0 0 16px;font-size:15px;line-height:1.7;">${emailRichTextHtml(bodyEn)}</div><div style="margin:0 0 24px;font-size:15px;line-height:1.7;">${emailRichTextHtml(bodyRu)}</div><a href="${safeUrl}" style="display:inline-block;background:#17191E;color:#FFFFFF;text-decoration:none;padding:14px 20px;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">Leave feedback / Оставить отзыв</a></div></body></html>`,
   };
 }
 
@@ -574,8 +614,8 @@ export function buildCrmBroadcastEmail(content: CrmBroadcastContent): EmailMessa
   const action = actionUrl ? `<a href="${actionUrl}" style="display:inline-block;margin-top:8px;background:#17191E;color:#FFFFFF;text-decoration:none;padding:14px 20px;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">${escapeHtml(content.actionLabelEn || content.actionLabelRu || "Open / Открыть")}</a>` : "";
   return {
     subject,
-    text: [`Hi, ${content.clientName}.`, bodyEn, campaignImageUrl ? `Campaign image: ${campaignImageUrl}` : "", content.actionUrl ? `${content.actionLabelEn || "Open"}: ${content.actionUrl}` : "", "", `Здравствуйте, ${content.clientName}.`, bodyRu, content.actionUrl ? `${content.actionLabelRu || "Открыть"}: ${content.actionUrl}` : "", "", "Isaac"].filter(Boolean).join("\n"),
-    html: `<!doctype html><html><body style="margin:0;background:#F7F5F1;font-family:Arial,sans-serif;color:#17191E;"><div style="max-width:600px;margin:0 auto;padding:36px 24px;"><p style="margin:0 0 8px;color:#A17A2C;font-size:11px;font-weight:700;letter-spacing:2px;">ISAAC HAKOBIAN</p><h1 style="margin:0 0 18px;font-family:Georgia,serif;font-size:32px;line-height:1.1;">${escapeHtml(subject)}</h1>${banner}<p style="margin:0 0 8px;font-size:15px;line-height:1.7;">Hi, ${safeName}.</p><p style="margin:0 0 16px;font-size:15px;line-height:1.7;">${reviewTemplateHtml(bodyEn)}</p><p style="margin:0 0 24px;font-size:15px;line-height:1.7;">${reviewTemplateHtml(bodyRu)}</p>${action}<p style="margin:26px 0 0;font-size:15px;line-height:1.6;">See you soon,<br><strong>Isaac</strong></p></div></body></html>`,
+    text: [`Hi, ${content.clientName}.`, emailRichTextPlain(bodyEn), campaignImageUrl ? `Campaign image: ${campaignImageUrl}` : "", content.actionUrl ? `${content.actionLabelEn || "Open"}: ${content.actionUrl}` : "", "", `Здравствуйте, ${content.clientName}.`, emailRichTextPlain(bodyRu), content.actionUrl ? `${content.actionLabelRu || "Открыть"}: ${content.actionUrl}` : "", "", "Isaac"].filter(Boolean).join("\n"),
+    html: `<!doctype html><html><body style="margin:0;background:#F7F5F1;font-family:Arial,sans-serif;color:#17191E;"><div style="max-width:600px;margin:0 auto;padding:36px 24px;"><p style="margin:0 0 8px;color:#A17A2C;font-size:11px;font-weight:700;letter-spacing:2px;">ISAAC HAKOBIAN</p><h1 style="margin:0 0 18px;font-family:Georgia,serif;font-size:32px;line-height:1.1;">${escapeHtml(subject)}</h1>${banner}<p style="margin:0 0 8px;font-size:15px;line-height:1.7;">Hi, ${safeName}.</p><div style="margin:0 0 16px;font-size:15px;line-height:1.7;">${emailRichTextHtml(bodyEn)}</div><div style="margin:0 0 24px;font-size:15px;line-height:1.7;">${emailRichTextHtml(bodyRu)}</div>${action}<p style="margin:26px 0 0;font-size:15px;line-height:1.6;">See you soon,<br><strong>Isaac</strong></p></div></body></html>`,
   };
 }
 

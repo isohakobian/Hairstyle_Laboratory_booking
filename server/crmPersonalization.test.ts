@@ -36,6 +36,24 @@ describe("CRM campaign personalization", () => {
     expect(email.html).toContain("[TEST] News");
   });
 
+  it("keeps supported rich text and strips unsafe HTML from the email body", () => {
+    const email = buildCrmBroadcastEmail({
+      clientName: "Alex",
+      subjectRu: "Форматирование",
+      subjectEn: "Formatting",
+      bodyRu: '<strong>Важно</strong><ul><li>Первый пункт</li><li style="color:red">Второй пункт</li></ul><script>alert(1)</script>',
+      bodyEn: '<span style="color:#A17A2C">Gold note</span><ol><li>First</li></ol><script>bad()</script>',
+    });
+
+    expect(email.html).toContain('<strong>Важно</strong>');
+    expect(email.html).toContain('<span style="color:#A17A2C">Gold note</span>');
+    expect(email.html).toContain('<ul><li>Первый пункт</li><li>Второй пункт</li></ul>');
+    expect(email.html).toContain('<ol><li>First</li></ol>');
+    expect(email.html).not.toContain('<script>');
+    expect(email.text).toContain('• Первый пункт');
+    expect(email.text).toContain('First');
+  });
+
   it("renders an optional stored banner URL in the outgoing email", () => {
     const email = buildCrmBroadcastEmail({
       clientName: "Alex",

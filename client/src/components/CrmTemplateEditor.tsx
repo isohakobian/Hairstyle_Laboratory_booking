@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { trpc } from '@/lib/trpc';
+import RichTextEditor from './RichTextEditor';
 
 type Language = 'ru' | 'en';
 type Draft = { subjectRu: string; subjectEn: string; bodyRu: string; bodyEn: string };
@@ -58,8 +59,8 @@ export default function CrmTemplateEditor({ language, templateType }: { language
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(17rem, 1fr))', gap: '1rem' }}>
         <label style={{ display: 'grid', gap: '0.45rem' }}><span style={labelStyle}>RU · {ru ? 'Тема' : 'Subject'}</span><input value={draft.subjectRu} onChange={event => update('subjectRu', event.target.value)} style={inputStyle} /></label>
         <label style={{ display: 'grid', gap: '0.45rem' }}><span style={labelStyle}>EN · Subject</span><input value={draft.subjectEn} onChange={event => update('subjectEn', event.target.value)} style={inputStyle} /></label>
-        <label style={{ display: 'grid', gap: '0.45rem' }}><span style={labelStyle}>RU · {ru ? 'Текст' : 'Body'}</span><textarea rows={6} value={draft.bodyRu} onChange={event => update('bodyRu', event.target.value)} style={{ ...inputStyle, resize: 'vertical' }} /></label>
-        <label style={{ display: 'grid', gap: '0.45rem' }}><span style={labelStyle}>EN · Body</span><textarea rows={6} value={draft.bodyEn} onChange={event => update('bodyEn', event.target.value)} style={{ ...inputStyle, resize: 'vertical' }} /></label>
+        <label style={{ display: 'grid', gap: '0.45rem' }}><span style={labelStyle}>RU · {ru ? 'Текст' : 'Body'}</span><RichTextEditor value={draft.bodyRu} onChange={value => update('bodyRu', value)} language={language} /></label>
+        <label style={{ display: 'grid', gap: '0.45rem' }}><span style={labelStyle}>EN · Body</span><RichTextEditor value={draft.bodyEn} onChange={value => update('bodyEn', value)} language={language} /></label>
       </div>
       <button type="button" className="btn-primary" onClick={save} disabled={saveMutation.isPending || !draft.subjectRu.trim() || !draft.subjectEn.trim() || !draft.bodyRu.trim() || !draft.bodyEn.trim()} style={{ marginTop: '1rem', fontSize: '0.625rem' }}>
         {saveMutation.isPending ? <><Loader2 size={13} className="animate-spin" style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: '0.35rem' }} />{ru ? 'Сохранение...' : 'Saving...'}</> : (ru ? 'Сохранить шаблон' : 'Save template')}
