@@ -440,6 +440,16 @@ export default function AdminDashboard() {
             <div><p style={{ ...labelStyle, margin: '0 0 0.35rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Операционный обзор' : 'Operational overview'}</p><h3 style={{ margin: 0, fontStyle: 'italic' }}>{language === 'ru' ? `Сегодня · ${todaySummary?.date ?? '…'}` : `Today · ${todaySummary?.date ?? '…'}`}</h3></div>
             <p style={{ ...labelStyle, margin: 0, fontSize: '0.5625rem' }}>{language === 'ru' ? `${todaySummary?.pendingCount ?? 0} ожидают · ${todaySummary?.confirmedCount ?? 0} подтверждено` : `${todaySummary?.pendingCount ?? 0} pending · ${todaySummary?.confirmedCount ?? 0} confirmed`}</p>
           </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(12rem, 1fr))', gap: '1.25rem', marginBottom: '1.25rem', paddingBottom: '1.25rem', borderBottom: '1px solid hsl(var(--border))' }}>
+            <div style={{ padding: '0.9rem', background: 'hsl(var(--secondary))', borderLeft: '2px solid var(--gold-mid)' }}>
+              <p style={{ margin: 0, color: 'var(--gold-mid)', fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: '1.625rem' }}>{((todaySummary as { todayRevenueAmd?: number })?.todayRevenueAmd ?? 0).toLocaleString()} ֏</p>
+              <p style={{ ...labelStyle, margin: '0.2rem 0 0', fontSize: '0.5rem' }}>{language === 'ru' ? 'Выручка за сегодня' : 'Today’s revenue'}</p>
+            </div>
+            <div style={{ padding: '0.9rem', background: 'hsl(var(--secondary))', borderLeft: '2px solid hsl(207, 55%, 48%)' }}>
+              <p style={{ margin: 0, color: 'hsl(207, 55%, 48%)', fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: '1.625rem' }}>{(todaySummary as { completedCount?: number })?.completedCount ?? 0}</p>
+              <p style={{ ...labelStyle, margin: '0.2rem 0 0', fontSize: '0.5rem' }}>{language === 'ru' ? 'Завершено визитов' : 'Completed visits'}</p>
+            </div>
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(15rem, 1fr))', gap: '1.25rem' }}>
             <div>
               <p style={{ ...labelStyle, margin: '0 0 0.55rem', fontSize: '0.5625rem' }}>{language === 'ru' ? 'Ближайшие клиенты' : 'Today’s clients'}</p>

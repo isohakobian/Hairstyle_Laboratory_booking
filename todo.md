@@ -283,3 +283,8 @@
 - [x] Fix mobile overflow and spacing issues in client cards (preventing email and Instagram handle overlap)
 - [x] Add executive dashboard metrics and streamlined mobile-first layout inspired by professional booking apps
 - [x] Add Vitest tests for mid-visit service updates and verify status lifecycle transitions
+
+## Admin Dashboard Daily Metrics
+- [x] Add a home dashboard widget showing today's revenue in AMD and completed visit count
+- [x] Add regression coverage for the daily metrics payload and admin rendering
+- [x] Verify the widget on desktop and mobile

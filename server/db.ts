@@ -1169,11 +1169,15 @@ export async function getAdminTodaySummary() {
     if (cursor < windowEnd) gaps.push({ startTime: timeForMinutes(cursor), endTime: timeForMinutes(windowEnd) });
     return gaps;
   });
+  const todayCompleted = todayBookings.filter((booking) => booking.status === "completed" || Boolean(booking.completedAt));
+  const todayRevenueAmd = todayCompleted.reduce((sum, booking) => sum + (booking.finalPriceAmd ?? 0), 0);
   return {
     date,
     bookings: activeBookings,
     pendingCount: activeBookings.filter((booking) => booking.status === "pending").length,
     confirmedCount: activeBookings.filter((booking) => booking.status === "confirmed").length,
+    completedCount: todayCompleted.length,
+    todayRevenueAmd,
     freeWindows,
   };
 }

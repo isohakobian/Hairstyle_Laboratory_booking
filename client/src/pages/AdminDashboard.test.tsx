@@ -19,7 +19,7 @@ vi.mock("@/lib/trpc", () => ({
   trpc: {
     admin: {
       bookings: { useQuery: () => ({ data: [{ id: 1, status: "confirmed", clientName: "Alex", referenceNumber: "REF001", serviceName: "Haircut", serviceSummary: "Haircut", totalDurationMinutes: 45, totalPriceSummary: "15,000 ֏", bookingDate: "2099-12-30", bookingTime: "14:00", clientPhone: "+37455000000", clientEmail: "alex@example.com", clientInstagram: "alex.style", comment: null, createdAt: new Date(), completedAt: new Date() }], isLoading: false, isError: false, refetch: vi.fn() }) },
-      today: { useQuery: () => ({ data: { date: '2099-12-30', bookings: [{ id: 1, status: 'confirmed', clientName: 'Alex', bookingTime: '14:00' }], pendingCount: 0, confirmedCount: 1, freeWindows: [{ startTime: '09:00', endTime: '14:00' }] } }) },
+      today: { useQuery: () => ({ data: { date: '2099-12-30', bookings: [{ id: 1, status: 'confirmed', clientName: 'Alex', bookingTime: '14:00' }], pendingCount: 0, confirmedCount: 1, completedCount: 2, todayRevenueAmd: 27000, freeWindows: [{ startTime: '09:00', endTime: '14:00' }] } }) },
       weeklyBookingStats: { useQuery: () => ({ data: { newBookings: 8, cancelledBookings: 2, pendingBookings: 1, confirmedBookings: 4, completedBookings: 6, emailDeliveryErrors: 1 } }) },
       emailDeliveryErrors: { useQuery: () => ({ data: [{ bookingId: 1, referenceNumber: 'REF001', clientName: 'Alex', clientEmail: 'alex@example.com', bookingDate: '2099-12-30', bookingTime: '14:00', services: 'Haircut', notificationType: 'booking-confirmed', errorMessage: '550 5.1.1 User unknown', failedAt: new Date() }] }) },
       bookingReminderSettings: { useQuery: () => ({ data: { firstOffsetMinutes: 1440, firstEnabled: 'yes', secondOffsetMinutes: 120, secondEnabled: 'yes' }, isLoading: false, refetch: vi.fn() }) },
@@ -70,6 +70,10 @@ describe("AdminDashboard navigation", () => {
 
     expect(screen.getByText("Заявки клиентов")).toBeTruthy();
     expect(screen.getByText(/Сегодня · 2099-12-30/)).toBeTruthy();
+    expect(screen.getByText("27,000 ֏")).toBeTruthy();
+    expect(screen.getByText("Выручка за сегодня")).toBeTruthy();
+    expect(screen.getByText("Завершено визитов")).toBeTruthy();
+    expect(screen.getAllByText("2").length).toBeGreaterThan(0);
     expect(screen.getByText("Недельная динамика")).toBeTruthy();
     expect(screen.getByText("Последние 7 дней")).toBeTruthy();
     expect(screen.getByText("Ошибки email")).toBeTruthy();
