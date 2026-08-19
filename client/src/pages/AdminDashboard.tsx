@@ -440,16 +440,56 @@ export default function AdminDashboard() {
             <div><p style={{ ...labelStyle, margin: '0 0 0.35rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Операционный обзор' : 'Operational overview'}</p><h3 style={{ margin: 0, fontStyle: 'italic' }}>{language === 'ru' ? `Сегодня · ${todaySummary?.date ?? '…'}` : `Today · ${todaySummary?.date ?? '…'}`}</h3></div>
             <p style={{ ...labelStyle, margin: 0, fontSize: '0.5625rem' }}>{language === 'ru' ? `${todaySummary?.pendingCount ?? 0} ожидают · ${todaySummary?.confirmedCount ?? 0} подтверждено` : `${todaySummary?.pendingCount ?? 0} pending · ${todaySummary?.confirmedCount ?? 0} confirmed`}</p>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(12rem, 1fr))', gap: '1.25rem', marginBottom: '1.25rem', paddingBottom: '1.25rem', borderBottom: '1px solid hsl(var(--border))' }}>
-            <div style={{ padding: '0.9rem', background: 'hsl(var(--secondary))', borderLeft: '2px solid var(--gold-mid)' }}>
-              <p style={{ margin: 0, color: 'var(--gold-mid)', fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: '1.625rem' }}>{((todaySummary as { todayRevenueAmd?: number })?.todayRevenueAmd ?? 0).toLocaleString()} ֏</p>
-              <p style={{ ...labelStyle, margin: '0.2rem 0 0', fontSize: '0.5rem' }}>{language === 'ru' ? 'Выручка за сегодня' : 'Today’s revenue'}</p>
-            </div>
-            <div style={{ padding: '0.9rem', background: 'hsl(var(--secondary))', borderLeft: '2px solid hsl(207, 55%, 48%)' }}>
-              <p style={{ margin: 0, color: 'hsl(207, 55%, 48%)', fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: '1.625rem' }}>{(todaySummary as { completedCount?: number })?.completedCount ?? 0}</p>
-              <p style={{ ...labelStyle, margin: '0.2rem 0 0', fontSize: '0.5rem' }}>{language === 'ru' ? 'Завершено визитов' : 'Completed visits'}</p>
-            </div>
-          </div>
+          {(() => {
+            const sum = todaySummary as { todayRevenueAmd?: number; prevRevenueAmd?: number; revenueChangePercent?: number; completedCount?: number; dailyTrend?: Array<{ date: string; revenueAmd: number; completedCount: number }> };
+            const rev = sum?.todayRevenueAmd ?? 0;
+            const prevRev = sum?.prevRevenueAmd ?? 0;
+            const change = sum?.revenueChangePercent ?? 0;
+            const trend = sum?.dailyTrend ?? [];
+            const maxRev = Math.max(...trend.map(t => t.revenueAmd), 1000);
+            return (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(12rem, 1fr))', gap: '1.25rem', marginBottom: '1.25rem', paddingBottom: '1.25rem', borderBottom: '1px solid hsl(var(--border))' }}>
+                  <div style={{ padding: '0.9rem', background: 'hsl(var(--secondary))', borderLeft: '2px solid var(--gold-mid)' }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.5rem' }}>
+                      <p style={{ margin: 0, color: 'var(--gold-mid)', fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: '1.625rem' }}>{rev.toLocaleString()} ֏</p>
+                      {prevRev > 0 || rev > 0 ? (
+                        <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: change >= 0 ? 'hsl(142, 50%, 45%)' : 'hsl(0, 60%, 52%)' }}>
+                          {change >= 0 ? `+${change}%` : `${change}%`} {language === 'ru' ? 'к вчера' : 'vs yesterday'}
+                        </span>
+                      ) : null}
+                    </div>
+                    <p style={{ ...labelStyle, margin: '0.2rem 0 0', fontSize: '0.5rem' }}>{language === 'ru' ? 'Выручка за сегодня' : 'Today’s revenue'}</p>
+                  </div>
+                  <div style={{ padding: '0.9rem', background: 'hsl(var(--secondary))', borderLeft: '2px solid hsl(207, 55%, 48%)' }}>
+                    <p style={{ margin: 0, color: 'hsl(207, 55%, 48%)', fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: '1.625rem' }}>{sum?.completedCount ?? 0}</p>
+                    <p style={{ ...labelStyle, margin: '0.2rem 0 0', fontSize: '0.5rem' }}>{language === 'ru' ? 'Завершено визитов' : 'Completed visits'}</p>
+                  </div>
+                </div>
+
+                {trend.length > 0 && (
+                  <div style={{ marginBottom: '1.25rem', paddingBottom: '1.25rem', borderBottom: '1px solid hsl(var(--border))' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                      <p style={{ ...labelStyle, margin: 0, color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Динамика выручки за 14 дней (֏)' : '14-day revenue trend (֏)'}</p>
+                      <p style={{ ...labelStyle, margin: 0, fontSize: '0.5rem' }}>{language === 'ru' ? 'Столбцы = выручка за день' : 'Bars = daily revenue'}</p>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.35rem', height: '5rem', paddingTop: '0.5rem', overflowX: 'auto' }}>
+                      {trend.map(item => {
+                        const heightPct = Math.max(8, Math.round((item.revenueAmd / maxRev) * 100));
+                        const isToday = item.date === (todaySummary as { date?: string })?.date;
+                        return (
+                          <div key={item.date} title={`${item.date}: ${item.revenueAmd.toLocaleString()} ֏ (${item.completedCount} ${language === 'ru' ? 'визитов' : 'visits'})`} style={{ flex: 1, minWidth: '1.25rem', display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
+                            <div style={{ width: '100%', height: `${heightPct}%`, backgroundColor: isToday ? 'var(--gold-mid)' : 'hsl(207, 55%, 48%)', opacity: isToday ? 1 : 0.65, borderRadius: '2px 2px 0 0', transition: 'height 0.3s ease' }} />
+                            <span style={{ fontSize: '0.45rem', color: 'hsl(var(--muted-foreground))', marginTop: '0.25rem', whiteSpace: 'nowrap' }}>{item.date.slice(5)}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </>
+            );
+          })()}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(15rem, 1fr))', gap: '1.25rem' }}>
             <div>
               <p style={{ ...labelStyle, margin: '0 0 0.55rem', fontSize: '0.5625rem' }}>{language === 'ru' ? 'Ближайшие клиенты' : 'Today’s clients'}</p>

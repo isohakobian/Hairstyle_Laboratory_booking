@@ -1171,6 +1171,49 @@ export async function getAdminTodaySummary() {
   });
   const todayCompleted = todayBookings.filter((booking) => booking.status === "completed" || Boolean(booking.completedAt));
   const todayRevenueAmd = todayCompleted.reduce((sum, booking) => sum + (booking.finalPriceAmd ?? 0), 0);
+
+  // Compute previous day date string
+  const todayDateObj = new Date(`${date}T00:00:00Z`);
+  const prevDateObj = new Date(todayDateObj.getTime() - 86400000);
+  const prevDateStr = prevDateObj.toISOString().slice(0, 10);
+
+  // Compute 14 days range for trend chart
+  const fourteenDaysAgoObj = new Date(todayDateObj.getTime() - 13 * 86400000);
+  const fourteenDaysAgoStr = fourteenDaysAgoObj.toISOString().slice(0, 10);
+
+  const [prevDayBookings, past14DaysBookings] = await Promise.all([
+    db.select().from(bookings).where(eq(bookings.bookingDate, prevDateStr)),
+    db.select().from(bookings).where(and(gte(bookings.bookingDate, fourteenDaysAgoStr), lte(bookings.bookingDate, date))),
+  ]);
+
+  const prevCompleted = prevDayBookings.filter((booking) => booking.status === "completed" || Boolean(booking.completedAt));
+  const prevRevenueAmd = prevCompleted.reduce((sum, booking) => sum + (booking.finalPriceAmd ?? 0), 0);
+  const revenueChangePercent = prevRevenueAmd > 0 ? Math.round(((todayRevenueAmd - prevRevenueAmd) / prevRevenueAmd) * 100) : todayRevenueAmd > 0 ? 100 : 0;
+
+  // Build daily trends for past 14 days
+  const trendMap = new Map<string, { revenueAmd: number; completedCount: number }>();
+  for (let i = 0; i < 14; i++) {
+    const d = new Date(fourteenDaysAgoObj.getTime() + i * 86400000);
+    const dStr = d.toISOString().slice(0, 10);
+    trendMap.set(dStr, { revenueAmd: 0, completedCount: 0 });
+  }
+
+  past14DaysBookings.forEach((booking) => {
+    if (booking.status === "completed" || Boolean(booking.completedAt)) {
+      const entry = trendMap.get(booking.bookingDate);
+      if (entry) {
+        entry.revenueAmd += booking.finalPriceAmd ?? 0;
+        entry.completedCount += 1;
+      }
+    }
+  });
+
+  const dailyTrend = Array.from(trendMap.entries()).map(([dayDate, metrics]) => ({
+    date: dayDate,
+    revenueAmd: metrics.revenueAmd,
+    completedCount: metrics.completedCount,
+  }));
+
   return {
     date,
     bookings: activeBookings,
@@ -1178,6 +1221,9 @@ export async function getAdminTodaySummary() {
     confirmedCount: activeBookings.filter((booking) => booking.status === "confirmed").length,
     completedCount: todayCompleted.length,
     todayRevenueAmd,
+    prevRevenueAmd,
+    revenueChangePercent,
+    dailyTrend,
     freeWindows,
   };
 }

@@ -284,7 +284,10 @@
 - [x] Add executive dashboard metrics and streamlined mobile-first layout inspired by professional booking apps
 - [x] Add Vitest tests for mid-visit service updates and verify status lifecycle transitions
 
-## Admin Dashboard Daily Metrics
+## Admin Dashboard Daily Metrics & Trend Charts
 - [x] Add a home dashboard widget showing today's revenue in AMD and completed visit count
 - [x] Add regression coverage for the daily metrics payload and admin rendering
 - [x] Verify the widget on desktop and mobile
+- [x] Add previous day revenue comparison (% change) in the "Today" widget
+- [x] Implement a visual daily revenue and completed visits trend chart for the last 14 days
+- [x] Add test coverage and verify responsive visualization layout on desktop and mobile
