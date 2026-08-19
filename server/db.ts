@@ -1228,6 +1228,55 @@ export async function getAdminTodaySummary() {
   };
 }
 
+export async function getCustomDateRangeFinancialTrend(startDateStr: string, endDateStr: string) {
+  const db = await getDb();
+  if (!db) return { startDate: startDateStr, endDate: endDateStr, totalRevenueAmd: 0, totalCompletedVisits: 0, dailyTrend: [] };
+  
+  const startObj = new Date(`${startDateStr}T00:00:00Z`);
+  const endObj = new Date(`${endDateStr}T00:00:00Z`);
+  const diffTime = Math.abs(endObj.getTime() - startObj.getTime());
+  const diffDays = Math.min(Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1), 365);
+
+  const rangeBookings = await db.select().from(bookings).where(and(gte(bookings.bookingDate, startDateStr), lte(bookings.bookingDate, endDateStr)));
+
+  const trendMap = new Map<string, { revenueAmd: number; completedCount: number }>();
+  for (let i = 0; i < diffDays; i++) {
+    const d = new Date(startObj.getTime() + i * 86400000);
+    const dStr = d.toISOString().slice(0, 10);
+    trendMap.set(dStr, { revenueAmd: 0, completedCount: 0 });
+  }
+
+  let totalRevenueAmd = 0;
+  let totalCompletedVisits = 0;
+
+  rangeBookings.forEach((booking) => {
+    if (booking.status === "completed" || Boolean(booking.completedAt)) {
+      const entry = trendMap.get(booking.bookingDate);
+      const rev = booking.finalPriceAmd ?? 0;
+      totalRevenueAmd += rev;
+      totalCompletedVisits += 1;
+      if (entry) {
+        entry.revenueAmd += rev;
+        entry.completedCount += 1;
+      }
+    }
+  });
+
+  const dailyTrend = Array.from(trendMap.entries()).map(([dayDate, metrics]) => ({
+    date: dayDate,
+    revenueAmd: metrics.revenueAmd,
+    completedCount: metrics.completedCount,
+  }));
+
+  return {
+    startDate: startDateStr,
+    endDate: endDateStr,
+    totalRevenueAmd,
+    totalCompletedVisits,
+    dailyTrend,
+  };
+}
+
 export async function updateReviewPublished(id: number, isPublished: "yes" | "no") {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

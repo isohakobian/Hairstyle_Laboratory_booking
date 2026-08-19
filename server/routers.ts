@@ -10,7 +10,7 @@ import {
   getReviewTokenByHash, markReviewTokenUsed,
   getPublishedReviews, getAllReviews, updateReviewPublished, createManagedService, setServiceActive, updateManagedService, updateBookingServices,
   createBookingStatusRecoveryToken, claimBookingStatusRecoveryToken, getSafeBookingStatusesByEmail,
-  deleteBookingAndRelatedData, declineBookingForInvalidReceipt, getAdminTodaySummary, getBookingReminderSettings, getBookingsWithUnresolvedEmailFailures, getUnresolvedEmailDeliveryErrors, getClientDirectory, getClientEmailDeliveryHistory, getLatestBookingRescheduleEvent, getBookingPage, getManualDepositSettings, getReviewRequestDashboard, getReviewRequestEmailTemplate, getReviewRequestPage, getReviewRequestStats, getWeeklyBookingSummary, recordClientEmailDelivery, saveBookingReminderSettings, saveManualDepositSettings,   saveReviewRequestEmailTemplate, getPostVisitEmailTemplate, savePostVisitEmailTemplate, getBirthdayEmailTemplate, saveBirthdayEmailTemplate, updateManualDepositStatus, getCrmCampaigns, getCrmCampaignById, createCrmCampaign, updateCrmCampaign, getCrmCampaignDeliveries, getCrmCampaignStats, recordCrmCampaignDelivery, getCrmRecipients, saveClientCrmPreference, getClientCrmPreference, CrmAudienceFilter,
+  deleteBookingAndRelatedData, declineBookingForInvalidReceipt, getAdminTodaySummary, getCustomDateRangeFinancialTrend, getBookingReminderSettings, getBookingsWithUnresolvedEmailFailures, getUnresolvedEmailDeliveryErrors, getClientDirectory, getClientEmailDeliveryHistory, getLatestBookingRescheduleEvent, getBookingPage, getManualDepositSettings, getReviewRequestDashboard, getReviewRequestEmailTemplate, getReviewRequestPage, getReviewRequestStats, getWeeklyBookingSummary, recordClientEmailDelivery, saveBookingReminderSettings, saveManualDepositSettings,   saveReviewRequestEmailTemplate, getPostVisitEmailTemplate, savePostVisitEmailTemplate, getBirthdayEmailTemplate, saveBirthdayEmailTemplate, updateManualDepositStatus, getCrmCampaigns, getCrmCampaignById, createCrmCampaign, updateCrmCampaign, getCrmCampaignDeliveries, getCrmCampaignStats, recordCrmCampaignDelivery, getCrmRecipients, saveClientCrmPreference, getClientCrmPreference, CrmAudienceFilter,
 } from "./db";
 import { TRPCError } from "@trpc/server";
 import { buildAppointmentReminderEmail, buildBookingCancelledEmail, buildBookingDeclinedEmail, buildBookingRescheduledEmail, buildClientBookingEmail, buildClientConfirmationEmail, buildCrmBroadcastEmail, buildCrmTestEmail, sendAppointmentReminderEmail, sendBookingCancelledEmail, sendBookingDeclinedEmail, sendBookingEmails, sendBookingRescheduledEmail, sendBookingStatusRecoveryEmail, sendClientBookingRequestEmail, sendConfirmedBookingEmail, sendReviewRequestEmail, sendCrmEmail } from "./bookingEmail";
@@ -630,6 +630,12 @@ export const appRouter = router({
         sort: z.enum(["appointmentAsc", "appointmentDesc", "newest", "statusAsc"]).optional(),
       }))
       .query(({ input }) => getBookingPage(input)),
+    customFinancialTrend: adminMiddleware
+      .input(z.object({
+        startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      }))
+      .query(({ input }) => getCustomDateRangeFinancialTrend(input.startDate, input.endDate)),
     announcements: adminMiddleware.query(() => getAllAnnouncements()),
     crmCampaigns: adminMiddleware.query(() => getCrmCampaigns()),
     crmCampaignDeliveries: adminMiddleware

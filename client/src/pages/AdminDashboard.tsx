@@ -121,8 +121,19 @@ export default function AdminDashboard() {
   const { data: bookings, isLoading: bookingsLoading, isError: bookingsError, refetch: refetchBookings } = trpc.admin.bookings.useQuery(undefined, {
     enabled: isAuthenticated && user?.role === 'admin',
   });
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const defaultStartStr = new Date(Date.now() - 13 * 86400000).toISOString().slice(0, 10);
+  const [trendStartDate, setTrendStartDate] = useState(defaultStartStr);
+  const [trendEndDate, setTrendEndDate] = useState(todayStr);
+
   const { data: todaySummary } = trpc.admin.today.useQuery(undefined, {
     enabled: isAuthenticated && user?.role === 'admin',
+  });
+  const { data: customTrendData, isLoading: customTrendLoading } = trpc.admin.customFinancialTrend.useQuery({
+    startDate: trendStartDate,
+    endDate: trendEndDate,
+  }, {
+    enabled: isAuthenticated && user?.role === 'admin' && Boolean(trendStartDate && trendEndDate),
   });
   const { data: weeklyBookingStats } = trpc.admin.weeklyBookingStats.useQuery(undefined, {
     enabled: isAuthenticated && user?.role === 'admin',
@@ -467,26 +478,60 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                {trend.length > 0 && (
-                  <div style={{ marginBottom: '1.25rem', paddingBottom: '1.25rem', borderBottom: '1px solid hsl(var(--border))' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                      <p style={{ ...labelStyle, margin: 0, color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Динамика выручки за 14 дней (֏)' : '14-day revenue trend (֏)'}</p>
-                      <p style={{ ...labelStyle, margin: 0, fontSize: '0.5rem' }}>{language === 'ru' ? 'Столбцы = выручка за день' : 'Bars = daily revenue'}</p>
+                {(() => {
+                  const customTrend = customTrendData?.dailyTrend ?? [];
+                  const customMaxRev = Math.max(...customTrend.map(t => t.revenueAmd), 1000);
+                  const exportFinancialCsv = () => {
+                    downloadCsv(`hairstyle-laboratory-revenue-${trendStartDate}-to-${trendEndDate}.csv`, [
+                      { report_type: 'summary', start_date: trendStartDate, end_date: trendEndDate, total_revenue_amd: customTrendData?.totalRevenueAmd ?? 0, total_completed_visits: customTrendData?.totalCompletedVisits ?? 0 },
+                      ...customTrend.map(row => ({
+                        report_type: 'daily_breakdown',
+                        date: row.date,
+                        revenue_amd: row.revenueAmd,
+                        completed_visits: row.completedCount,
+                      })),
+                    ]);
+                    toast.success(language === 'ru' ? 'CSV-файл финансовой статистики скачан' : 'Financial statistics CSV downloaded');
+                  };
+                  return (
+                    <div style={{ marginBottom: '1.25rem', paddingBottom: '1.25rem', borderBottom: '1px solid hsl(var(--border))' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        <div>
+                          <p style={{ ...labelStyle, margin: 0, color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Финансовая динамика за период (֏)' : 'Financial trend for period (֏)'}</p>
+                          <p style={{ margin: '0.15rem 0 0', fontSize: '0.75rem', color: 'hsl(var(--foreground))' }}>
+                            <strong>{customTrendData?.totalRevenueAmd?.toLocaleString() ?? 0} ֏</strong> ({customTrendData?.totalCompletedVisits ?? 0} {language === 'ru' ? 'визитов' : 'visits'})
+                          </p>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <input type="date" value={trendStartDate} onChange={e => setTrendStartDate(e.target.value)} style={{ padding: '0.25rem 0.4rem', background: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))', fontSize: '0.75rem' }} />
+                          <span style={{ fontSize: '0.75rem', color: 'hsl(var(--muted-foreground))' }}>—</span>
+                          <input type="date" value={trendEndDate} onChange={e => setTrendEndDate(e.target.value)} style={{ padding: '0.25rem 0.4rem', background: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))', fontSize: '0.75rem' }} />
+                          <button type="button" className="btn-outline" onClick={exportFinancialCsv} style={{ padding: '0.3rem 0.6rem', fontSize: '0.5625rem' }}>
+                            {language === 'ru' ? 'Экспорт CSV' : 'Export CSV'}
+                          </button>
+                        </div>
+                      </div>
+                      {customTrendLoading ? (
+                        <p style={{ ...labelStyle, margin: '1rem 0', textAlign: 'center' }}>{language === 'ru' ? 'Загрузка...' : 'Loading...'}</p>
+                      ) : customTrend.length === 0 ? (
+                        <p style={{ margin: '1rem 0', fontSize: '0.8125rem', color: 'hsl(var(--muted-foreground))', textAlign: 'center' }}>{language === 'ru' ? 'За выбранный период данных нет.' : 'No data for selected period.'}</p>
+                      ) : (
+                        <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.3rem', height: '6rem', paddingTop: '0.5rem', overflowX: 'auto' }}>
+                          {customTrend.map(item => {
+                            const heightPct = Math.max(8, Math.round((item.revenueAmd / customMaxRev) * 100));
+                            const isToday = item.date === (todaySummary as { date?: string })?.date;
+                            return (
+                              <div key={item.date} title={`${item.date}: ${item.revenueAmd.toLocaleString()} ֏ (${item.completedCount} ${language === 'ru' ? 'визитов' : 'visits'})`} style={{ flex: 1, minWidth: '1.2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
+                                <div style={{ width: '100%', height: `${heightPct}%`, backgroundColor: isToday ? 'var(--gold-mid)' : 'hsl(207, 55%, 48%)', opacity: isToday ? 1 : 0.75, borderRadius: '2px 2px 0 0', transition: 'height 0.3s ease' }} />
+                                <span style={{ fontSize: '0.45rem', color: 'hsl(var(--muted-foreground))', marginTop: '0.25rem', whiteSpace: 'nowrap' }}>{item.date.slice(5)}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.35rem', height: '5rem', paddingTop: '0.5rem', overflowX: 'auto' }}>
-                      {trend.map(item => {
-                        const heightPct = Math.max(8, Math.round((item.revenueAmd / maxRev) * 100));
-                        const isToday = item.date === (todaySummary as { date?: string })?.date;
-                        return (
-                          <div key={item.date} title={`${item.date}: ${item.revenueAmd.toLocaleString()} ֏ (${item.completedCount} ${language === 'ru' ? 'визитов' : 'visits'})`} style={{ flex: 1, minWidth: '1.25rem', display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
-                            <div style={{ width: '100%', height: `${heightPct}%`, backgroundColor: isToday ? 'var(--gold-mid)' : 'hsl(207, 55%, 48%)', opacity: isToday ? 1 : 0.65, borderRadius: '2px 2px 0 0', transition: 'height 0.3s ease' }} />
-                            <span style={{ fontSize: '0.45rem', color: 'hsl(var(--muted-foreground))', marginTop: '0.25rem', whiteSpace: 'nowrap' }}>{item.date.slice(5)}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+                  );
+                })()}
               </>
             );
           })()}

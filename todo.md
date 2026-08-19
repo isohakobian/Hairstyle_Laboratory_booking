@@ -291,3 +291,7 @@
 - [x] Add previous day revenue comparison (% change) in the "Today" widget
 - [x] Implement a visual daily revenue and completed visits trend chart for the last 14 days
 - [x] Add test coverage and verify responsive visualization layout on desktop and mobile
+- [x] Add backend procedure for custom date range financial trend aggregation
+- [x] Add date picker inputs for custom period in admin dashboard overview
+- [x] Implement CSV export for financial statistics and daily trend breakdown
+- [x] Verify functionality and test coverage
