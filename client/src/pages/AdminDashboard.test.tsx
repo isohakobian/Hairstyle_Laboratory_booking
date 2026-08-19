@@ -42,6 +42,8 @@ vi.mock("@/lib/trpc", () => ({
       reviewRequestTemplate: { useQuery: () => ({ data: { subjectRu: 'Спасибо за визит — Isaac', subjectEn: 'Thank you for your visit — Isaac', bodyRu: 'Привет, {{clientName}}', bodyEn: 'Hi, {{clientName}}' }, isLoading: false, refetch: vi.fn() }) },
       saveReviewRequestTemplate: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       clientDirectory: { useQuery: () => ({ data: [{ id: 7, name: 'Alex', phone: '+37455000000', email: 'alex@example.com', updatedAt: new Date() }], isLoading: false }) },
+      services: { useQuery: () => ({ data: [{ id: 1, nameRu: 'Стрижка', nameEn: 'Haircut', durationMinutes: 45, priceAmd: 15000, priceMinAmd: null, priceMaxAmd: null, isActive: 'yes' }], isLoading: false }) },
+      updateBookingServices: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
     },
     availability: {
       dates: { useQuery: () => ({ data: ["2099-12-30"] }) },

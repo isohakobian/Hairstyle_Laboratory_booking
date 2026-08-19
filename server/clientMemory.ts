@@ -102,6 +102,7 @@ export async function completeBooking(bookingId: number, finalPriceAmd?: number,
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.update(bookings).set({
+    status: "completed",
     completedAt: new Date(),
     ...(typeof finalPriceAmd === "number" ? { finalPriceAmd } : {}),
   }).where(eq(bookings.id, bookingId));

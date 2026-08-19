@@ -276,3 +276,10 @@
 - [x] Add service name details in audience preview list so Isaac can verify targeted clients
 - [x] Add audience count feedback and service selector in the CRM campaign builder
 - [x] Add Vitest tests for service-targeted CRM campaigns and verify UI delivery
+
+## Admin Panel UX & Visit Service Management
+- [x] Extend booking service management so Isaac can add or remove services during an active client visit
+- [x] Refine booking status lifecycle in admin dashboard (pending, confirmed, confirmed-completed, cancelled) with clear transition indicators
+- [x] Fix mobile overflow and spacing issues in client cards (preventing email and Instagram handle overlap)
+- [x] Add executive dashboard metrics and streamlined mobile-first layout inspired by professional booking apps
+- [x] Add Vitest tests for mid-visit service updates and verify status lifecycle transitions

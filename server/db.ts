@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gte, inArray, isNotNull, isNull, like, lt, lte, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, inArray, isNotNull, isNull, like, lt, lte, ne, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, InsertBooking, InsertBookingService, users, services, bookings, bookingServices, reviewTokens, bookingStatusRecoveryTokens, bookingEvents, visitMedia, reviewRequestHistory, clientEmailDeliveries, reviews, clients, emailTemplates, availabilityWindows, manualDepositSettings, automationEmailDeliveries, bookingReminderDeliveries, bookingReminderSettings, crmCampaigns, clientCrmPreferences, crmCampaignDeliveries, CrmCampaign, ClientCrmPreference } from "../drizzle/schema";
 import { ENV } from './_core/env';
@@ -278,7 +278,7 @@ export async function getAllBookings() {
 export type BookingPageInput = {
   page: number;
   pageSize: number;
-  status?: "all" | "pending" | "confirmed" | "declined" | "cancelled";
+  status?: "all" | "pending" | "confirmed" | "completed" | "declined" | "cancelled";
   search?: string;
   sort?: "appointmentAsc" | "appointmentDesc" | "newest" | "statusAsc";
 };
@@ -312,6 +312,15 @@ export async function getBookingPage(input: BookingPageInput) {
     ? await db.select({ id: clients.id, instagram: clients.instagram }).from(clients).where(inArray(clients.id, clientIds))
     : [];
   const instagramByClientId = new Map(clientRows.map(client => [client.id, client.instagram]));
+  const serviceRows = bookingIds.length
+    ? await db.select().from(bookingServices).where(inArray(bookingServices.bookingId, bookingIds))
+    : [];
+  const servicesByBookingId = new Map<number, typeof serviceRows>();
+  serviceRows.forEach(service => {
+    const list = servicesByBookingId.get(service.bookingId) ?? [];
+    list.push(service);
+    servicesByBookingId.set(service.bookingId, list);
+  });
   const deliveryAttempts = bookingIds.length
     ? await db.select({ bookingId: clientEmailDeliveries.bookingId, deliveryStatus: clientEmailDeliveries.deliveryStatus }).from(clientEmailDeliveries).where(inArray(clientEmailDeliveries.bookingId, bookingIds)).orderBy(desc(clientEmailDeliveries.createdAt), desc(clientEmailDeliveries.id))
     : [];
@@ -321,6 +330,7 @@ export async function getBookingPage(input: BookingPageInput) {
   return { items: items.map(item => ({
     ...item,
     clientInstagram: item.clientId ? instagramByClientId.get(item.clientId) ?? null : null,
+    selectedServices: servicesByBookingId.get(item.id) ?? [],
     hasEmailDeliveryFailure: failedBookingIds.has(item.id),
   })), total: Number(totalResult[0]?.total ?? 0), page, pageSize };
 }
@@ -475,7 +485,67 @@ export async function getBookingServices(bookingId: number) {
   return db.select().from(bookingServices).where(eq(bookingServices.bookingId, bookingId));
 }
 
-export async function updateBookingStatus(id: number, status: "pending" | "confirmed" | "declined" | "cancelled") {
+export async function updateBookingServices(bookingId: number, serviceIds: number[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const uniqueServiceIds = Array.from(new Set(serviceIds));
+  if (uniqueServiceIds.length === 0) throw new Error("At least one service is required");
+  return db.transaction(async (tx) => {
+    const booking = (await tx.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1))[0];
+    if (!booking) throw new Error("Booking not found");
+    const selected = await tx.select().from(services).where(inArray(services.id, uniqueServiceIds));
+    if (selected.length !== uniqueServiceIds.length) throw new Error("One or more selected services are unavailable");
+    const byId = new Map(selected.map(service => [service.id, service]));
+    const ordered = uniqueServiceIds.map(id => byId.get(id)!);
+    const totalDurationMinutes = ordered.reduce((total, service) => total + service.durationMinutes, 0);
+    if (booking.status === "pending" || booking.status === "confirmed") {
+      const sameDayBookings = await tx.select().from(bookings).where(and(
+        eq(bookings.bookingDate, booking.bookingDate),
+        ne(bookings.id, bookingId),
+        or(eq(bookings.status, "pending"), eq(bookings.status, "confirmed")),
+      )).for("update");
+      const overlapsExisting = sameDayBookings.some(existing => bookingIntervalsOverlap(
+        booking.bookingTime,
+        totalDurationMinutes,
+        existing.bookingTime,
+        existing.totalDurationMinutes || 30,
+      ));
+      if (overlapsExisting) throw new BookingIntervalConflictError();
+    }
+    const serviceSummary = ordered.map(service => service.nameEn).join(" + ");
+    const fixedTotalAmd = ordered.reduce((total, service) => total + (service.priceAmd ?? 0), 0);
+    const rangedServices = ordered.filter(service => service.priceMinAmd !== null && service.priceMaxAmd !== null);
+    const formatPrice = (service: typeof ordered[number]) => {
+      if (service.priceAmd !== null) return `${service.priceAmd.toLocaleString()} ֏`;
+      if (service.priceMinAmd !== null && service.priceMaxAmd !== null) {
+        const deposit = service.depositAmd ? ` · deposit ${service.depositAmd.toLocaleString()} ֏` : "";
+        return `${service.priceMinAmd.toLocaleString()} – ${service.priceMaxAmd.toLocaleString()} ֏${deposit}`;
+      }
+      return service.noteEn || service.noteRu || "Price on request";
+    };
+    const totalPriceSummary = rangedServices.length > 0
+      ? `${(fixedTotalAmd + rangedServices.reduce((total, service) => total + (service.priceMinAmd ?? 0), 0)).toLocaleString()} – ${(fixedTotalAmd + rangedServices.reduce((total, service) => total + (service.priceMaxAmd ?? 0), 0)).toLocaleString()} ֏`
+      : `${fixedTotalAmd.toLocaleString()} ֏`;
+    await tx.delete(bookingServices).where(eq(bookingServices.bookingId, bookingId));
+    await tx.insert(bookingServices).values(ordered.map(service => ({
+      bookingId,
+      serviceId: service.id,
+      serviceName: service.nameEn,
+      durationMinutes: service.durationMinutes,
+      priceSummary: formatPrice(service),
+    })));
+    await tx.update(bookings).set({
+      serviceId: ordered[0].id,
+      serviceName: ordered[0].nameEn,
+      serviceSummary,
+      totalDurationMinutes,
+      totalPriceSummary,
+    }).where(eq(bookings.id, bookingId));
+    return { bookingId, selectedServices: ordered, totalDurationMinutes, serviceSummary, totalPriceSummary };
+  });
+}
+
+export async function updateBookingStatus(id: number, status: "pending" | "confirmed" | "completed" | "declined" | "cancelled") {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   return db.update(bookings).set({ status }).where(eq(bookings.id, id));
@@ -506,8 +576,9 @@ export async function getRepeatFollowUpDueBookings(visitDate: string) {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(bookings).where(and(
-    eq(bookings.status, "confirmed"),
+    or(eq(bookings.status, "confirmed"), eq(bookings.status, "completed")),
     lte(bookings.bookingDate, visitDate),
+    isNotNull(bookings.completedAt),
     isNull(bookings.repeatFollowUpSentAt),
   ));
 }
@@ -1166,14 +1237,14 @@ export async function getCrmRecipients(filter: CrmAudienceFilter, targetServiceI
     ? await db.select({ clientId: bookings.clientId }).from(bookings).where(and(gte(bookings.bookingDate, today), or(eq(bookings.status, "pending"), eq(bookings.status, "confirmed"))))
     : [];
   const recentRows = filter === "recent_6m"
-    ? await db.select({ clientId: bookings.clientId }).from(bookings).where(and(gte(bookings.completedAt, new Date(Date.now() - 183 * 24 * 60 * 60 * 1000)), eq(bookings.status, "confirmed")))
+    ? await db.select({ clientId: bookings.clientId }).from(bookings).where(and(gte(bookings.completedAt, new Date(Date.now() - 183 * 24 * 60 * 60 * 1000)), eq(bookings.status, "completed")))
     : [];
   const serviceRows = filter === "specific_service" && targetServiceId
     ? await db.select({ clientId: bookings.clientId })
       .from(bookings)
       .leftJoin(bookingServices, eq(bookingServices.bookingId, bookings.id))
       .where(and(
-        eq(bookings.status, "confirmed"),
+        eq(bookings.status, "completed"),
         isNotNull(bookings.completedAt),
         or(eq(bookings.serviceId, targetServiceId), eq(bookingServices.serviceId, targetServiceId)),
       ))
@@ -1272,7 +1343,7 @@ export async function getPostVisitCrmCandidates(start: Date, end: Date) {
     .from(bookings)
     .innerJoin(clients, eq(clients.id, bookings.clientId))
     .leftJoin(clientCrmPreferences, eq(clientCrmPreferences.clientId, clients.id))
-    .where(and(eq(bookings.status, "confirmed"), gte(bookings.completedAt, start), lt(bookings.completedAt, end), isNotNull(bookings.clientEmail)));
+    .where(and(eq(bookings.status, "completed"), gte(bookings.completedAt, start), lt(bookings.completedAt, end), isNotNull(bookings.clientEmail)));
   const upcoming = await db.select({ clientId: bookings.clientId }).from(bookings).where(and(gte(bookings.bookingDate, getYerevanDateString()), or(eq(bookings.status, "pending"), eq(bookings.status, "confirmed"))));
   const upcomingIds = new Set(upcoming.map(row => row.clientId).filter((id): id is number => typeof id === "number"));
   return rows.filter(row => row.preference?.newsletterConsented === "yes" && !upcomingIds.has(row.client.id));

@@ -66,7 +66,7 @@ export const bookings = mysqlTable("bookings", {
   clientId: int("clientId"),
   completedAt: timestamp("completedAt"),
   comment: text("comment"),
-  status: mysqlEnum("status", ["pending", "confirmed", "declined", "cancelled"]).default("pending").notNull(),
+  status: mysqlEnum("status", ["pending", "confirmed", "completed", "declined", "cancelled"]).default("pending").notNull(),
   cancelledAt: timestamp("cancelledAt"),
   cancellationReason: text("cancellationReason"),
   manualDepositAmountAmd: int("manualDepositAmountAmd"),

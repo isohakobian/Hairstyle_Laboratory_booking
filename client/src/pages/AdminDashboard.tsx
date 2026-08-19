@@ -24,7 +24,7 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 type Tab = 'bookings' | 'calendar' | 'schedule' | 'services' | 'reviews' | 'clients' | 'news' | 'crm' | 'payment' | 'settings';
-type BookingStatusFilter = 'all' | 'pending' | 'confirmed' | 'declined' | 'cancelled';
+type BookingStatusFilter = 'all' | 'pending' | 'confirmed' | 'completed' | 'declined' | 'cancelled';
 type BookingSort = 'appointmentAsc' | 'appointmentDesc' | 'newest' | 'statusAsc';
 type ReviewRequestStatusFilter = 'all' | 'awaiting' | 'received';
 type ReviewRequestSort = 'sentDesc' | 'sentAsc' | 'receivedDesc';
@@ -51,9 +51,25 @@ const cardStyle: React.CSSProperties = {
   position: 'relative' as const,
 };
 
+function bookingStatusLabel(status: string, language: string) {
+  if (language === 'ru') {
+    if (status === 'pending') return 'Новая заявка';
+    if (status === 'confirmed') return 'Запланировано';
+    if (status === 'completed') return 'Завершено';
+    if (status === 'cancelled') return 'Отменено клиентом';
+    return 'Отклонено';
+  }
+  if (status === 'pending') return 'New request';
+  if (status === 'confirmed') return 'Scheduled';
+  if (status === 'completed') return 'Completed';
+  if (status === 'cancelled') return 'Cancelled by client';
+  return 'Declined';
+}
+
 const statusColors: Record<string, string> = {
   pending: 'hsl(35, 60%, 50%)',
   confirmed: 'hsl(142, 50%, 40%)',
+  completed: 'hsl(207, 55%, 48%)',
   declined: 'hsl(0, 60%, 50%)',
   cancelled: 'hsl(0, 0%, 48%)',
 };
@@ -95,6 +111,8 @@ export default function AdminDashboard() {
   const [rescheduleTime, setRescheduleTime] = useState('');
   const [rescheduleNote, setRescheduleNote] = useState('');
   const [completeBookingId, setCompleteBookingId] = useState<number | null>(null);
+  const [editingServicesBookingId, setEditingServicesBookingId] = useState<number | null>(null);
+  const [editingServiceIds, setEditingServiceIds] = useState<number[]>([]);
   const [finalPriceAmd, setFinalPriceAmd] = useState('');
   const [completionNote, setCompletionNote] = useState('');
   const [deleteBookingId, setDeleteBookingId] = useState<number | null>(null);
@@ -136,6 +154,9 @@ export default function AdminDashboard() {
     enabled: isAuthenticated && user?.role === 'admin',
   });
   const { data: clientDirectory, isLoading: clientDirectoryLoading } = trpc.admin.clientDirectory.useQuery(undefined, {
+    enabled: isAuthenticated && user?.role === 'admin',
+  });
+  const { data: managedServices } = trpc.admin.services.useQuery(undefined, {
     enabled: isAuthenticated && user?.role === 'admin',
   });
   const { data: openDates } = trpc.availability.dates.useQuery();
@@ -190,6 +211,15 @@ export default function AdminDashboard() {
     onSuccess: () => {
       toast.success(language === 'ru' ? 'Визит отмечен как завершённый' : 'Visit marked as complete');
       setCompleteBookingId(null); setFinalPriceAmd(''); setCompletionNote(''); refreshBookingLists();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const updateBookingServicesMutation = trpc.admin.updateBookingServices.useMutation({
+    onSuccess: () => {
+      toast.success(language === 'ru' ? 'Услуги визита обновлены' : 'Visit services updated');
+      setEditingServicesBookingId(null);
+      setEditingServiceIds([]);
+      refreshBookingLists();
     },
     onError: (e) => toast.error(e.message),
   });
@@ -343,11 +373,12 @@ export default function AdminDashboard() {
 
   const pending = bookings?.filter(b => b.status === 'pending') ?? [];
   const confirmed = bookings?.filter(b => b.status === 'confirmed') ?? [];
+  const completed = bookings?.filter(b => b.status === 'completed' || Boolean(b.completedAt)) ?? [];
   const declined = bookings?.filter(b => b.status === 'declined') ?? [];
 
   const tabs: { id: Tab; label: string; description: string; count?: number }[] = [
     { id: 'bookings', label: language === 'ru' ? 'Заявки' : 'Bookings', description: language === 'ru' ? 'Новые и подтверждённые визиты' : 'New and confirmed visits', count: bookings?.length ?? 0 },
-    { id: 'calendar', label: language === 'ru' ? 'Календарь' : 'Calendar', description: language === 'ru' ? 'Визиты по дням' : 'Visits by date', count: confirmed.length },
+    { id: 'calendar', label: language === 'ru' ? 'Календарь' : 'Calendar', description: language === 'ru' ? 'Запланированные и завершённые визиты' : 'Scheduled and completed visits', count: confirmed.length + completed.length },
     { id: 'schedule', label: language === 'ru' ? 'Доступность' : 'Availability', description: language === 'ru' ? 'Открытые дни для записи' : 'Open days for booking' },
     { id: 'services', label: language === 'ru' ? 'Услуги' : 'Services', description: language === 'ru' ? 'Прайс-лист и каталог' : 'Price list and catalog' },
     { id: 'reviews', label: language === 'ru' ? 'Отзывы' : 'Reviews', description: language === 'ru' ? 'Модерация обратной связи' : 'Feedback moderation', count: allReviews?.length ?? 0 },
@@ -389,10 +420,11 @@ export default function AdminDashboard() {
           </button>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(10rem, 1fr))', gap: '1rem', marginBottom: '2.5rem' }}>
           {[
-            { label: language === 'ru' ? 'Ожидают' : 'Pending', count: pending.length, color: statusColors.pending },
-            { label: language === 'ru' ? 'Подтверждено' : 'Confirmed', count: confirmed.length, color: statusColors.confirmed },
+            { label: language === 'ru' ? 'Новые' : 'New', count: pending.length, color: statusColors.pending },
+            { label: language === 'ru' ? 'Запланировано' : 'Scheduled', count: confirmed.length, color: statusColors.confirmed },
+            { label: language === 'ru' ? 'Завершено' : 'Completed', count: completed.length, color: statusColors.completed },
             { label: language === 'ru' ? 'Отклонено' : 'Declined', count: declined.length, color: statusColors.declined },
           ].map(stat => (
             <div key={stat.label} style={{ ...cardStyle, textAlign: 'center' }}>
@@ -476,8 +508,9 @@ export default function AdminDashboard() {
                     <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap' }}>
                       {([
                         { id: 'all', label: language === 'ru' ? 'Все' : 'All' },
-                        { id: 'pending', label: language === 'ru' ? 'Ожидают' : 'Pending' },
-                        { id: 'confirmed', label: language === 'ru' ? 'Подтверждены' : 'Confirmed' },
+                        { id: 'pending', label: language === 'ru' ? 'Новые' : 'New' },
+                        { id: 'confirmed', label: language === 'ru' ? 'Запланированы' : 'Scheduled' },
+                        { id: 'completed', label: language === 'ru' ? 'Завершены' : 'Completed' },
                         { id: 'declined', label: language === 'ru' ? 'Отклонены' : 'Declined' },
                         { id: 'cancelled', label: language === 'ru' ? 'Отменены' : 'Cancelled' },
                       ] as { id: BookingStatusFilter; label: string }[]).map(filter => (
@@ -530,8 +563,8 @@ export default function AdminDashboard() {
                           <p style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.125rem', fontWeight: 700, color: 'hsl(var(--foreground))', margin: '0 0 0.25rem' }}>{booking.clientName}</p>
                           <p style={{ ...labelStyle, margin: 0, fontSize: '0.5625rem' }}>{booking.referenceNumber}</p>
                         </div>
-                        <span style={{ ...labelStyle, fontSize: '0.5625rem', color: statusColors[booking.status], border: `1px solid ${statusColors[booking.status]}`, padding: '0.25rem 0.625rem' }}>
-                          {booking.status === 'pending' ? (language === 'ru' ? 'Ожидание' : 'Pending') : booking.status === 'confirmed' ? (language === 'ru' ? 'Подтверждено' : 'Confirmed') : booking.status === 'cancelled' ? (language === 'ru' ? 'Отменено клиентом' : 'Cancelled by client') : (language === 'ru' ? 'Отклонено' : 'Declined')}
+                        <span style={{ ...labelStyle, fontSize: '0.5625rem', color: statusColors[booking.completedAt ? 'completed' : booking.status], border: `1px solid ${statusColors[booking.completedAt ? 'completed' : booking.status]}`, padding: '0.25rem 0.625rem' }}>
+                          {bookingStatusLabel(booking.completedAt ? 'completed' : booking.status, language)}
                         </span>
                         {booking.hasEmailDeliveryFailure && <span title={language === 'ru' ? 'Есть ошибка отправки email — откройте историю уведомлений' : 'An email delivery failed — open notification history'} style={{ ...labelStyle, fontSize: '0.5rem', color: 'hsl(0 60% 50%)', border: '1px solid hsl(0 60% 50%)', padding: '0.25rem 0.5rem', background: 'hsl(0 60% 96%)' }}>{language === 'ru' ? 'Ошибка email' : 'Email error'}</span>}
                       </div>
@@ -548,7 +581,7 @@ export default function AdminDashboard() {
                         ].map(row => (
                           <div key={row.label}>
                             <p style={{ ...labelStyle, margin: '0 0 0.25rem', fontSize: '0.5625rem' }}>{row.label}</p>
-                            <p style={{ fontFamily: "'Inter', sans-serif", fontSize: '0.875rem', color: 'hsl(var(--foreground))', margin: 0 }}>{row.value}</p>
+                            <p style={{ fontFamily: "'Inter', sans-serif", fontSize: '0.875rem', color: 'hsl(var(--foreground))', margin: 0, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{row.value}</p>
                           </div>
                         ))}
                       </div>
@@ -559,6 +592,39 @@ export default function AdminDashboard() {
                           <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem' }}>{booking.manualDepositAmountAmd.toLocaleString()} ֏ · {booking.manualDepositStatus === 'verified' ? (language === 'ru' ? 'подтверждена' : 'verified') : booking.manualDepositStatus === 'proof_received' ? (language === 'ru' ? 'чек получен' : 'receipt received') : (language === 'ru' ? 'ожидает проверки' : 'awaiting review')}</p>
                           {booking.manualDepositReceiptKey && <DepositReceiptPreview bookingId={booking.id} language={language} />}
                           {booking.manualDepositStatus === 'proof_received' && <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginTop: '0.8rem' }}><button type="button" className="btn-primary" style={{ fontSize: '0.5625rem', padding: '0.55rem 0.75rem' }} disabled={manualDepositStatusMutation.isPending || invalidReceiptMutation.isPending} onClick={() => manualDepositStatusMutation.mutate({ id: booking.id, status: 'verified' })}>{language === 'ru' ? 'Подтвердить оплату' : 'Verify payment'}</button><button type="button" className="btn-outline" style={{ fontSize: '0.5625rem', padding: '0.55rem 0.75rem' }} disabled={manualDepositStatusMutation.isPending || invalidReceiptMutation.isPending} onClick={() => invalidReceiptMutation.mutate({ id: booking.id })}>{language === 'ru' ? 'Чек недействителен — отклонить' : 'Invalid receipt — decline'}</button></div>}
+                        </div>
+                      )}
+                      {(booking.status === 'pending' || booking.status === 'confirmed') && (
+                        <div style={{ marginBottom: '1rem', padding: '0.85rem', border: '1px solid hsl(var(--border))', background: 'hsl(var(--secondary))' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                            <div>
+                              <p style={{ ...labelStyle, margin: '0 0 0.3rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Услуги визита' : 'Visit services'}</p>
+                              <p style={{ margin: 0, fontSize: '0.8125rem', color: 'hsl(var(--foreground))' }}>{booking.serviceSummary || booking.serviceName}</p>
+                            </div>
+                            <button type="button" className="btn-outline" style={{ fontSize: '0.5625rem', padding: '0.5rem 0.7rem' }} onClick={() => {
+                              setEditingServicesBookingId(booking.id);
+                              setEditingServiceIds(booking.selectedServices?.length ? booking.selectedServices.map(service => service.serviceId) : [booking.serviceId]);
+                            }}>
+                              {language === 'ru' ? 'Изменить услуги' : 'Change services'}
+                            </button>
+                          </div>
+                          {editingServicesBookingId === booking.id && (
+                            <div style={{ marginTop: '0.85rem', paddingTop: '0.85rem', borderTop: '1px solid hsl(var(--border))' }}>
+                              <p style={{ margin: '0 0 0.7rem', fontSize: '0.75rem', color: 'hsl(var(--muted-foreground))' }}>{language === 'ru' ? 'Отметь все услуги, которые клиент фактически выбрал. Время и стоимость пересчитаются автоматически.' : 'Select every service the client will receive. Duration and price will update automatically.'}</p>
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(12rem, 1fr))', gap: '0.5rem' }}>
+                                {(managedServices ?? []).filter(service => service.isActive === 'yes' || editingServiceIds.includes(service.id)).map(service => (
+                                  <label key={service.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.55rem', padding: '0.65rem', border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))', cursor: 'pointer' }}>
+                                    <input type="checkbox" checked={editingServiceIds.includes(service.id)} onChange={event => setEditingServiceIds(current => event.target.checked ? [...current, service.id] : current.filter(id => id !== service.id))} style={{ marginTop: '0.15rem' }} />
+                                    <span style={{ minWidth: 0 }}><strong style={{ display: 'block', fontSize: '0.8rem', overflowWrap: 'anywhere' }}>{language === 'ru' ? service.nameRu : service.nameEn}</strong><small style={{ display: 'block', marginTop: '0.2rem', color: 'hsl(var(--muted-foreground))', fontSize: '0.65rem' }}>{service.durationMinutes} {language === 'ru' ? 'мин' : 'min'} · {service.priceAmd !== null ? `${service.priceAmd.toLocaleString()} ֏` : service.priceMinAmd !== null && service.priceMaxAmd !== null ? `${service.priceMinAmd.toLocaleString()}–${service.priceMaxAmd.toLocaleString()} ֏` : (language === 'ru' ? 'цена по запросу' : 'price on request')}</small></span>
+                                  </label>
+                                ))}
+                              </div>
+                              <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginTop: '0.8rem' }}>
+                                <button type="button" className="btn-primary" style={{ fontSize: '0.5625rem', padding: '0.55rem 0.75rem' }} disabled={editingServiceIds.length === 0 || updateBookingServicesMutation.isPending} onClick={() => updateBookingServicesMutation.mutate({ id: booking.id, serviceIds: editingServiceIds })}>{updateBookingServicesMutation.isPending ? (language === 'ru' ? 'Сохраняю...' : 'Saving...') : (language === 'ru' ? 'Сохранить услуги' : 'Save services')}</button>
+                                <button type="button" className="btn-ghost" style={{ fontSize: '0.5625rem', padding: '0.55rem 0.75rem' }} onClick={() => { setEditingServicesBookingId(null); setEditingServiceIds([]); }}>{language === 'ru' ? 'Отмена' : 'Cancel'}</button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
                       {booking.status === 'cancelled' && booking.cancellationReason && <p style={{ margin: '0 0 1rem', padding: '0.75rem', borderLeft: '2px solid hsl(var(--muted-foreground))', background: 'hsl(var(--secondary))', color: 'hsl(var(--muted-foreground))', fontSize: '0.8125rem', lineHeight: 1.5 }}><strong style={{ color: 'hsl(var(--foreground))' }}>{language === 'ru' ? 'Причина отмены: ' : 'Cancellation reason: '}</strong>{booking.cancellationReason}</p>}
@@ -594,7 +660,7 @@ export default function AdminDashboard() {
                           </button>
                         </div>
                       )}
-                      {booking.status === 'confirmed' && booking.completedAt && booking.clientEmail && (
+                      {(booking.status === 'completed' || (booking.status === 'confirmed' && booking.completedAt)) && booking.clientEmail && (
                         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', paddingTop: '0.25rem' }}>
                           <button
                             className="btn-outline"
@@ -606,7 +672,7 @@ export default function AdminDashboard() {
                               ? <><Loader2 size={13} className="animate-spin" style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: '0.35rem' }} />{language === 'ru' ? 'Отправка...' : 'Sending...'}</>
                               : (language === 'ru' ? 'Отправить запрос на отзыв' : 'Send review request')}
                           </button>
-                          <span aria-live="polite" style={{ ...labelStyle, fontSize: '0.5625rem', color: lastReviewRequestBookingId === booking.id ? statusColors.confirmed : 'hsl(var(--muted-foreground))' }}>
+                          <span aria-live="polite" style={{ ...labelStyle, fontSize: '0.5625rem', color: lastReviewRequestBookingId === booking.id ? statusColors.completed : 'hsl(var(--muted-foreground))' }}>
                             {lastReviewRequestBookingId === booking.id
                               ? (language === 'ru' ? 'Письмо отправлено' : 'Email sent')
                               : (language === 'ru' ? 'Отправляй после визита' : 'Send after the visit')}

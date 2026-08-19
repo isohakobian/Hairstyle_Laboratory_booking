@@ -8,7 +8,7 @@ import {
   getBookingsByEmail, getAllBookings, updateBookingStatus, cancelBookingByClient, isTimeSlotAvailable,
   getBlockedDates, blockDate, unblockDate, createReview, getReviewByBookingId, createReviewToken,
   getReviewTokenByHash, markReviewTokenUsed,
-  getPublishedReviews, getAllReviews, updateReviewPublished, createManagedService, setServiceActive, updateManagedService,
+  getPublishedReviews, getAllReviews, updateReviewPublished, createManagedService, setServiceActive, updateManagedService, updateBookingServices,
   createBookingStatusRecoveryToken, claimBookingStatusRecoveryToken, getSafeBookingStatusesByEmail,
   deleteBookingAndRelatedData, declineBookingForInvalidReceipt, getAdminTodaySummary, getBookingReminderSettings, getBookingsWithUnresolvedEmailFailures, getUnresolvedEmailDeliveryErrors, getClientDirectory, getClientEmailDeliveryHistory, getLatestBookingRescheduleEvent, getBookingPage, getManualDepositSettings, getReviewRequestDashboard, getReviewRequestEmailTemplate, getReviewRequestPage, getReviewRequestStats, getWeeklyBookingSummary, recordClientEmailDelivery, saveBookingReminderSettings, saveManualDepositSettings,   saveReviewRequestEmailTemplate, getPostVisitEmailTemplate, savePostVisitEmailTemplate, getBirthdayEmailTemplate, saveBirthdayEmailTemplate, updateManualDepositStatus, getCrmCampaigns, getCrmCampaignById, createCrmCampaign, updateCrmCampaign, getCrmCampaignDeliveries, getCrmCampaignStats, recordCrmCampaignDelivery, getCrmRecipients, saveClientCrmPreference, getClientCrmPreference, CrmAudienceFilter,
 } from "./db";
@@ -473,7 +473,7 @@ export const appRouter = router({
 
         const booking = await getBookingById(reviewToken.bookingId);
         if (!booking) throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found" });
-        if (booking.status !== "confirmed") throw new TRPCError({ code: "FORBIDDEN", message: "Only confirmed bookings can be reviewed" });
+        if (booking.status !== "completed" || !booking.completedAt) throw new TRPCError({ code: "FORBIDDEN", message: "Only completed bookings can be reviewed" });
 
         const existing = await getReviewByBookingId(booking.id);
         if (existing) throw new TRPCError({ code: "CONFLICT", message: "Review already submitted" });
@@ -625,7 +625,7 @@ export const appRouter = router({
       .input(z.object({
         page: z.number().int().min(1),
         pageSize: z.number().int().min(1).max(50),
-        status: z.enum(["all", "pending", "confirmed", "declined", "cancelled"]).optional(),
+        status: z.enum(["all", "pending", "confirmed", "completed", "declined", "cancelled"]).optional(),
         search: z.string().trim().max(160).optional(),
         sort: z.enum(["appointmentAsc", "appointmentDesc", "newest", "statusAsc"]).optional(),
       }))
@@ -797,10 +797,7 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         const booking = await getBookingById(input.id);
         if (!booking) throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found" });
-        if (booking.status !== "confirmed") {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Reviews can only be requested for confirmed bookings" });
-        }
-        if (!booking.completedAt) {
+        if (booking.status !== "completed" || !booking.completedAt) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Reviews can only be requested after the visit is completed" });
         }
         if (!booking.clientEmail) {
@@ -905,8 +902,24 @@ export const appRouter = router({
     completeBooking: adminMiddleware
       .input(z.object({ id: z.number().int().positive(), finalPriceAmd: z.number().int().nonnegative().optional(), note: z.string().max(1000).optional() }))
       .mutation(async ({ input }) => {
+        const booking = await getBookingById(input.id);
+        if (!booking) throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found" });
+        if (booking.status !== "confirmed") throw new TRPCError({ code: "BAD_REQUEST", message: "Only a confirmed visit can be completed" });
         await completeBooking(input.id, input.finalPriceAmd, input.note);
         return { success: true };
+      }),
+
+    updateBookingServices: adminMiddleware
+      .input(z.object({ id: z.number().int().positive(), serviceIds: z.array(z.number().int().positive()).min(1).max(12) }))
+      .mutation(async ({ input }) => {
+        const booking = await getBookingById(input.id);
+        if (!booking) throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found" });
+        if (booking.status !== "pending" && booking.status !== "confirmed") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Services can only be changed for an active visit" });
+        }
+        const result = await updateBookingServices(input.id, input.serviceIds);
+        await createBookingEvent({ bookingId: input.id, eventType: "note", note: `Services updated: ${result.serviceSummary}` });
+        return { success: true, ...result };
       }),
 
     clientMemory: adminMiddleware

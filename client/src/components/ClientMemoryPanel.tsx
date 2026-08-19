@@ -142,7 +142,11 @@ export default function ClientMemoryPanel({ clientId, language, onClose }: Props
         <div>
           <p style={{ ...labelStyle, color: 'var(--gold-mid)', margin: '0 0 0.5rem' }}>{ru ? 'Память о клиенте · private' : 'Client memory · private'}</p>
           <h3 style={{ margin: 0, fontStyle: 'italic' }}>{profile.name}</h3>
-          <p style={{ margin: '0.4rem 0 0', color: 'hsl(var(--muted-foreground))', fontSize: '0.8125rem' }}>{profile.phone}{profile.email ? ` · ${profile.email}` : ''}{profile.instagram ? ` · @${profile.instagram}` : ''}</p>
+          <div style={{ display: 'grid', gap: '0.3rem', marginTop: '0.55rem', maxWidth: '100%' }}>
+            <span style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.8125rem', overflowWrap: 'anywhere' }}>{profile.phone}</span>
+            {profile.email && <span style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.8125rem', overflowWrap: 'anywhere' }}><span style={{ ...labelStyle, fontSize: '0.5rem', marginRight: '0.4rem' }}>Email</span>{profile.email}</span>}
+            {profile.instagram && <span style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.8125rem', overflowWrap: 'anywhere' }}><span style={{ ...labelStyle, fontSize: '0.5rem', marginRight: '0.4rem' }}>Instagram</span>@{profile.instagram.replace(/^@/, '')}</span>}
+          </div>
         </div>
         <button type="button" className="btn-ghost" onClick={onClose} style={{ fontSize: '0.625rem', padding: 0 }}>{ru ? 'Закрыть' : 'Close'}</button>
       </div>
