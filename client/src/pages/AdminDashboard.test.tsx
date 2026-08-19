@@ -44,6 +44,7 @@ vi.mock("@/lib/trpc", () => ({
       clientDirectory: { useQuery: () => ({ data: [{ id: 7, name: 'Alex', phone: '+37455000000', email: 'alex@example.com', updatedAt: new Date() }], isLoading: false }) },
       services: { useQuery: () => ({ data: [{ id: 1, nameRu: 'Стрижка', nameEn: 'Haircut', durationMinutes: 45, priceAmd: 15000, priceMinAmd: null, priceMaxAmd: null, isActive: 'yes' }], isLoading: false }) },
       updateBookingServices: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+      updateBookingFinalPrice: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       customFinancialTrend: { useQuery: () => ({ data: { startDate: '2099-12-17', endDate: '2099-12-30', totalRevenueAmd: 51000, totalCompletedVisits: 4, dailyTrend: [{ date: '2099-12-29', revenueAmd: 24000, completedCount: 2 }, { date: '2099-12-30', revenueAmd: 27000, completedCount: 2 }] }, isLoading: false }) },
     },
     availability: {

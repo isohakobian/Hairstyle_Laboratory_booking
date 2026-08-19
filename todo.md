@@ -295,3 +295,6 @@
 - [x] Add date picker inputs for custom period in admin dashboard overview
 - [x] Implement CSV export for financial statistics and daily trend breakdown
 - [x] Verify functionality and test coverage
+- [x] Add updateBookingFinalPrice admin backend procedure and UI input for editing visit final price in AMD
+- [x] Verify price edits correctly update revenue summaries and financial trend charts
+- [x] Add regression test coverage

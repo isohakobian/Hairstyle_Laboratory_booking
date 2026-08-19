@@ -1103,6 +1103,13 @@ export async function updateManualDepositStatus(id: number, status: "awaiting_pr
   return getBookingById(id);
 }
 
+export async function updateBookingFinalPrice(id: number, finalPriceAmd: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(bookings).set({ finalPriceAmd, totalPriceSummary: `${finalPriceAmd.toLocaleString()} ֏` }).where(eq(bookings.id, id));
+  return getBookingById(id);
+}
+
 export async function declineBookingForInvalidReceipt(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

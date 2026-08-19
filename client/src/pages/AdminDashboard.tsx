@@ -115,6 +115,8 @@ export default function AdminDashboard() {
   const [editingServiceIds, setEditingServiceIds] = useState<number[]>([]);
   const [finalPriceAmd, setFinalPriceAmd] = useState('');
   const [completionNote, setCompletionNote] = useState('');
+  const [editingFinalPriceBookingId, setEditingFinalPriceBookingId] = useState<number | null>(null);
+  const [editFinalPriceVal, setEditFinalPriceVal] = useState('');
   const [deleteBookingId, setDeleteBookingId] = useState<number | null>(null);
   const [lastReviewRequestBookingId, setLastReviewRequestBookingId] = useState<number | null>(null);
   const utils = trpc.useUtils();
@@ -231,6 +233,16 @@ export default function AdminDashboard() {
       setEditingServicesBookingId(null);
       setEditingServiceIds([]);
       refreshBookingLists();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const updateFinalPriceMutation = trpc.admin.updateBookingFinalPrice.useMutation({
+    onSuccess: () => {
+      toast.success(language === 'ru' ? 'Финальная оплата обновлена' : 'Final payment updated');
+      setEditingFinalPriceBookingId(null);
+      setEditFinalPriceVal('');
+      refreshBookingLists();
+      utils.admin.today.invalidate();
     },
     onError: (e) => toast.error(e.message),
   });
@@ -670,6 +682,7 @@ export default function AdminDashboard() {
                           { label: language === 'ru' ? 'Время' : 'Time', value: booking.bookingTime },
                           { label: language === 'ru' ? 'Длительность' : 'Duration', value: booking.totalDurationMinutes ? `${booking.totalDurationMinutes} ${language === 'ru' ? 'мин' : 'min'}` : '—' },
                           { label: language === 'ru' ? 'Стоимость' : 'Price', value: booking.totalPriceSummary || '—' },
+                          ...(booking.status === 'completed' ? [{ label: language === 'ru' ? 'Финальная оплата' : 'Final price', value: `${(booking.finalPriceAmd ?? 0).toLocaleString()} ֏` }] : []),
                           { label: language === 'ru' ? 'Телефон' : 'Phone', value: booking.clientPhone },
                           ...(booking.clientEmail ? [{ label: 'Email', value: booking.clientEmail }] : []),
                           ...(booking.clientInstagram ? [{ label: 'Instagram', value: `@${booking.clientInstagram.replace(/^@/, '')}` }] : []),
@@ -755,23 +768,76 @@ export default function AdminDashboard() {
                           </button>
                         </div>
                       )}
-                      {(booking.status === 'completed' || (booking.status === 'confirmed' && booking.completedAt)) && booking.clientEmail && (
-                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', paddingTop: '0.25rem' }}>
+                      {(booking.status === 'completed' || (booking.status === 'confirmed' && booking.completedAt)) && (
+                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', paddingTop: '0.25rem', marginBottom: '0.75rem' }}>
+                          {booking.clientEmail && (
+                            <>
+                              <button
+                                className="btn-outline"
+                                style={{ fontSize: '0.625rem', padding: '0.625rem 1rem' }}
+                                onClick={() => requestReviewMutation.mutate({ id: booking.id })}
+                                disabled={requestReviewMutation.isPending}
+                              >
+                                {requestReviewMutation.isPending
+                                  ? <><Loader2 size={13} className="animate-spin" style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: '0.35rem' }} />{language === 'ru' ? 'Отправка...' : 'Sending...'}</>
+                                  : (language === 'ru' ? 'Отправить запрос на отзыв' : 'Send review request')}
+                              </button>
+                              <span aria-live="polite" style={{ ...labelStyle, fontSize: '0.5625rem', color: lastReviewRequestBookingId === booking.id ? statusColors.completed : 'hsl(var(--muted-foreground))' }}>
+                                {lastReviewRequestBookingId === booking.id
+                                  ? (language === 'ru' ? 'Письмо отправлено' : 'Email sent')
+                                  : (language === 'ru' ? 'Отправляй после визита' : 'Send after the visit')}
+                              </span>
+                            </>
+                          )}
                           <button
+                            type="button"
                             className="btn-outline"
                             style={{ fontSize: '0.625rem', padding: '0.625rem 1rem' }}
-                            onClick={() => requestReviewMutation.mutate({ id: booking.id })}
-                            disabled={requestReviewMutation.isPending}
+                            onClick={() => {
+                              setEditingFinalPriceBookingId(booking.id);
+                              setEditFinalPriceVal(String(booking.finalPriceAmd ?? 15000));
+                            }}
                           >
-                            {requestReviewMutation.isPending
-                              ? <><Loader2 size={13} className="animate-spin" style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: '0.35rem' }} />{language === 'ru' ? 'Отправка...' : 'Sending...'}</>
-                              : (language === 'ru' ? 'Отправить запрос на отзыв' : 'Send review request')}
+                            {language === 'ru' ? 'Изменить сумму оплаты' : 'Edit final payment'}
                           </button>
-                          <span aria-live="polite" style={{ ...labelStyle, fontSize: '0.5625rem', color: lastReviewRequestBookingId === booking.id ? statusColors.completed : 'hsl(var(--muted-foreground))' }}>
-                            {lastReviewRequestBookingId === booking.id
-                              ? (language === 'ru' ? 'Письмо отправлено' : 'Email sent')
-                              : (language === 'ru' ? 'Отправляй после визита' : 'Send after the visit')}
-                          </span>
+                        </div>
+                      )}
+                      {editingFinalPriceBookingId === booking.id && (
+                        <div style={{ marginTop: '0.75rem', marginBottom: '1rem', padding: '1rem', border: '1px solid var(--gold-mid)', background: 'hsl(var(--secondary))' }}>
+                          <p style={{ ...labelStyle, margin: '0 0 0.5rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Корректировка финальной оплаты (֏)' : 'Edit final payment (֏)'}</p>
+                          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                            <input
+                              type="number"
+                              min="0"
+                              step="500"
+                              value={editFinalPriceVal}
+                              onChange={e => setEditFinalPriceVal(e.target.value)}
+                              style={{ ...inputStyle, width: '12rem', background: 'hsl(var(--card))' }}
+                              placeholder="15000"
+                            />
+                            <button
+                              type="button"
+                              className="btn-primary"
+                              style={{ fontSize: '0.625rem', padding: '0.6rem 1rem' }}
+                              disabled={!editFinalPriceVal || updateFinalPriceMutation.isPending}
+                              onClick={() => {
+                                const parsed = parseInt(editFinalPriceVal, 10);
+                                if (!isNaN(parsed) && parsed >= 0) {
+                                  updateFinalPriceMutation.mutate({ id: booking.id, finalPriceAmd: parsed });
+                                }
+                              }}
+                            >
+                              {updateFinalPriceMutation.isPending ? (language === 'ru' ? 'Сохранение...' : 'Saving...') : (language === 'ru' ? 'Сохранить сумму' : 'Save amount')}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-outline"
+                              style={{ fontSize: '0.625rem', padding: '0.6rem 1rem' }}
+                              onClick={() => setEditingFinalPriceBookingId(null)}
+                            >
+                              {language === 'ru' ? 'Отмена' : 'Cancel'}
+                            </button>
+                          </div>
                         </div>
                       )}
                       {booking.status === 'confirmed' && (
