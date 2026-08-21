@@ -298,3 +298,5 @@
 - [x] Add updateBookingFinalPrice admin backend procedure and UI input for editing visit final price in AMD
 - [x] Verify price edits correctly update revenue summaries and financial trend charts
 - [x] Add regression test coverage
+- [x] Add "Grey Camouflage · Hair" and "Grey Camouflage · Beard" services to the admin service catalog (5,500 ֏ each, 30 min)
+- [x] Verify both services appear correctly in public booking and landing page catalog

@@ -44,6 +44,28 @@ describe('service management', () => {
 
     expect((await publicCaller.services.list()).some(service => service.id === serviceId)).toBe(true);
 
+    // Test creating grey camouflage services for hair and beard at 5,500 AMD
+    const camHair = await admin.admin.saveService({
+      nameRu: 'Камуфляж седины · Волосы', nameEn: 'Grey Camouflage · Hair', descriptionRu: 'Деликатное тонирование седины волос', descriptionEn: 'Subtle hair grey blending',
+      durationMinutes: 30, priceAmd: 5500, priceMinAmd: null, priceMaxAmd: null, depositAmd: null,
+      noteRu: null, noteEn: null, isActive: 'yes', displayOrder: 10,
+    });
+    const camBeard = await admin.admin.saveService({
+      nameRu: 'Камуфляж седины · Борода', nameEn: 'Grey Camouflage · Beard', descriptionRu: 'Деликатное тонирование седины бороды', descriptionEn: 'Subtle beard grey blending',
+      durationMinutes: 30, priceAmd: 5500, priceMinAmd: null, priceMaxAmd: null, depositAmd: null,
+      noteRu: null, noteEn: null, isActive: 'yes', displayOrder: 11,
+    });
+
+    const publicList = await publicCaller.services.list();
+    expect(publicList.some(s => s.id === camHair.id && s.priceAmd === 5500)).toBe(true);
+    expect(publicList.some(s => s.id === camBeard.id && s.priceAmd === 5500)).toBe(true);
+
+    const db = await getDb();
+    if (db) {
+      await db.delete(services).where(eq(services.id, camHair.id));
+      await db.delete(services).where(eq(services.id, camBeard.id));
+    }
+
     await admin.admin.saveService({
       id: serviceId, nameRu: 'Тестовая услуга', nameEn: 'Test service', descriptionRu: 'Для теста', descriptionEn: 'For test',
       durationMinutes: 60, priceAmd: null, priceMinAmd: 18000, priceMaxAmd: 25000, depositAmd: 5000,
