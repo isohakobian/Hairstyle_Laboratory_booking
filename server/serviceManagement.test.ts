@@ -46,19 +46,19 @@ describe('service management', () => {
 
     // Test creating grey camouflage services for hair and beard at 5,500 AMD
     const camHair = await admin.admin.saveService({
-      nameRu: 'Камуфляж седины · Волосы', nameEn: 'Grey Camouflage · Hair', descriptionRu: 'Деликатное тонирование седины волос', descriptionEn: 'Subtle hair grey blending',
-      durationMinutes: 30, priceAmd: 5500, priceMinAmd: null, priceMaxAmd: null, depositAmd: null,
+      nameRu: 'Камуфляж седины для волос', nameEn: 'Grey Camouflage for Hair', descriptionRu: 'Деликатное тонирование седины волос', descriptionEn: 'Subtle hair grey blending',
+      durationMinutes: 20, priceAmd: 5500, priceMinAmd: null, priceMaxAmd: null, depositAmd: null,
       noteRu: null, noteEn: null, isActive: 'yes', displayOrder: 10,
     });
     const camBeard = await admin.admin.saveService({
-      nameRu: 'Камуфляж седины · Борода', nameEn: 'Grey Camouflage · Beard', descriptionRu: 'Деликатное тонирование седины бороды', descriptionEn: 'Subtle beard grey blending',
-      durationMinutes: 30, priceAmd: 5500, priceMinAmd: null, priceMaxAmd: null, depositAmd: null,
+      nameRu: 'Камуфляж седины для бороды', nameEn: 'Grey Camouflage for Beard', descriptionRu: 'Деликатное тонирование седины бороды', descriptionEn: 'Subtle beard grey blending',
+      durationMinutes: 20, priceAmd: 5500, priceMinAmd: null, priceMaxAmd: null, depositAmd: null,
       noteRu: null, noteEn: null, isActive: 'yes', displayOrder: 11,
     });
 
     const publicList = await publicCaller.services.list();
-    expect(publicList.some(s => s.id === camHair.id && s.priceAmd === 5500)).toBe(true);
-    expect(publicList.some(s => s.id === camBeard.id && s.priceAmd === 5500)).toBe(true);
+    expect(publicList.some(s => s.id === camHair.id && s.priceAmd === 5500 && s.durationMinutes === 20)).toBe(true);
+    expect(publicList.some(s => s.id === camBeard.id && s.priceAmd === 5500 && s.durationMinutes === 20)).toBe(true);
 
     const db = await getDb();
     if (db) {

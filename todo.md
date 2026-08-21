@@ -300,3 +300,4 @@
 - [x] Add regression test coverage
 - [x] Add "Grey Camouflage · Hair" and "Grey Camouflage · Beard" services to the admin service catalog (5,500 ֏ each, 30 min)
 - [x] Verify both services appear correctly in public booking and landing page catalog
+- [x] Rename both grey camouflage services and set their duration to 20 minutes while keeping the 5,500 ֏ price
