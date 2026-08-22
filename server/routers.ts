@@ -833,6 +833,14 @@ export const appRouter = router({
     blockedDates: adminMiddleware.query(() => getBlockedDates()),
     availabilityWindows: adminMiddleware.query(() => getAvailabilityWindows()),
 
+    rescheduleSlots: adminMiddleware
+      .input(z.object({
+        date: z.string(),
+        durationMinutes: z.number().int().positive(),
+        bookingId: z.number().int().positive(),
+      }))
+      .query(({ input }) => getAvailableSlots(input.date, input.durationMinutes, input.bookingId)),
+
     setAvailability: adminMiddleware
       .input(z.object({
         dates: z.array(z.string()).min(1).max(62),

@@ -2,7 +2,7 @@ import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-const dashboardMockState = vi.hoisted(() => ({ showCancelledBooking: false, downloadCsv: vi.fn() }));
+const dashboardMockState = vi.hoisted(() => ({ showCancelledBooking: false, showReschedulableBooking: false, downloadCsv: vi.fn() }));
 
 vi.mock("@/contexts/LanguageContext", () => ({ useLanguage: () => ({ language: "ru" }) }));
 vi.mock("@/_core/hooks/useAuth", () => ({
@@ -24,7 +24,7 @@ vi.mock("@/lib/trpc", () => ({
       emailDeliveryErrors: { useQuery: () => ({ data: [{ bookingId: 1, referenceNumber: 'REF001', clientName: 'Alex', clientEmail: 'alex@example.com', bookingDate: '2099-12-30', bookingTime: '14:00', services: 'Haircut', notificationType: 'booking-confirmed', errorMessage: '550 5.1.1 User unknown', failedAt: new Date() }] }) },
       bookingReminderSettings: { useQuery: () => ({ data: { firstOffsetMinutes: 1440, firstEnabled: 'yes', secondOffsetMinutes: 120, secondEnabled: 'yes' }, isLoading: false, refetch: vi.fn() }) },
       saveBookingReminderSettings: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
-      bookingPage: { useQuery: () => ({ data: { items: [{ id: 1, status: dashboardMockState.showCancelledBooking ? "cancelled" : "confirmed", clientName: "Alex", referenceNumber: "REF001", serviceName: "Haircut", serviceSummary: "Haircut", totalDurationMinutes: 45, totalPriceSummary: "15,000 ֏", bookingDate: "2099-12-30", bookingTime: "14:00", clientPhone: "+37455000000", clientEmail: "alex@example.com", clientInstagram: "alex.style", comment: null, createdAt: new Date(), completedAt: dashboardMockState.showCancelledBooking ? null : new Date(), cancellationReason: dashboardMockState.showCancelledBooking ? "Plans changed" : null, hasEmailDeliveryFailure: true }], total: 30, page: 1, pageSize: 15 }, isLoading: false, isError: false }) },
+      bookingPage: { useQuery: () => ({ data: { items: [{ id: 1, status: dashboardMockState.showCancelledBooking ? "cancelled" : "confirmed", clientName: "Alex", referenceNumber: "REF001", serviceName: "Haircut", serviceSummary: "Haircut", totalDurationMinutes: 45, totalPriceSummary: "15,000 ֏", bookingDate: "2099-12-30", bookingTime: "14:00", clientPhone: "+37455000000", clientEmail: "alex@example.com", clientInstagram: "alex.style", comment: null, createdAt: new Date(), completedAt: dashboardMockState.showCancelledBooking || dashboardMockState.showReschedulableBooking ? null : new Date(), cancellationReason: dashboardMockState.showCancelledBooking ? "Plans changed" : null, hasEmailDeliveryFailure: true }], total: 30, page: 1, pageSize: 15 }, isLoading: false, isError: false }) },
       reviews: { useQuery: () => ({ data: [], refetch: vi.fn() }) },
       confirmBooking: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       declineBooking: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
@@ -45,6 +45,7 @@ vi.mock("@/lib/trpc", () => ({
       services: { useQuery: () => ({ data: [{ id: 1, nameRu: 'Стрижка', nameEn: 'Haircut', durationMinutes: 45, priceAmd: 15000, priceMinAmd: null, priceMaxAmd: null, isActive: 'yes' }], isLoading: false }) },
       updateBookingServices: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       updateBookingFinalPrice: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+      rescheduleSlots: { useQuery: () => ({ data: ["14:00", "15:00"], isLoading: false }) },
       customFinancialTrend: { useQuery: () => ({ data: { startDate: '2099-12-17', endDate: '2099-12-30', totalRevenueAmd: 51000, totalCompletedVisits: 4, dailyTrend: [{ date: '2099-12-29', revenueAmd: 24000, completedCount: 2 }, { date: '2099-12-30', revenueAmd: 27000, completedCount: 2 }] }, isLoading: false }) },
     },
     availability: {
@@ -129,6 +130,18 @@ describe("AdminDashboard navigation", () => {
     if (!nextPage) throw new Error('Next-page control was not rendered');
     fireEvent.click(nextPage);
     expect(summary()).toContain("Страница 2 из 2 · всего 30");
+  });
+
+  it("shows valid time windows when rescheduling an active visit", () => {
+    dashboardMockState.showReschedulableBooking = true;
+    render(<AdminDashboard />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Перенести" }));
+    expect(screen.getByLabelText("Новая дата визита")).toBeTruthy();
+    expect(screen.getByText("Доступные окна")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "15:00" })).toBeTruthy();
+
+    dashboardMockState.showReschedulableBooking = false;
   });
 
   it("shows a client cancellation reason on the cancelled booking card", () => {

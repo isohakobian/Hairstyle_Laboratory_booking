@@ -177,10 +177,12 @@ export default function AdminDashboard() {
   const rescheduleSlotsInput = useMemo(() => ({
     date: rescheduleDate || '1970-01-01',
     durationMinutes: Math.max(rescheduleTarget?.totalDurationMinutes || 30, 1),
-  }), [rescheduleDate, rescheduleTarget?.totalDurationMinutes]);
-  const { data: rescheduleSlots } = trpc.availability.slots.useQuery(rescheduleSlotsInput, {
+    bookingId: rescheduleTarget?.id || 0,
+  }), [rescheduleDate, rescheduleTarget?.id, rescheduleTarget?.totalDurationMinutes]);
+  const { data: rescheduleSlots, isLoading: rescheduleSlotsLoading } = trpc.admin.rescheduleSlots.useQuery(rescheduleSlotsInput, {
     enabled: Boolean(rescheduleTarget && rescheduleDate),
   });
+  const hasSelectedRescheduleSlot = Boolean(rescheduleTime && rescheduleSlots?.includes(rescheduleTime));
   const refreshBookingLists = () => {
     void refetchBookings();
     void utils.admin.bookingPage.invalidate();
@@ -840,12 +842,12 @@ export default function AdminDashboard() {
                           </div>
                         </div>
                       )}
-                      {booking.status === 'confirmed' && (
+                      {(booking.status === 'pending' || booking.status === 'confirmed') && !booking.completedAt && (
                         <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginTop: '0.9rem' }}>
                           <button type="button" className="btn-outline" style={{ fontSize: '0.625rem', padding: '0.625rem 1rem' }} onClick={() => { setRescheduleBookingId(booking.id); setRescheduleDate(booking.bookingDate); setRescheduleTime(booking.bookingTime); setRescheduleNote(''); }}>
                             {language === 'ru' ? 'Перенести' : 'Reschedule'}
                           </button>
-                          {!booking.completedAt && <button type="button" className="btn-primary" style={{ fontSize: '0.625rem', padding: '0.625rem 1rem' }} onClick={() => { setCompleteBookingId(booking.id); setFinalPriceAmd(''); setCompletionNote(''); }}>
+                          {booking.status === 'confirmed' && <button type="button" className="btn-primary" style={{ fontSize: '0.625rem', padding: '0.625rem 1rem' }} onClick={() => { setCompleteBookingId(booking.id); setFinalPriceAmd(''); setCompletionNote(''); }}>
                             {language === 'ru' ? 'Визит завершён' : 'Complete visit'}
                           </button>}
                         </div>
@@ -853,13 +855,32 @@ export default function AdminDashboard() {
                       {rescheduleBookingId === booking.id && (
                         <div style={{ marginTop: '1rem', padding: '1rem', border: '1px solid var(--gold-mid)', background: 'hsl(var(--secondary))' }}>
                           <p style={{ ...labelStyle, margin: '0 0 0.75rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Перенос визита' : 'Reschedule visit'}</p>
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(8rem, 1fr))', gap: '0.75rem' }}>
-                            <select value={rescheduleDate} onChange={event => { setRescheduleDate(event.target.value); setRescheduleTime(''); }} style={{ ...inputStyle, background: 'hsl(var(--card))' }}><option value="">—</option>{(openDates ?? []).map(date => <option key={date} value={date}>{date}</option>)}</select>
-                            <select value={rescheduleTime} onChange={event => setRescheduleTime(event.target.value)} style={{ ...inputStyle, background: 'hsl(var(--card))' }}><option value="">—</option>{Array.from(new Set([...(rescheduleSlots ?? []), ...(rescheduleDate === booking.bookingDate ? [booking.bookingTime] : [])])).sort().map(time => <option key={time} value={time}>{time}</option>)}</select>
-                          </div>
+                          <p style={{ margin: '0 0 0.85rem', fontSize: '0.8125rem', color: 'hsl(var(--muted-foreground))', lineHeight: 1.55 }}>
+                            {language === 'ru' ? `Сейчас: ${booking.bookingDate} · ${booking.bookingTime}. Выбери новую дату — затем только свободное окно нужной длительности.` : `Currently: ${booking.bookingDate} · ${booking.bookingTime}. Choose a new date, then an available window that fits the visit.`}
+                          </p>
+                          <label style={{ display: 'grid', gap: '0.4rem' }}>
+                            <span style={labelStyle}>{language === 'ru' ? 'Новая дата' : 'New date'}</span>
+                            <select aria-label={language === 'ru' ? 'Новая дата визита' : 'New visit date'} value={rescheduleDate} onChange={event => { setRescheduleDate(event.target.value); setRescheduleTime(''); }} style={{ ...inputStyle, background: 'hsl(var(--card))' }}>
+                              <option value="">{language === 'ru' ? 'Выбери доступную дату' : 'Choose an available date'}</option>
+                              {(openDates ?? []).map(date => <option key={date} value={date}>{new Date(`${date}T12:00:00`).toLocaleDateString(language === 'ru' ? 'ru-RU' : 'en-GB', { day: 'numeric', month: 'long', weekday: 'short' })}</option>)}
+                            </select>
+                          </label>
+                          <fieldset style={{ margin: '1rem 0 0', padding: 0, border: 'none' }}>
+                            <legend style={{ ...labelStyle, marginBottom: '0.6rem' }}>{language === 'ru' ? 'Доступные окна' : 'Available time windows'}</legend>
+                            {!rescheduleDate && <p style={{ margin: 0, fontSize: '0.8125rem', color: 'hsl(var(--muted-foreground))' }}>{language === 'ru' ? 'Сначала выбери дату.' : 'Choose a date first.'}</p>}
+                            {rescheduleDate && rescheduleSlotsLoading && <p style={{ margin: 0, fontSize: '0.8125rem', color: 'hsl(var(--muted-foreground))' }}>{language === 'ru' ? 'Проверяю свободные окна...' : 'Checking available windows...'}</p>}
+                            {rescheduleDate && !rescheduleSlotsLoading && (rescheduleSlots ?? []).length === 0 && <p style={{ margin: 0, fontSize: '0.8125rem', color: 'hsl(var(--muted-foreground))' }}>{language === 'ru' ? 'Для этой длительности свободных окон нет. Выбери другую дату.' : 'No free windows fit this visit. Choose another date.'}</p>}
+                            {rescheduleDate && !rescheduleSlotsLoading && (rescheduleSlots ?? []).length > 0 && (
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                {(rescheduleSlots ?? []).map(time => (
+                                  <button key={time} type="button" aria-pressed={rescheduleTime === time} onClick={() => setRescheduleTime(time)} style={{ minWidth: '4.25rem', padding: '0.55rem 0.75rem', border: `1px solid ${rescheduleTime === time ? 'var(--gold-mid)' : 'hsl(var(--border))'}`, background: rescheduleTime === time ? 'var(--gold-mid)' : 'hsl(var(--card))', color: rescheduleTime === time ? 'hsl(var(--primary-foreground))' : 'hsl(var(--foreground))', fontFamily: "'Inter', sans-serif", fontSize: '0.75rem', cursor: 'pointer', transition: 'background-color 160ms var(--ease-out), border-color 160ms var(--ease-out)' }}>{time}</button>
+                                ))}
+                              </div>
+                            )}
+                          </fieldset>
                           <input value={rescheduleNote} onChange={event => setRescheduleNote(event.target.value)} placeholder={language === 'ru' ? 'Причина или заметка (необязательно)' : 'Reason or note (optional)'} style={{ ...inputStyle, marginTop: '0.75rem' }} />
                           <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
-                            <button type="button" className="btn-primary" style={{ flex: 1, fontSize: '0.625rem' }} disabled={!rescheduleDate || !rescheduleTime || rescheduleMutation.isPending} onClick={() => rescheduleMutation.mutate({ id: booking.id, bookingDate: rescheduleDate, bookingTime: rescheduleTime, note: rescheduleNote.trim() || undefined })}>{language === 'ru' ? 'Сохранить перенос' : 'Save move'}</button>
+                            <button type="button" className="btn-primary" style={{ flex: 1, fontSize: '0.625rem' }} disabled={!rescheduleDate || !hasSelectedRescheduleSlot || rescheduleMutation.isPending} onClick={() => rescheduleMutation.mutate({ id: booking.id, bookingDate: rescheduleDate, bookingTime: rescheduleTime, note: rescheduleNote.trim() || undefined })}>{language === 'ru' ? 'Сохранить перенос' : 'Save move'}</button>
                             <button type="button" className="btn-outline" style={{ flex: 1, fontSize: '0.625rem' }} onClick={() => setRescheduleBookingId(null)}>{language === 'ru' ? 'Отмена' : 'Cancel'}</button>
                           </div>
                         </div>

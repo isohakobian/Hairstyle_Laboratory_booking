@@ -301,3 +301,6 @@
 - [x] Add "Grey Camouflage · Hair" and "Grey Camouflage · Beard" services to the admin service catalog (5,500 ֏ each, 30 min)
 - [x] Verify both services appear correctly in public booking and landing page catalog
 - [x] Rename both grey camouflage services and set their duration to 20 minutes while keeping the 5,500 ֏ price
+- [x] Improve the admin rescheduling panel with a date picker and only valid available time slots
+- [x] Preserve overlap protection and client reschedule notification for the updated booking flow
+- [x] Add regression coverage and verify the reschedule flow on desktop and mobile
