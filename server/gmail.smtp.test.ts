@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import nodemailer from "nodemailer";
 
 describe("Gmail SMTP credentials", () => {
-  it("authenticates with Gmail without sending an email", async () => {
+  it.skipIf(!process.env.GMAIL_SMTP_USER || !process.env.GMAIL_SMTP_APP_PASSWORD)("authenticates with Gmail without sending an email", async () => {
     const user = process.env.GMAIL_SMTP_USER;
     const pass = process.env.GMAIL_SMTP_APP_PASSWORD;
 

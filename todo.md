@@ -304,3 +304,16 @@
 - [x] Improve the admin rescheduling panel with a date picker and only valid available time slots
 - [x] Preserve overlap protection and client reschedule notification for the updated booking flow
 - [x] Add regression coverage and verify the reschedule flow on desktop and mobile
+
+- [x] Проверить текущие записи клиентов и бронирования в рабочей базе данных
+- [x] Найти и проверить доступные архивы клиентской базы и Task Data Backup
+- [x] Подготовить безопасный план восстановления без перезаписи текущих данных
+- [x] Зафиксировать результат проверки базы и сообщить Isaac точный статус
+
+- [x] Синхронизировать актуальную схему базы с рабочей базой после восстановления
+- [x] Исправить API-запросы services, announcements и admin-запросы при рассинхронизации базы
+- [x] Проверить главную страницу и админ-панель после миграции на desktop и mobile
+- [x] Обновить тесты и сохранить стабильную версию после исправления ошибок базы
+- [x] Исправить расхождение AMD-цен и обязательной предоплаты в booking-тестах после восстановления базы
+- [x] Сделать SMTP-тест корректным при отсутствии пользовательского Gmail App Password
+- [x] Повторно прогнать весь тестовый набор после исправлений
