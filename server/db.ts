@@ -401,6 +401,32 @@ export async function getClientDirectory() {
   }).from(clients).orderBy(desc(clients.updatedAt));
 }
 
+export async function getClientDatabaseStats() {
+  const db = await getDb();
+  if (!db) return { totalClients: 0, newThisMonth: 0, clientsWithVisits: 0, repeatClients: 0, totalVisits: 0, completedVisits: 0, totalRevenueAmd: 0, averageCheckAmd: 0 };
+  const clientRows = await db.select({ id: clients.id, createdAt: clients.createdAt }).from(clients);
+  const bookingRows = await db.select({ clientId: bookings.clientId, status: bookings.status, finalPriceAmd: bookings.finalPriceAmd }).from(bookings).where(isNotNull(bookings.clientId));
+  const visitCounts = new Map<number, number>();
+  bookingRows.forEach(row => {
+    if (row.clientId) visitCounts.set(row.clientId, (visitCounts.get(row.clientId) ?? 0) + 1);
+  });
+  const completedRows = bookingRows.filter(row => row.status === "completed");
+  const totalRevenueAmd = completedRows.reduce((sum, row) => sum + (row.finalPriceAmd ?? 0), 0);
+  const monthStart = new Date();
+  monthStart.setHours(0, 0, 0, 0);
+  monthStart.setDate(1);
+  return {
+    totalClients: clientRows.length,
+    newThisMonth: clientRows.filter(row => row.createdAt >= monthStart).length,
+    clientsWithVisits: visitCounts.size,
+    repeatClients: Array.from(visitCounts.values()).filter(count => count >= 2).length,
+    totalVisits: bookingRows.length,
+    completedVisits: completedRows.length,
+    totalRevenueAmd,
+    averageCheckAmd: completedRows.length ? Math.round(totalRevenueAmd / completedRows.length) : 0,
+  };
+}
+
 export async function deleteBookingAndRelatedData(bookingId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

@@ -49,6 +49,43 @@ export async function findOrCreateClient(identity: ClientIdentity) {
   return created[0];
 }
 
+export async function createManualClient(input: ClientIdentity & {
+  preferredHairLength?: string | null;
+  preferredBeardShape?: string | null;
+  preferredStyling?: string | null;
+  dislikes?: string | null;
+  skinSensitivity?: string | null;
+  stylistNotes?: string | null;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const lookupKey = lookupKeyForPhone(input.phone);
+  const existing = (await db.select().from(clients).where(eq(clients.lookupKey, lookupKey)).limit(1))[0];
+  const profileChanges = {
+    name: input.name,
+    phone: input.phone,
+    email: input.email || null,
+    birthday: input.birthday || null,
+    instagram: input.instagram || null,
+    preferredHairLength: input.preferredHairLength || null,
+    preferredBeardShape: input.preferredBeardShape || null,
+    preferredStyling: input.preferredStyling || null,
+    dislikes: input.dislikes || null,
+    skinSensitivity: input.skinSensitivity || null,
+    stylistNotes: input.stylistNotes || null,
+  };
+  if (existing) {
+    await db.update(clients).set(profileChanges).where(eq(clients.id, existing.id));
+    const updated = (await db.select().from(clients).where(eq(clients.id, existing.id)).limit(1))[0];
+    if (!updated) throw new Error("Client profile could not be updated");
+    return { client: updated, created: false };
+  }
+  await db.insert(clients).values({ lookupKey, ...profileChanges });
+  const created = (await db.select().from(clients).where(eq(clients.lookupKey, lookupKey)).limit(1))[0];
+  if (!created) throw new Error("Client profile could not be created");
+  return { client: created, created: true };
+}
+
 export async function updateClientProfile(clientId: number, changes: {
   birthday?: string | null;
   instagram?: string | null;

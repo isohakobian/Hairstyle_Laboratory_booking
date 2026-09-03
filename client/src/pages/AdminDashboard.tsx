@@ -106,6 +106,7 @@ export default function AdminDashboard() {
   const [reviewRequestPage, setReviewRequestPage] = useState(1);
   const [clientSearch, setClientSearch] = useState('');
   const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
+  const [manualClientForm, setManualClientForm] = useState({ name: '', phone: '', email: '', birthday: '', instagram: '', stylistNotes: '' });
   const [rescheduleBookingId, setRescheduleBookingId] = useState<number | null>(null);
   const [rescheduleDate, setRescheduleDate] = useState('');
   const [rescheduleTime, setRescheduleTime] = useState('');
@@ -167,6 +168,9 @@ export default function AdminDashboard() {
     enabled: isAuthenticated && user?.role === 'admin',
   });
   const { data: clientDirectory, isLoading: clientDirectoryLoading } = trpc.admin.clientDirectory.useQuery(undefined, {
+    enabled: isAuthenticated && user?.role === 'admin',
+  });
+  const { data: clientStats } = trpc.admin.clientStats.useQuery(undefined, {
     enabled: isAuthenticated && user?.role === 'admin',
   });
   const { data: managedServices } = trpc.admin.services.useQuery(undefined, {
@@ -245,6 +249,16 @@ export default function AdminDashboard() {
       setEditFinalPriceVal('');
       refreshBookingLists();
       utils.admin.today.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const createClientMutation = trpc.admin.createClient.useMutation({
+    onSuccess: (data) => {
+      setManualClientForm({ name: '', phone: '', email: '', birthday: '', instagram: '', stylistNotes: '' });
+      setSelectedClientId(data.client.id);
+      void utils.admin.clientDirectory.invalidate();
+      void utils.admin.clientStats.invalidate();
+      toast.success(language === 'ru' ? (data.created ? 'Клиент добавлен' : 'Профиль клиента обновлён') : (data.created ? 'Client added' : 'Client profile updated'));
     },
     onError: (e) => toast.error(e.message),
   });
@@ -1023,23 +1037,36 @@ export default function AdminDashboard() {
               <p style={{ ...labelStyle, margin: '0 0 0.4rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Рабочая память' : 'Working memory'}</p>
               <h3 style={{ margin: 0, fontStyle: 'italic' }}>{language === 'ru' ? 'Клиенты' : 'Clients'}</h3>
             </div>
-            <div style={{ marginBottom: '1.5rem', padding: '1rem', border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))' }}>
-              <label style={{ display: 'grid', gap: '0.55rem' }}>
-                <span style={{ ...labelStyle, fontSize: '0.5625rem' }}>{language === 'ru' ? 'Найти клиента' : 'Find a client'}</span>
-                <input value={clientSearch} onChange={event => setClientSearch(event.target.value)} placeholder={language === 'ru' ? 'Имя, телефон или email' : 'Name, phone, or email'} style={{ ...inputStyle, border: '1px solid hsl(var(--border))', padding: '0.625rem 0.75rem' }} />
-              </label>
-              {clientDirectoryLoading ? <p style={{ ...labelStyle, margin: '0.85rem 0 0', fontSize: '0.5625rem' }}>{language === 'ru' ? 'Загружаю клиентов...' : 'Loading clients...'}</p> : visibleClientDirectory.length === 0 ? <p style={{ ...labelStyle, margin: '0.85rem 0 0', fontSize: '0.5625rem' }}>{language === 'ru' ? 'Клиенты не найдены' : 'No clients found'}</p> : (
-                <div style={{ display: 'grid', gap: '0.5rem', marginTop: '0.85rem', maxHeight: '16rem', overflowY: 'auto' }}>
-                  {visibleClientDirectory.map(client => <button key={client.id} type="button" onClick={() => setSelectedClientId(client.id)} style={{ textAlign: 'left', padding: '0.7rem 0.75rem', background: selectedClientId === client.id ? 'hsl(var(--secondary))' : 'transparent', color: 'hsl(var(--foreground))', border: '1px solid hsl(var(--border))', cursor: 'pointer' }}>
-                    <span style={{ display: 'block', fontFamily: "'Playfair Display', serif", fontWeight: 700 }}>{client.name}</span>
-                    <span style={{ ...labelStyle, display: 'block', marginTop: '0.2rem', fontSize: '0.5625rem' }}>{client.phone}{client.email ? ` · ${client.email}` : ''}</span>
-                  </button>)}
-                </div>
-              )}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(10rem, 1fr))', gap: '0.75rem', marginBottom: '1.5rem' }}>
+              {[
+                { label: language === 'ru' ? 'Всего клиентов' : 'Total clients', value: clientStats?.totalClients ?? 0, color: 'var(--gold-mid)' },
+                { label: language === 'ru' ? 'Новых в этом месяце' : 'New this month', value: clientStats?.newThisMonth ?? 0, color: statusColors.confirmed },
+                { label: language === 'ru' ? 'Повторные клиенты' : 'Repeat clients', value: clientStats?.repeatClients ?? 0, color: statusColors.completed },
+                { label: language === 'ru' ? 'Средний чек' : 'Average check', value: `${(clientStats?.averageCheckAmd ?? 0).toLocaleString()} ֏`, color: statusColors.pending },
+                { label: language === 'ru' ? 'Всего визитов' : 'Total visits', value: clientStats?.totalVisits ?? 0, color: 'hsl(275 45% 52%)' },
+                { label: language === 'ru' ? 'Завершённых визитов' : 'Completed visits', value: clientStats?.completedVisits ?? 0, color: statusColors.completed },
+                { label: language === 'ru' ? 'Выручка по завершённым' : 'Completed revenue', value: `${(clientStats?.totalRevenueAmd ?? 0).toLocaleString()} ֏`, color: 'hsl(160 45% 40%)' },
+              ].map(stat => <div key={stat.label} style={{ ...cardStyle, padding: '1rem' }}><p style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.65rem', color: stat.color, margin: '0 0 0.2rem' }}>{stat.value}</p><p style={{ ...labelStyle, margin: 0, fontSize: '0.5rem' }}>{stat.label}</p></div>)}
             </div>
-            {!selectedClientId ? <p style={{ maxWidth: '38rem', padding: '1rem', borderLeft: '2px solid var(--gold-mid)', background: 'hsl(var(--secondary))', color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem', lineHeight: 1.6 }}>
-              {language === 'ru' ? 'Выберите клиента выше или откройте его из карточки заявки. Здесь будут предпочтения, заметки, история визитов, фото и статистика перед следующим визитом.' : 'Choose a client above or open one from a booking card. This workspace shows preferences, notes, visit history, photos, and useful metrics before the next visit.'}
-            </p> : <ClientMemoryPanel clientId={selectedClientId} language={language as 'ru' | 'en'} onClose={() => setSelectedClientId(null)} />}
+            <div style={{ marginBottom: '1.5rem', padding: '1rem', border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))' }}>
+              <p style={{ ...labelStyle, margin: '0 0 0.8rem', color: 'var(--gold-mid)', fontSize: '0.5625rem' }}>{language === 'ru' ? 'Новая запись в базе' : 'New client record'}</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(12rem, 1fr))', gap: '0.9rem 1.25rem' }}>
+                {([
+                  ['name', language === 'ru' ? 'Имя *' : 'Name *', 'Имя клиента'],
+                  ['phone', language === 'ru' ? 'Телефон *' : 'Phone *', '+374...'],
+                  ['email', 'Email', 'email@example.com'],
+                  ['birthday', language === 'ru' ? 'Дата рождения' : 'Birthday', ''],
+                  ['instagram', 'Instagram', '@username'],
+                ] as const).map(([key, label, placeholder]) => <label key={key} style={{ display: 'grid', gap: '0.45rem' }}><span style={{ ...labelStyle, fontSize: '0.5rem' }}>{label}</span><input type={key === 'birthday' ? 'date' : key === 'email' ? 'email' : 'text'} value={manualClientForm[key]} placeholder={placeholder} onChange={event => setManualClientForm(current => ({ ...current, [key]: event.target.value }))} style={{ ...inputStyle, border: '1px solid hsl(var(--border))', padding: '0.625rem 0.75rem' }} /></label>)}
+                <label style={{ display: 'grid', gap: '0.45rem', gridColumn: '1 / -1' }}><span style={{ ...labelStyle, fontSize: '0.5rem' }}>{language === 'ru' ? 'Короткая заметка' : 'Quick note'}</span><textarea value={manualClientForm.stylistNotes} placeholder={language === 'ru' ? 'Предпочтения или важная информация' : 'Preferences or useful information'} onChange={event => setManualClientForm(current => ({ ...current, stylistNotes: event.target.value }))} rows={2} style={{ ...inputStyle, resize: 'vertical', border: '1px solid hsl(var(--border))', padding: '0.625rem 0.75rem' }} /></label>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginTop: '1rem' }}><p style={{ margin: 0, color: 'hsl(var(--muted-foreground))', fontSize: '0.75rem' }}>{language === 'ru' ? 'Телефон используется для защиты от дублей.' : 'Phone is used to prevent duplicates.'}</p><button type="button" className="btn-primary" disabled={createClientMutation.isPending || !manualClientForm.name.trim() || manualClientForm.phone.trim().length < 5} onClick={() => createClientMutation.mutate(manualClientForm)}>{createClientMutation.isPending ? (language === 'ru' ? 'Сохраняю...' : 'Saving...') : (language === 'ru' ? 'Добавить клиента' : 'Add client')}</button></div>
+            </div>
+            <div style={{ marginBottom: '1.5rem', padding: '1rem', border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))' }}>
+              <label style={{ display: 'grid', gap: '0.55rem' }}><span style={{ ...labelStyle, fontSize: '0.5625rem' }}>{language === 'ru' ? 'Найти клиента' : 'Find a client'}</span><input value={clientSearch} onChange={event => setClientSearch(event.target.value)} placeholder={language === 'ru' ? 'Имя, телефон или email' : 'Name, phone, or email'} style={{ ...inputStyle, border: '1px solid hsl(var(--border))', padding: '0.625rem 0.75rem' }} /></label>
+              {clientDirectoryLoading ? <p style={{ ...labelStyle, margin: '0.85rem 0 0', fontSize: '0.5625rem' }}>{language === 'ru' ? 'Загружаю клиентов...' : 'Loading clients...'}</p> : visibleClientDirectory.length === 0 ? <p style={{ ...labelStyle, margin: '0.85rem 0 0', fontSize: '0.5625rem' }}>{language === 'ru' ? 'Клиенты не найдены' : 'No clients found'}</p> : <div style={{ display: 'grid', gap: '0.5rem', marginTop: '0.85rem', maxHeight: '16rem', overflowY: 'auto' }}>{visibleClientDirectory.map(client => <button key={client.id} type="button" onClick={() => setSelectedClientId(client.id)} style={{ textAlign: 'left', padding: '0.7rem 0.75rem', background: selectedClientId === client.id ? 'hsl(var(--secondary))' : 'transparent', color: 'hsl(var(--foreground))', border: '1px solid hsl(var(--border))', cursor: 'pointer' }}><span style={{ display: 'block', fontFamily: "'Playfair Display', serif", fontWeight: 700 }}>{client.name}</span><span style={{ ...labelStyle, display: 'block', marginTop: '0.2rem', fontSize: '0.5625rem' }}>{client.phone}{client.email ? ` · ${client.email}` : ''}</span></button>)}</div>}
+            </div>
+            {!selectedClientId ? <p style={{ maxWidth: '38rem', padding: '1rem', borderLeft: '2px solid var(--gold-mid)', background: 'hsl(var(--secondary))', color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem', lineHeight: 1.6 }}>{language === 'ru' ? 'Добавь клиента вручную или выбери профиль выше. Здесь будут предпочтения, заметки, история визитов, фото и статистика перед следующим визитом.' : 'Add a client manually or choose a profile above. This workspace shows preferences, notes, visit history, photos, and useful metrics before the next visit.'}</p> : <ClientMemoryPanel clientId={selectedClientId} language={language as 'ru' | 'en'} onClose={() => setSelectedClientId(null)} />}
           </div>
         )}
 

@@ -10,13 +10,13 @@ import {
   getReviewTokenByHash, markReviewTokenUsed,
   getPublishedReviews, getAllReviews, updateReviewPublished, createManagedService, setServiceActive, updateManagedService, updateBookingServices,
   createBookingStatusRecoveryToken, claimBookingStatusRecoveryToken, getSafeBookingStatusesByEmail,
-  deleteBookingAndRelatedData, declineBookingForInvalidReceipt, getAdminTodaySummary, updateBookingFinalPrice, getCustomDateRangeFinancialTrend, getBookingReminderSettings, getBookingsWithUnresolvedEmailFailures, getUnresolvedEmailDeliveryErrors, getClientDirectory, getClientEmailDeliveryHistory, getLatestBookingRescheduleEvent, getBookingPage, getManualDepositSettings, getReviewRequestDashboard, getReviewRequestEmailTemplate, getReviewRequestPage, getReviewRequestStats, getWeeklyBookingSummary, recordClientEmailDelivery, saveBookingReminderSettings, saveManualDepositSettings,   saveReviewRequestEmailTemplate, getPostVisitEmailTemplate, savePostVisitEmailTemplate, getBirthdayEmailTemplate, saveBirthdayEmailTemplate, updateManualDepositStatus, getCrmCampaigns, getCrmCampaignById, createCrmCampaign, updateCrmCampaign, getCrmCampaignDeliveries, getCrmCampaignStats, recordCrmCampaignDelivery, getCrmRecipients, saveClientCrmPreference, getClientCrmPreference, CrmAudienceFilter,
+  deleteBookingAndRelatedData, declineBookingForInvalidReceipt, getAdminTodaySummary, updateBookingFinalPrice, getCustomDateRangeFinancialTrend, getBookingReminderSettings, getBookingsWithUnresolvedEmailFailures, getUnresolvedEmailDeliveryErrors, getClientDirectory, getClientDatabaseStats, getClientEmailDeliveryHistory, getLatestBookingRescheduleEvent, getBookingPage, getManualDepositSettings, getReviewRequestDashboard, getReviewRequestEmailTemplate, getReviewRequestPage, getReviewRequestStats, getWeeklyBookingSummary, recordClientEmailDelivery, saveBookingReminderSettings, saveManualDepositSettings,   saveReviewRequestEmailTemplate, getPostVisitEmailTemplate, savePostVisitEmailTemplate, getBirthdayEmailTemplate, saveBirthdayEmailTemplate, updateManualDepositStatus, getCrmCampaigns, getCrmCampaignById, createCrmCampaign, updateCrmCampaign, getCrmCampaignDeliveries, getCrmCampaignStats, recordCrmCampaignDelivery, getCrmRecipients, saveClientCrmPreference, getClientCrmPreference, CrmAudienceFilter,
 } from "./db";
 import { TRPCError } from "@trpc/server";
 import { buildAppointmentReminderEmail, buildBookingCancelledEmail, buildBookingDeclinedEmail, buildBookingRescheduledEmail, buildClientBookingEmail, buildClientConfirmationEmail, buildCrmBroadcastEmail, buildCrmTestEmail, sendAppointmentReminderEmail, sendBookingCancelledEmail, sendBookingDeclinedEmail, sendBookingEmails, sendBookingRescheduledEmail, sendBookingStatusRecoveryEmail, sendClientBookingRequestEmail, sendConfirmedBookingEmail, sendReviewRequestEmail, sendCrmEmail } from "./bookingEmail";
 import { createReviewTokenValue, getBookingStatusRecoveryExpiry, getReviewTokenExpiry, hashReviewToken } from "./reviewToken";
 import { blockDates, clearAvailabilityForDates, getAvailabilityWindows, getAvailableSlots, getPublicAvailableDates, setAvailabilityForDates } from "./availability";
-import { completeBooking, createBookingEvent, findOrCreateClient, getClientMemory, getSignedVisitMediaUrl, recordReviewRequest, rescheduleBooking, updateClientProfile, uploadVisitMedia } from "./clientMemory";
+import { completeBooking, createBookingEvent, createManualClient, findOrCreateClient, getClientMemory, getSignedVisitMediaUrl, recordReviewRequest, rescheduleBooking, updateClientProfile, uploadVisitMedia } from "./clientMemory";
 import { getActiveAnnouncements, getAllAnnouncements, saveAnnouncement, setAnnouncementPublished, uploadAnnouncementImage } from "./announcements";
 import { getManualDepositReceiptUrl, storeManualDepositReceipt } from "./manualDeposit";
 import { getReferencePhotoUrl, storeReferencePhoto } from "./referencePhoto";
@@ -951,6 +951,29 @@ export const appRouter = router({
       .query(({ input }) => getClientMemory(input.clientId)),
 
     clientDirectory: adminMiddleware.query(() => getClientDirectory()),
+
+    clientStats: adminMiddleware.query(() => getClientDatabaseStats()),
+
+    createClient: adminMiddleware
+      .input(z.object({
+        name: z.string().trim().min(1).max(255),
+        phone: z.string().trim().min(5).max(20),
+        email: z.string().trim().email().max(320).optional().or(z.literal("")),
+        birthday: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().or(z.literal("")),
+        instagram: z.string().trim().max(100).optional(),
+        preferredHairLength: z.string().trim().max(2000).optional(),
+        preferredBeardShape: z.string().trim().max(2000).optional(),
+        preferredStyling: z.string().trim().max(2000).optional(),
+        dislikes: z.string().trim().max(2000).optional(),
+        skinSensitivity: z.string().trim().max(2000).optional(),
+        stylistNotes: z.string().trim().max(5000).optional(),
+      }))
+      .mutation(async ({ input }) => createManualClient({
+        ...input,
+        email: input.email || null,
+        birthday: input.birthday || null,
+        instagram: input.instagram || null,
+      })),
 
     updateClientMemory: adminMiddleware
       .input(z.object({

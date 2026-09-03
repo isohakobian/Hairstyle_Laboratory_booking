@@ -42,6 +42,8 @@ vi.mock("@/lib/trpc", () => ({
       reviewRequestTemplate: { useQuery: () => ({ data: { subjectRu: 'Спасибо за визит — Isaac', subjectEn: 'Thank you for your visit — Isaac', bodyRu: 'Привет, {{clientName}}', bodyEn: 'Hi, {{clientName}}' }, isLoading: false, refetch: vi.fn() }) },
       saveReviewRequestTemplate: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       clientDirectory: { useQuery: () => ({ data: [{ id: 7, name: 'Alex', phone: '+37455000000', email: 'alex@example.com', updatedAt: new Date() }], isLoading: false }) },
+      clientStats: { useQuery: () => ({ data: { totalClients: 1, newThisMonth: 1, clientsWithVisits: 1, repeatClients: 0, totalVisits: 1, completedVisits: 1, totalRevenueAmd: 15000, averageCheckAmd: 15000 }, isLoading: false }) },
+      createClient: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       services: { useQuery: () => ({ data: [{ id: 1, nameRu: 'Стрижка', nameEn: 'Haircut', durationMinutes: 45, priceAmd: 15000, priceMinAmd: null, priceMaxAmd: null, isActive: 'yes' }], isLoading: false }) },
       updateBookingServices: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       updateBookingFinalPrice: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
@@ -60,6 +62,8 @@ vi.mock("@/lib/trpc", () => ({
         emailDeliveryErrors: { invalidate: vi.fn() },
         reviewRequestPage: { invalidate: vi.fn() },
         reviewRequestStats: { invalidate: vi.fn() },
+        clientDirectory: { invalidate: vi.fn() },
+        clientStats: { invalidate: vi.fn() },
       },
     }),
   },
@@ -107,6 +111,9 @@ describe("AdminDashboard navigation", () => {
     expect(screen.getByText("Отзывы клиентов")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: /Клиенты/i }));
+    expect(screen.getByText("Новая запись в базе")).toBeTruthy();
+    expect(screen.getByText("Всего клиентов")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Добавить клиента" })).toBeTruthy();
     const clientSearch = screen.getByPlaceholderText("Имя, телефон или email");
     fireEvent.change(clientSearch, { target: { value: "Alex" } });
     expect(screen.getAllByText("Alex").length).toBeGreaterThan(0);
