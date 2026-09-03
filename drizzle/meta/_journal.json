@@ -204,6 +204,13 @@
       "when": 1787145059446,
       "tag": "0028_green_wolfpack",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "5",
+      "when": 1788449933674,
+      "tag": "0029_woozy_jean_grey",
+      "breakpoints": true
     }
   ]
 }

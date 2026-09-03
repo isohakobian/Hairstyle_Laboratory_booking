@@ -114,6 +114,25 @@ export const clients = mysqlTable("clients", {
 export type Client = typeof clients.$inferSelect;
 export type InsertClient = typeof clients.$inferInsert;
 
+// Historical visits entered manually after restoring an older client database.
+// They are kept separate from online bookings so original booking records stay untouched.
+export const manualVisits = mysqlTable("manualVisits", {
+  id: int("id").autoincrement().primaryKey(),
+  clientId: int("clientId").notNull(),
+  visitDate: varchar("visitDate", { length: 10 }).notNull(),
+  serviceName: varchar("serviceName", { length: 255 }).notNull(),
+  priceAmd: int("priceAmd").notNull().default(0),
+  paidAmd: int("paidAmd").notNull().default(0),
+  note: text("note"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [
+  index("manualVisits_clientId_idx").on(table.clientId),
+  index("manualVisits_visitDate_idx").on(table.visitDate),
+]);
+
+export type ManualVisit = typeof manualVisits.$inferSelect;
+export type InsertManualVisit = typeof manualVisits.$inferInsert;
+
 // Exact working ranges opened by Isaac. A client only sees slots that fit
 // completely inside a window and do not overlap an existing appointment.
 export const availabilityWindows = mysqlTable("availabilityWindows", {

@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, gte, inArray, isNotNull, isNull, like, lt, lte, ne, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, InsertBooking, InsertBookingService, users, services, bookings, bookingServices, reviewTokens, bookingStatusRecoveryTokens, bookingEvents, visitMedia, reviewRequestHistory, clientEmailDeliveries, reviews, clients, emailTemplates, availabilityWindows, manualDepositSettings, automationEmailDeliveries, bookingReminderDeliveries, bookingReminderSettings, crmCampaigns, clientCrmPreferences, crmCampaignDeliveries, CrmCampaign, ClientCrmPreference } from "../drizzle/schema";
+import { InsertUser, InsertBooking, InsertBookingService, users, services, bookings, bookingServices, reviewTokens, bookingStatusRecoveryTokens, bookingEvents, visitMedia, reviewRequestHistory, clientEmailDeliveries, reviews, clients, emailTemplates, availabilityWindows, manualDepositSettings, automationEmailDeliveries, bookingReminderDeliveries, bookingReminderSettings, crmCampaigns, clientCrmPreferences, crmCampaignDeliveries, manualVisits, CrmCampaign, ClientCrmPreference } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -401,17 +401,37 @@ export async function getClientDirectory() {
   }).from(clients).orderBy(desc(clients.updatedAt));
 }
 
+export async function createManualVisit(input: { clientId: number; visitDate: string; serviceName: string; priceAmd: number; paidAmd: number; note?: string | null }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(manualVisits).values(input);
+  const created = (await db.select().from(manualVisits)
+    .where(and(eq(manualVisits.clientId, input.clientId), eq(manualVisits.visitDate, input.visitDate), eq(manualVisits.serviceName, input.serviceName)))
+    .orderBy(desc(manualVisits.id)).limit(1))[0];
+  if (!created) throw new Error("Historical visit could not be created");
+  return created;
+}
+
+export async function getManualVisitsForClient(clientId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(manualVisits).where(eq(manualVisits.clientId, clientId)).orderBy(desc(manualVisits.visitDate), desc(manualVisits.id));
+}
+
 export async function getClientDatabaseStats() {
   const db = await getDb();
   if (!db) return { totalClients: 0, newThisMonth: 0, clientsWithVisits: 0, repeatClients: 0, totalVisits: 0, completedVisits: 0, totalRevenueAmd: 0, averageCheckAmd: 0 };
   const clientRows = await db.select({ id: clients.id, createdAt: clients.createdAt }).from(clients);
   const bookingRows = await db.select({ clientId: bookings.clientId, status: bookings.status, finalPriceAmd: bookings.finalPriceAmd }).from(bookings).where(isNotNull(bookings.clientId));
+  const manualRows = await db.select({ clientId: manualVisits.clientId, priceAmd: manualVisits.priceAmd, paidAmd: manualVisits.paidAmd }).from(manualVisits);
   const visitCounts = new Map<number, number>();
   bookingRows.forEach(row => {
     if (row.clientId) visitCounts.set(row.clientId, (visitCounts.get(row.clientId) ?? 0) + 1);
   });
+  manualRows.forEach(row => visitCounts.set(row.clientId, (visitCounts.get(row.clientId) ?? 0) + 1));
   const completedRows = bookingRows.filter(row => row.status === "completed");
-  const totalRevenueAmd = completedRows.reduce((sum, row) => sum + (row.finalPriceAmd ?? 0), 0);
+  const completedVisits = completedRows.length + manualRows.length;
+  const totalRevenueAmd = completedRows.reduce((sum, row) => sum + (row.finalPriceAmd ?? 0), 0) + manualRows.reduce((sum, row) => sum + (row.paidAmd ?? 0), 0);
   const monthStart = new Date();
   monthStart.setHours(0, 0, 0, 0);
   monthStart.setDate(1);
@@ -420,10 +440,10 @@ export async function getClientDatabaseStats() {
     newThisMonth: clientRows.filter(row => row.createdAt >= monthStart).length,
     clientsWithVisits: visitCounts.size,
     repeatClients: Array.from(visitCounts.values()).filter(count => count >= 2).length,
-    totalVisits: bookingRows.length,
-    completedVisits: completedRows.length,
+    totalVisits: bookingRows.length + manualRows.length,
+    completedVisits,
     totalRevenueAmd,
-    averageCheckAmd: completedRows.length ? Math.round(totalRevenueAmd / completedRows.length) : 0,
+    averageCheckAmd: completedVisits ? Math.round(totalRevenueAmd / completedVisits) : 0,
   };
 }
 

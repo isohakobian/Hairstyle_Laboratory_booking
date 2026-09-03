@@ -18,6 +18,9 @@ vi.mock('@/lib/trpc', () => ({
     admin: {
       clientMemory: { useQuery: () => ({ data: clientMemory, isLoading: false, refetch: vi.fn() }) },
       clientCrmPreference: { useQuery: () => ({ data: { newsletterConsented: 'no' }, refetch: vi.fn() }) },
+      manualVisits: { useQuery: () => ({ data: [], refetch: vi.fn() }) },
+      services: { useQuery: () => ({ data: [{ id: 1, nameRu: 'Стрижка', nameEn: 'Haircut', priceAmd: 15000, priceMinAmd: null }], isLoading: false }) },
+      createManualVisit: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       saveClientCrmPreference: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       updateClientMemory: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       uploadVisitMedia: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
@@ -35,5 +38,7 @@ describe('ClientMemoryPanel cancellation history', () => {
     expect(screen.getByText('Отменён клиентом')).toBeTruthy();
     expect(screen.getByText('Отмена клиентом')).toBeTruthy();
     expect(screen.getByText('Plans changed')).toBeTruthy();
+    expect(screen.getByText('Восстановить прошлый визит')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Добавить визит' })).toBeTruthy();
   });
 });

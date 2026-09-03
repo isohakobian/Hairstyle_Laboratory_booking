@@ -47,9 +47,22 @@ describe("Admin client directory", () => {
     expect(updated.client.id).toBe(first.client.id);
     expect(updated.client.name).toBe("Manual Directory Client Updated");
 
+    const visit = await admin.admin.createManualVisit({
+      clientId: first.client.id,
+      visitDate: "2025-06-15",
+      serviceName: "Haircut",
+      priceAmd: 15000,
+      paidAmd: 15000,
+      note: "Classic cut",
+    });
+    expect(visit.serviceName).toBe("Haircut");
+    expect(visit.paidAmd).toBe(15000);
+
     const stats = await admin.admin.clientStats();
     expect(stats.totalClients).toBeGreaterThanOrEqual(1);
-    expect(stats.totalVisits).toBeGreaterThanOrEqual(0);
+    expect(stats.totalVisits).toBeGreaterThanOrEqual(1);
+    expect(stats.completedVisits).toBeGreaterThanOrEqual(1);
+    expect(stats.totalRevenueAmd).toBeGreaterThanOrEqual(15000);
     expect(stats.averageCheckAmd).toBeGreaterThanOrEqual(0);
   });
 });

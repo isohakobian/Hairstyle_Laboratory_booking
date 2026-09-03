@@ -10,7 +10,7 @@ import {
   getReviewTokenByHash, markReviewTokenUsed,
   getPublishedReviews, getAllReviews, updateReviewPublished, createManagedService, setServiceActive, updateManagedService, updateBookingServices,
   createBookingStatusRecoveryToken, claimBookingStatusRecoveryToken, getSafeBookingStatusesByEmail,
-  deleteBookingAndRelatedData, declineBookingForInvalidReceipt, getAdminTodaySummary, updateBookingFinalPrice, getCustomDateRangeFinancialTrend, getBookingReminderSettings, getBookingsWithUnresolvedEmailFailures, getUnresolvedEmailDeliveryErrors, getClientDirectory, getClientDatabaseStats, getClientEmailDeliveryHistory, getLatestBookingRescheduleEvent, getBookingPage, getManualDepositSettings, getReviewRequestDashboard, getReviewRequestEmailTemplate, getReviewRequestPage, getReviewRequestStats, getWeeklyBookingSummary, recordClientEmailDelivery, saveBookingReminderSettings, saveManualDepositSettings,   saveReviewRequestEmailTemplate, getPostVisitEmailTemplate, savePostVisitEmailTemplate, getBirthdayEmailTemplate, saveBirthdayEmailTemplate, updateManualDepositStatus, getCrmCampaigns, getCrmCampaignById, createCrmCampaign, updateCrmCampaign, getCrmCampaignDeliveries, getCrmCampaignStats, recordCrmCampaignDelivery, getCrmRecipients, saveClientCrmPreference, getClientCrmPreference, CrmAudienceFilter,
+  deleteBookingAndRelatedData, declineBookingForInvalidReceipt, getAdminTodaySummary, updateBookingFinalPrice, getCustomDateRangeFinancialTrend, getBookingReminderSettings, getBookingsWithUnresolvedEmailFailures, getUnresolvedEmailDeliveryErrors, getClientDirectory, getClientDatabaseStats, createManualVisit, getManualVisitsForClient, getClientEmailDeliveryHistory, getLatestBookingRescheduleEvent, getBookingPage, getManualDepositSettings, getReviewRequestDashboard, getReviewRequestEmailTemplate, getReviewRequestPage, getReviewRequestStats, getWeeklyBookingSummary, recordClientEmailDelivery, saveBookingReminderSettings, saveManualDepositSettings,   saveReviewRequestEmailTemplate, getPostVisitEmailTemplate, savePostVisitEmailTemplate, getBirthdayEmailTemplate, saveBirthdayEmailTemplate, updateManualDepositStatus, getCrmCampaigns, getCrmCampaignById, createCrmCampaign, updateCrmCampaign, getCrmCampaignDeliveries, getCrmCampaignStats, recordCrmCampaignDelivery, getCrmRecipients, saveClientCrmPreference, getClientCrmPreference, CrmAudienceFilter,
 } from "./db";
 import { TRPCError } from "@trpc/server";
 import { buildAppointmentReminderEmail, buildBookingCancelledEmail, buildBookingDeclinedEmail, buildBookingRescheduledEmail, buildClientBookingEmail, buildClientConfirmationEmail, buildCrmBroadcastEmail, buildCrmTestEmail, sendAppointmentReminderEmail, sendBookingCancelledEmail, sendBookingDeclinedEmail, sendBookingEmails, sendBookingRescheduledEmail, sendBookingStatusRecoveryEmail, sendClientBookingRequestEmail, sendConfirmedBookingEmail, sendReviewRequestEmail, sendCrmEmail } from "./bookingEmail";
@@ -949,6 +949,21 @@ export const appRouter = router({
     clientMemory: adminMiddleware
       .input(z.object({ clientId: z.number().int().positive() }))
       .query(({ input }) => getClientMemory(input.clientId)),
+
+    manualVisits: adminMiddleware
+      .input(z.object({ clientId: z.number().int().positive() }))
+      .query(({ input }) => getManualVisitsForClient(input.clientId)),
+
+    createManualVisit: adminMiddleware
+      .input(z.object({
+        clientId: z.number().int().positive(),
+        visitDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        serviceName: z.string().trim().min(1).max(255),
+        priceAmd: z.number().int().min(0).max(10000000),
+        paidAmd: z.number().int().min(0).max(10000000),
+        note: z.string().trim().max(5000).optional(),
+      }).refine(input => input.paidAmd <= input.priceAmd, { message: "Paid amount cannot exceed service price" }))
+      .mutation(({ input }) => createManualVisit(input)),
 
     clientDirectory: adminMiddleware.query(() => getClientDirectory()),
 

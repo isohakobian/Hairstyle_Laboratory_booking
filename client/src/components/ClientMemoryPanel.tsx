@@ -51,7 +51,10 @@ export default function ClientMemoryPanel({ clientId, language, onClose }: Props
   const [, setLocation] = useLocation();
   const { data: memory, isLoading, refetch } = trpc.admin.clientMemory.useQuery({ clientId });
   const { data: crmPreference, refetch: refetchCrmPreference } = trpc.admin.clientCrmPreference.useQuery({ clientId });
+  const { data: manualVisits, refetch: refetchManualVisits } = trpc.admin.manualVisits.useQuery({ clientId });
+  const { data: managedServices } = trpc.admin.services.useQuery(undefined);
   const [newsletterConsented, setNewsletterConsented] = useState(false);
+  const [historicalVisit, setHistoricalVisit] = useState({ visitDate: new Date().toISOString().slice(0, 10), serviceName: '', priceAmd: '', paidAmd: '', note: '' });
   const [values, setValues] = useState({
     birthday: '', instagram: '', preferredHairLength: '', preferredBeardShape: '', preferredStyling: '', dislikes: '', skinSensitivity: '', stylistNotes: '',
   });
@@ -84,6 +87,14 @@ export default function ClientMemoryPanel({ clientId, language, onClose }: Props
   });
   const uploadMutation = trpc.admin.uploadVisitMedia.useMutation({
     onSuccess: () => { toast.success(ru ? 'Фото добавлено' : 'Photo added'); refetch(); },
+    onError: error => toast.error(error.message),
+  });
+  const manualVisitMutation = trpc.admin.createManualVisit.useMutation({
+    onSuccess: () => {
+      setHistoricalVisit({ visitDate: new Date().toISOString().slice(0, 10), serviceName: '', priceAmd: '', paidAmd: '', note: '' });
+      void refetchManualVisits();
+      toast.success(ru ? 'Исторический визит добавлен' : 'Historical visit added');
+    },
     onError: error => toast.error(error.message),
   });
 
@@ -189,6 +200,19 @@ export default function ClientMemoryPanel({ clientId, language, onClose }: Props
           </label>
           <button type="button" className="btn-outline" onClick={() => crmPreferenceMutation.mutate({ clientId, newsletterConsented: newsletterConsented ? 'yes' : 'no' })} disabled={crmPreferenceMutation.isPending} style={{ fontSize: '0.5625rem', padding: '0.5rem 0.7rem' }}>{ru ? 'Сохранить согласие' : 'Save consent'}</button>
         </div>
+      </div>
+
+      <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid hsl(var(--border))' }}>
+        <p style={{ ...labelStyle, margin: '0 0 1rem', color: 'var(--gold-mid)' }}>{ru ? 'Восстановить прошлый визит' : 'Add past visit'}</p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(11rem, 1fr))', gap: '0.9rem 1.2rem', padding: '1rem', border: '1px solid hsl(var(--border))', background: 'hsl(var(--secondary))' }}>
+          <label style={{ display: 'grid', gap: '0.35rem' }}><span style={labelStyle}>{ru ? 'Дата' : 'Date'}</span><input type="date" value={historicalVisit.visitDate} onChange={event => setHistoricalVisit(current => ({ ...current, visitDate: event.target.value }))} style={inputStyle} /></label>
+          <label style={{ display: 'grid', gap: '0.35rem' }}><span style={labelStyle}>{ru ? 'Услуга' : 'Service'}</span><select value={historicalVisit.serviceName} onChange={event => { const service = managedServices?.find(item => String(item.id) === event.target.value); setHistoricalVisit(current => ({ ...current, serviceName: service ? (ru ? service.nameRu : service.nameEn) : '', priceAmd: service ? String(service.priceAmd ?? service.priceMinAmd ?? '') : current.priceAmd })); }} style={{ ...inputStyle, appearance: 'auto' }}><option value="">{ru ? 'Выберите услугу' : 'Choose service'}</option>{managedServices?.map(service => <option key={service.id} value={service.id}>{ru ? service.nameRu : service.nameEn}</option>)}</select></label>
+          <label style={{ display: 'grid', gap: '0.35rem' }}><span style={labelStyle}>{ru ? 'Цена услуги ֏' : 'Service price ֏'}</span><input type="number" min="0" value={historicalVisit.priceAmd} onChange={event => setHistoricalVisit(current => ({ ...current, priceAmd: event.target.value }))} style={inputStyle} /></label>
+          <label style={{ display: 'grid', gap: '0.35rem' }}><span style={labelStyle}>{ru ? 'Оплатил ֏' : 'Paid ֏'}</span><input type="number" min="0" value={historicalVisit.paidAmd} onChange={event => setHistoricalVisit(current => ({ ...current, paidAmd: event.target.value }))} style={inputStyle} /></label>
+          <label style={{ display: 'grid', gap: '0.35rem', gridColumn: '1 / -1' }}><span style={labelStyle}>{ru ? 'Что делали / заметка' : 'What was done / note'}</span><textarea rows={2} value={historicalVisit.note} onChange={event => setHistoricalVisit(current => ({ ...current, note: event.target.value }))} placeholder={ru ? 'Например: стрижка + оформление бороды' : 'For example: haircut + beard modeling'} style={{ ...inputStyle, border: '1px solid hsl(var(--border))', padding: '0.65rem', resize: 'vertical' }} /></label>
+          <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}><span style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.75rem' }}>{ru ? 'Визит считается завершённым и попадёт в общую статистику.' : 'This visit is treated as completed and included in overall statistics.'}</span><button type="button" className="btn-primary" disabled={manualVisitMutation.isPending || !historicalVisit.visitDate || !historicalVisit.serviceName || !historicalVisit.priceAmd || !historicalVisit.paidAmd} onClick={() => manualVisitMutation.mutate({ clientId, visitDate: historicalVisit.visitDate, serviceName: historicalVisit.serviceName, priceAmd: Number(historicalVisit.priceAmd), paidAmd: Number(historicalVisit.paidAmd), note: historicalVisit.note.trim() || undefined })}>{manualVisitMutation.isPending ? '...' : (ru ? 'Добавить визит' : 'Add visit')}</button></div>
+        </div>
+        {manualVisits && manualVisits.length > 0 && <div style={{ display: 'grid', gap: '0.6rem', marginTop: '1rem' }}>{manualVisits.map(visit => <article key={visit.id} style={{ padding: '0.8rem 1rem', border: '1px solid hsl(var(--border))' }}><div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}><strong style={{ fontFamily: "'Playfair Display', serif" }}>{visit.visitDate} · {visit.serviceName}</strong><span style={{ color: 'hsl(142 50% 40%)', fontSize: '0.8125rem' }}>{formatAmd(visit.paidAmd)} {ru ? 'оплачено' : 'paid'}</span></div><p style={{ margin: '0.3rem 0 0', color: 'hsl(var(--muted-foreground))', fontSize: '0.8125rem' }}>{ru ? 'Цена' : 'Price'}: {formatAmd(visit.priceAmd)}{visit.note ? ` · ${visit.note}` : ''}</p></article>)}</div>}
       </div>
 
       <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid hsl(var(--border))' }}>

@@ -38,6 +38,12 @@ export async function clearExampleTestBookings() {
     WHERE b.clientEmail LIKE '%@example.com'
   `);
   await db.execute(sql`DELETE FROM bookings WHERE clientEmail LIKE '%@example.com'`);
+  await db.execute(sql`DELETE FROM manualVisits WHERE clientId NOT IN (SELECT id FROM clients)`);
+  await db.execute(sql`
+    DELETE mv FROM manualVisits AS mv
+    INNER JOIN clients AS c ON c.id = mv.clientId
+    WHERE c.email LIKE '%@example.com'
+  `);
   await db.execute(sql`DELETE FROM clients WHERE email LIKE '%@example.com'`);
   await db.execute(sql`DELETE FROM availabilityWindows WHERE date LIKE '2099-%'`);
   await db.execute(sql`DELETE FROM blockedDates WHERE date LIKE '2099-%'`);
