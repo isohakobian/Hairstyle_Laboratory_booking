@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, gte, inArray, isNotNull, isNull, like, lt, lte, ne, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, InsertBooking, InsertBookingService, users, services, bookings, bookingServices, reviewTokens, bookingStatusRecoveryTokens, bookingEvents, visitMedia, reviewRequestHistory, clientEmailDeliveries, reviews, clients, emailTemplates, availabilityWindows, manualDepositSettings, automationEmailDeliveries, bookingReminderDeliveries, bookingReminderSettings, crmCampaigns, clientCrmPreferences, crmCampaignDeliveries, manualVisits, CrmCampaign, ClientCrmPreference } from "../drizzle/schema";
+import { InsertUser, InsertBooking, InsertBookingService, users, services, bookings, bookingServices, reviewTokens, bookingStatusRecoveryTokens, bookingEvents, visitMedia, reviewRequestHistory, clientEmailDeliveries, reviews, clients, emailTemplates, availabilityWindows, manualDepositSettings, automationEmailDeliveries, bookingReminderDeliveries, bookingReminderSettings, crmCampaigns, clientCrmPreferences, crmCampaignDeliveries, manualVisits, manualVisitAuditLog, CrmCampaign, ClientCrmPreference } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -401,6 +401,12 @@ export async function getClientDirectory() {
   }).from(clients).orderBy(desc(clients.updatedAt));
 }
 
+async function recordManualVisitAudit(input: { visitId: number; action: "created" | "updated" | "deleted"; visitDate: string; serviceName: string; priceAmd: number; paidAmd: number; note?: string | null }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(manualVisitAuditLog).values(input);
+}
+
 export async function createManualVisit(input: { clientId: number; visitDate: string; serviceName: string; priceAmd: number; paidAmd: number; note?: string | null }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -409,14 +415,16 @@ export async function createManualVisit(input: { clientId: number; visitDate: st
     .where(and(eq(manualVisits.clientId, input.clientId), eq(manualVisits.visitDate, input.visitDate), eq(manualVisits.serviceName, input.serviceName)))
     .orderBy(desc(manualVisits.id)).limit(1))[0];
   if (!created) throw new Error("Historical visit could not be created");
+  await recordManualVisitAudit({ visitId: created.id, action: "created", visitDate: created.visitDate, serviceName: created.serviceName, priceAmd: created.priceAmd, paidAmd: created.paidAmd, note: created.note });
   return created;
 }
 
 export async function deleteManualVisit(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const existing = (await db.select({ id: manualVisits.id }).from(manualVisits).where(eq(manualVisits.id, id)).limit(1))[0];
+  const existing = (await db.select().from(manualVisits).where(eq(manualVisits.id, id)).limit(1))[0];
   if (!existing) throw new Error("Historical visit not found");
+  await recordManualVisitAudit({ visitId: existing.id, action: "deleted", visitDate: existing.visitDate, serviceName: existing.serviceName, priceAmd: existing.priceAmd, paidAmd: existing.paidAmd, note: existing.note });
   await db.delete(manualVisits).where(eq(manualVisits.id, id));
   return { success: true, id };
 }
@@ -424,16 +432,29 @@ export async function deleteManualVisit(id: number) {
 export async function updateManualVisit(id: number, input: { visitDate: string; serviceName: string; priceAmd: number; paidAmd: number; note?: string | null }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  const previous = (await db.select().from(manualVisits).where(eq(manualVisits.id, id)).limit(1))[0];
+  if (!previous) throw new Error("Historical visit not found");
   await db.update(manualVisits).set(input).where(eq(manualVisits.id, id));
   const updated = (await db.select().from(manualVisits).where(eq(manualVisits.id, id)).limit(1))[0];
   if (!updated) throw new Error("Historical visit not found");
+  await recordManualVisitAudit({ visitId: updated.id, action: "updated", visitDate: updated.visitDate, serviceName: updated.serviceName, priceAmd: updated.priceAmd, paidAmd: updated.paidAmd, note: updated.note });
   return updated;
 }
 
-export async function getManualVisitsForClient(clientId: number) {
+export async function getManualVisitAudit(visitId: number) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(manualVisits).where(eq(manualVisits.clientId, clientId)).orderBy(desc(manualVisits.visitDate), desc(manualVisits.id));
+  return db.select().from(manualVisitAuditLog).where(eq(manualVisitAuditLog.visitId, visitId)).orderBy(desc(manualVisitAuditLog.changedAt), desc(manualVisitAuditLog.id));
+}
+
+export async function getManualVisitsForClient(clientId: number, filters?: { fromDate?: string; toDate?: string; serviceName?: string }) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions = [eq(manualVisits.clientId, clientId)];
+  if (filters?.fromDate) conditions.push(gte(manualVisits.visitDate, filters.fromDate));
+  if (filters?.toDate) conditions.push(lte(manualVisits.visitDate, filters.toDate));
+  if (filters?.serviceName) conditions.push(eq(manualVisits.serviceName, filters.serviceName));
+  return db.select().from(manualVisits).where(and(...conditions)).orderBy(desc(manualVisits.visitDate), desc(manualVisits.id));
 }
 
 export async function getClientDatabaseStats() {

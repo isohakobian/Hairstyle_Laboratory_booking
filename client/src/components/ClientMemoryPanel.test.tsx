@@ -19,6 +19,7 @@ vi.mock('@/lib/trpc', () => ({
       clientMemory: { useQuery: () => ({ data: clientMemory, isLoading: false, refetch: vi.fn() }) },
       clientCrmPreference: { useQuery: () => ({ data: { newsletterConsented: 'no' }, refetch: vi.fn() }) },
       manualVisits: { useQuery: () => ({ data: [], refetch: vi.fn() }) },
+      manualVisitAudit: { useQuery: () => ({ data: [], isLoading: false }) },
       services: { useQuery: () => ({ data: [{ id: 1, nameRu: 'Стрижка', nameEn: 'Haircut', priceAmd: 15000, priceMinAmd: null }], isLoading: false }) },
       createManualVisit: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       updateManualVisit: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },

@@ -133,6 +133,23 @@ export const manualVisits = mysqlTable("manualVisits", {
 export type ManualVisit = typeof manualVisits.$inferSelect;
 export type InsertManualVisit = typeof manualVisits.$inferInsert;
 
+export const manualVisitAuditLog = mysqlTable("manualVisitAuditLog", {
+  id: int("id").autoincrement().primaryKey(),
+  visitId: int("visitId").notNull(),
+  action: mysqlEnum("action", ["created", "updated", "deleted"]).notNull(),
+  visitDate: varchar("visitDate", { length: 10 }).notNull(),
+  serviceName: varchar("serviceName", { length: 255 }).notNull(),
+  priceAmd: int("priceAmd").notNull().default(0),
+  paidAmd: int("paidAmd").notNull().default(0),
+  note: text("note"),
+  changedAt: timestamp("changedAt").defaultNow().notNull(),
+}, (table) => [
+  index("manualVisitAuditLog_visitId_idx").on(table.visitId),
+  index("manualVisitAuditLog_changedAt_idx").on(table.changedAt),
+]);
+
+export type ManualVisitAudit = typeof manualVisitAuditLog.$inferSelect;
+
 // Exact working ranges opened by Isaac. A client only sees slots that fit
 // completely inside a window and do not overlap an existing appointment.
 export const availabilityWindows = mysqlTable("availabilityWindows", {

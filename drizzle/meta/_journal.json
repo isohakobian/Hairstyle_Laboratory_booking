@@ -211,6 +211,13 @@
       "when": 1788449933674,
       "tag": "0029_woozy_jean_grey",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "5",
+      "when": 1788504630350,
+      "tag": "0030_minor_magus",
+      "breakpoints": true
     }
   ]
 }

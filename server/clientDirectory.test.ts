@@ -58,6 +58,12 @@ describe("Admin client directory", () => {
     expect(visit.serviceName).toBe("Haircut");
     expect(visit.paidAmd).toBe(15000);
 
+    const auditAfterCreate = await admin.admin.manualVisitAudit({ visitId: visit.id });
+    expect(auditAfterCreate[0]?.action).toBe("created");
+
+    const filtered = await admin.admin.manualVisits({ clientId: first.client.id, fromDate: "2025-06-01", toDate: "2025-06-30", serviceName: "Haircut" });
+    expect(filtered.some(item => item.id === visit.id)).toBe(true);
+
     const stats = await admin.admin.clientStats();
     expect(stats.totalClients).toBeGreaterThanOrEqual(1);
     expect(stats.totalVisits).toBeGreaterThanOrEqual(1);
@@ -68,10 +74,14 @@ describe("Admin client directory", () => {
     const edited = await admin.admin.updateManualVisit({ id: visit.id, visitDate: "2025-06-16", serviceName: "Beard Modeling", priceAmd: 12000, paidAmd: 10000, note: "Updated note" });
     expect(edited.serviceName).toBe("Beard Modeling");
     expect(edited.paidAmd).toBe(10000);
+    const auditAfterUpdate = await admin.admin.manualVisitAudit({ visitId: visit.id });
+    expect(auditAfterUpdate.map(item => item.action)).toEqual(expect.arrayContaining(["created", "updated"]));
 
     const deleted = await admin.admin.deleteManualVisit({ id: visit.id });
     expect(deleted.success).toBe(true);
     const visitsAfterDelete = await admin.admin.manualVisits({ clientId: first.client.id });
     expect(visitsAfterDelete.some(item => item.id === visit.id)).toBe(false);
+    const auditAfterDelete = await admin.admin.manualVisitAudit({ visitId: visit.id });
+    expect(auditAfterDelete[0]?.action).toBe("deleted");
   });
 });
