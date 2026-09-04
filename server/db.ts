@@ -412,6 +412,15 @@ export async function createManualVisit(input: { clientId: number; visitDate: st
   return created;
 }
 
+export async function updateManualVisit(id: number, input: { visitDate: string; serviceName: string; priceAmd: number; paidAmd: number; note?: string | null }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(manualVisits).set(input).where(eq(manualVisits.id, id));
+  const updated = (await db.select().from(manualVisits).where(eq(manualVisits.id, id)).limit(1))[0];
+  if (!updated) throw new Error("Historical visit not found");
+  return updated;
+}
+
 export async function getManualVisitsForClient(clientId: number) {
   const db = await getDb();
   if (!db) return [];
