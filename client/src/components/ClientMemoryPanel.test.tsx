@@ -22,6 +22,7 @@ vi.mock('@/lib/trpc', () => ({
       services: { useQuery: () => ({ data: [{ id: 1, nameRu: 'Стрижка', nameEn: 'Haircut', priceAmd: 15000, priceMinAmd: null }], isLoading: false }) },
       createManualVisit: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       updateManualVisit: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+      deleteManualVisit: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       saveClientCrmPreference: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       updateClientMemory: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       uploadVisitMedia: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },

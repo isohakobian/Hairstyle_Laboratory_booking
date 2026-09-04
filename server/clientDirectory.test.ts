@@ -64,5 +64,14 @@ describe("Admin client directory", () => {
     expect(stats.completedVisits).toBeGreaterThanOrEqual(1);
     expect(stats.totalRevenueAmd).toBeGreaterThanOrEqual(15000);
     expect(stats.averageCheckAmd).toBeGreaterThanOrEqual(0);
+
+    const edited = await admin.admin.updateManualVisit({ id: visit.id, visitDate: "2025-06-16", serviceName: "Beard Modeling", priceAmd: 12000, paidAmd: 10000, note: "Updated note" });
+    expect(edited.serviceName).toBe("Beard Modeling");
+    expect(edited.paidAmd).toBe(10000);
+
+    const deleted = await admin.admin.deleteManualVisit({ id: visit.id });
+    expect(deleted.success).toBe(true);
+    const visitsAfterDelete = await admin.admin.manualVisits({ clientId: first.client.id });
+    expect(visitsAfterDelete.some(item => item.id === visit.id)).toBe(false);
   });
 });
