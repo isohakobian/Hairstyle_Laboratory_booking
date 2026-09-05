@@ -234,6 +234,7 @@ export const announcements = mysqlTable("announcements", {
   startDate: varchar("startDate", { length: 10 }).notNull(),
   endDate: varchar("endDate", { length: 10 }).notNull(),
   isPublished: mysqlEnum("isPublished", ["yes", "no"]).default("no").notNull(),
+  priority: int("priority").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => [

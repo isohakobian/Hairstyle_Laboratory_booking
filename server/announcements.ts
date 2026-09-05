@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { announcements } from "../drizzle/schema";
 import { getDb } from "./db";
@@ -21,7 +21,7 @@ export async function getActiveAnnouncements(limit = 2) {
   const today = yerevanDate();
   const published = await db.select().from(announcements)
     .where(eq(announcements.isPublished, "yes"))
-    .orderBy(desc(announcements.startDate));
+    .orderBy(desc(announcements.priority), desc(announcements.startDate), desc(announcements.createdAt));
   return published.filter(item => item.startDate <= today && item.endDate >= today).slice(0, limit);
 }
 
@@ -32,7 +32,7 @@ export async function getActiveAnnouncement() {
 export async function getAllAnnouncements() {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(announcements).orderBy(desc(announcements.startDate), desc(announcements.createdAt));
+  return db.select().from(announcements).orderBy(desc(announcements.priority), desc(announcements.startDate), desc(announcements.createdAt));
 }
 
 export type AnnouncementInput = {
@@ -44,6 +44,7 @@ export type AnnouncementInput = {
   startDate: string;
   endDate: string;
   isPublished: "yes" | "no";
+  priority: number;
 };
 
 function getAnnouncementImageExtension(mimeType: string) {

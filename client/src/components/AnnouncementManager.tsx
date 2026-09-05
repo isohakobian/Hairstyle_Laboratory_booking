@@ -3,7 +3,7 @@ import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
 
 type Language = 'ru' | 'en';
-type AnnouncementForm = { titleRu: string; titleEn: string; bodyRu: string; bodyEn: string; imageUrl: string; startDate: string; endDate: string; isPublished: 'yes' | 'no' };
+type AnnouncementForm = { titleRu: string; titleEn: string; bodyRu: string; bodyEn: string; imageUrl: string; startDate: string; endDate: string; isPublished: 'yes' | 'no'; priority: string };
 
 function readFileAsBase64(file: File) {
   return new Promise<string>((resolve, reject) => {
@@ -23,7 +23,7 @@ function todayYmd() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 }
 
-const emptyForm = (): AnnouncementForm => ({ titleRu: '', titleEn: '', bodyRu: '', bodyEn: '', imageUrl: '', startDate: todayYmd(), endDate: todayYmd(), isPublished: 'no' });
+const emptyForm = (): AnnouncementForm => ({ titleRu: '', titleEn: '', bodyRu: '', bodyEn: '', imageUrl: '', startDate: todayYmd(), endDate: todayYmd(), isPublished: 'no', priority: '0' });
 
 export default function AnnouncementManager({ language }: { language: Language }) {
   const ru = language === 'ru';
@@ -48,9 +48,9 @@ export default function AnnouncementManager({ language }: { language: Language }
   const update = (key: keyof typeof form, value: string) => setForm(current => ({ ...current, [key]: value }));
   const edit = (item: NonNullable<typeof announcements>[number]) => {
     setEditingId(item.id);
-    setForm({ titleRu: item.titleRu, titleEn: item.titleEn, bodyRu: item.bodyRu, bodyEn: item.bodyEn, imageUrl: item.imageUrl ?? '', startDate: item.startDate, endDate: item.endDate, isPublished: item.isPublished });
+    setForm({ titleRu: item.titleRu, titleEn: item.titleEn, bodyRu: item.bodyRu, bodyEn: item.bodyEn, imageUrl: item.imageUrl ?? '', startDate: item.startDate, endDate: item.endDate, isPublished: item.isPublished, priority: String(item.priority ?? 0) });
   };
-  const submit = () => saveMutation.mutate({ ...form, imageUrl: form.imageUrl || null, ...(editingId ? { id: editingId } : {}) });
+  const submit = () => saveMutation.mutate({ ...form, priority: Math.max(0, Math.min(9999, Number(form.priority) || 0)), imageUrl: form.imageUrl || null, ...(editingId ? { id: editingId } : {}) });
   const uploadImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -86,6 +86,7 @@ export default function AnnouncementManager({ language }: { language: Language }
       <label style={{ display: 'grid', gap: '0.4rem' }}><span style={labelStyle}>{ru ? 'С даты' : 'From'}</span><input type="date" value={form.startDate} onChange={event => update('startDate', event.target.value)} style={inputStyle} /></label>
       <label style={{ display: 'grid', gap: '0.4rem' }}><span style={labelStyle}>{ru ? 'По дату' : 'To'}</span><input type="date" value={form.endDate} onChange={event => update('endDate', event.target.value)} style={inputStyle} /></label>
       <label style={{ display: 'grid', gap: '0.4rem' }}><span style={labelStyle}>{ru ? 'Показать на сайте' : 'Show on site'}</span><select value={form.isPublished} onChange={event => update('isPublished', event.target.value)} style={{ ...inputStyle, background: 'hsl(var(--card))' }}><option value="no">{ru ? 'Нет' : 'No'}</option><option value="yes">{ru ? 'Да' : 'Yes'}</option></select></label>
+      <label style={{ display: 'grid', gap: '0.4rem' }}><span style={labelStyle}>{ru ? 'Приоритет' : 'Priority'}</span><input type="number" min="0" max="9999" value={form.priority} onChange={event => update('priority', event.target.value)} style={inputStyle} /><span style={{ ...labelStyle, fontSize: '0.5rem', letterSpacing: '0.08em', textTransform: 'none' }}>{ru ? 'Больше число — выше в списке' : 'Higher number appears first'}</span></label>
     </div>
     <div style={{ marginBottom: '1rem', padding: '0.9rem', border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))' }}>
       <p style={{ ...labelStyle, margin: '0 0 0.55rem' }}>{ru ? 'Изображение или иконка (необязательно)' : 'Image or icon (optional)'}</p>
@@ -105,7 +106,7 @@ export default function AnnouncementManager({ language }: { language: Language }
     </div>
     <div style={{ display: 'grid', gap: '0.75rem' }}>
       {(announcements ?? []).length === 0 ? <p style={labelStyle}>{ru ? 'Афиш пока нет' : 'No notices yet'}</p> : announcements?.map(item => <article key={item.id} style={{ padding: '1rem', border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))' }}>
-        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'space-between', flexWrap: 'wrap' }}><div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>{item.imageUrl && <img src={item.imageUrl} alt="" style={{ width: '2.5rem', height: '2.5rem', objectFit: 'cover', border: '1px solid hsl(var(--border))' }} />}<div><p style={{ margin: 0, fontFamily: "'Playfair Display', serif", fontWeight: 700 }}>{item.titleRu} <span style={{ color: 'hsl(var(--muted-foreground))' }}>/ {item.titleEn}</span></p><p style={{ margin: '0.25rem 0 0', color: 'hsl(var(--muted-foreground))', fontSize: '0.75rem' }}>{item.startDate} — {item.endDate}</p></div></div><span style={{ ...labelStyle, color: item.isPublished === 'yes' ? 'hsl(142 50% 40%)' : 'hsl(var(--muted-foreground))' }}>{item.isPublished === 'yes' ? (ru ? 'Опубликовано' : 'Published') : (ru ? 'Черновик' : 'Draft')}</span></div>
+        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'space-between', flexWrap: 'wrap' }}><div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>{item.imageUrl && <img src={item.imageUrl} alt="" style={{ width: '2.5rem', height: '2.5rem', objectFit: 'cover', border: '1px solid hsl(var(--border))' }} />}<div><p style={{ margin: 0, fontFamily: "'Playfair Display', serif", fontWeight: 700 }}>{item.titleRu} <span style={{ color: 'hsl(var(--muted-foreground))' }}>/ {item.titleEn}</span></p><p style={{ margin: '0.25rem 0 0', color: 'hsl(var(--muted-foreground))', fontSize: '0.75rem' }}>{item.startDate} — {item.endDate} · {ru ? 'приоритет' : 'priority'} {item.priority ?? 0}</p></div></div><span style={{ ...labelStyle, color: item.isPublished === 'yes' ? 'hsl(142 50% 40%)' : 'hsl(var(--muted-foreground))' }}>{item.isPublished === 'yes' ? (ru ? 'Опубликовано' : 'Published') : (ru ? 'Черновик' : 'Draft')}</span></div>
         <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.75rem' }}><button type="button" className="btn-ghost" style={{ fontSize: '0.625rem', padding: 0 }} onClick={() => edit(item)}>{ru ? 'Редактировать' : 'Edit'}</button><button type="button" className="btn-ghost" style={{ fontSize: '0.625rem', padding: 0 }} disabled={publicationMutation.isPending} onClick={() => publicationMutation.mutate({ id: item.id, isPublished: item.isPublished === 'yes' ? 'no' : 'yes' })}>{item.isPublished === 'yes' ? (ru ? 'Скрыть' : 'Hide') : (ru ? 'Опубликовать' : 'Publish')}</button></div>
       </article>)}
     </div>

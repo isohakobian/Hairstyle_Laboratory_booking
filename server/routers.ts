@@ -731,6 +731,7 @@ export const appRouter = router({
         startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
         endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
         isPublished: z.enum(["yes", "no"]),
+        priority: z.number().int().min(0).max(9999).default(0),
       }))
       .mutation(({ input }) => saveAnnouncement(input)),
 
