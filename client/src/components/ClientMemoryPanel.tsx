@@ -69,12 +69,15 @@ export default function ClientMemoryPanel({ clientId, language, onClose }: Props
   const [editingManualVisitId, setEditingManualVisitId] = useState<number | null>(null);
   const [editingVisit, setEditingVisit] = useState({ visitDate: '', serviceName: '', priceAmd: '', paidAmd: '', note: '' });
   const [values, setValues] = useState({
-    birthday: '', instagram: '', preferredHairLength: '', preferredBeardShape: '', preferredStyling: '', dislikes: '', skinSensitivity: '', stylistNotes: '',
+    name: '', phone: '', email: '', birthday: '', instagram: '', preferredHairLength: '', preferredBeardShape: '', preferredStyling: '', dislikes: '', skinSensitivity: '', stylistNotes: '',
   });
 
   useEffect(() => {
     if (!memory?.profile) return;
     setValues({
+      name: memory.profile.name ?? '',
+      phone: memory.profile.phone ?? '',
+      email: memory.profile.email ?? '',
       birthday: memory.profile.birthday ?? '',
       instagram: memory.profile.instagram ?? '',
       preferredHairLength: memory.profile.preferredHairLength ?? '',
@@ -121,6 +124,9 @@ export default function ClientMemoryPanel({ clientId, language, onClose }: Props
 
   const save = () => updateMutation.mutate({
     clientId,
+    name: values.name.trim(),
+    phone: values.phone.trim(),
+    email: values.email.trim() || null,
     birthday: values.birthday || null,
     instagram: values.instagram.trim().replace(/^@/, '') || null,
     preferredHairLength: values.preferredHairLength.trim() || null,
@@ -199,6 +205,9 @@ export default function ClientMemoryPanel({ clientId, language, onClose }: Props
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(13rem, 1fr))', gap: '1.25rem', marginBottom: '1.5rem' }}>
         {([
+          ['name', ru ? 'Имя клиента' : 'Client name', 'text'],
+          ['phone', ru ? 'Телефон' : 'Phone', 'tel'],
+          ['email', 'Email', 'email'],
           ['birthday', ru ? 'День рождения' : 'Birthday', 'date'],
           ['instagram', 'Instagram', 'text'],
           ['preferredHairLength', ru ? 'Длина / форма' : 'Length / shape', 'text'],

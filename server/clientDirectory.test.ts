@@ -47,6 +47,22 @@ describe("Admin client directory", () => {
     expect(updated.client.id).toBe(first.client.id);
     expect(updated.client.name).toBe("Manual Directory Client Updated");
 
+    const profileUpdate = await admin.admin.updateClientMemory({
+      clientId: first.client.id,
+      name: "Manual Directory Client Final",
+      phone: "+374 55 000 778",
+      email: "final-directory@example.com",
+      birthday: "1992-03-14",
+      instagram: "manual.final",
+      stylistNotes: "Updated profile note",
+    });
+    expect(profileUpdate.success).toBe(true);
+    const profileMemory = await admin.admin.clientMemory({ clientId: first.client.id });
+    expect(profileMemory?.profile.name).toBe("Manual Directory Client Final");
+    expect(profileMemory?.profile.phone).toBe("+374 55 000 778");
+    expect(profileMemory?.profile.email).toBe("final-directory@example.com");
+    expect(profileMemory?.profile.instagram).toBe("manual.final");
+
     const visit = await admin.admin.createManualVisit({
       clientId: first.client.id,
       visitDate: "2025-06-15",

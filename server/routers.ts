@@ -1012,6 +1012,9 @@ export const appRouter = router({
     updateClientMemory: adminMiddleware
       .input(z.object({
         clientId: z.number().int().positive(),
+        name: z.string().trim().min(1).max(255).optional(),
+        phone: z.string().trim().min(5).max(20).optional(),
+        email: z.string().trim().email().max(320).nullable().optional().or(z.literal('')),
         birthday: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
         instagram: z.string().max(100).nullable().optional(),
         preferredHairLength: z.string().max(2000).nullable().optional(),

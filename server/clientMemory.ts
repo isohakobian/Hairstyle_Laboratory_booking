@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, ne } from "drizzle-orm";
 import { bookingEvents, bookings, bookingServices, clients, reviewRequestHistory, reviews, visitMedia } from "../drizzle/schema";
 import { getDb } from "./db";
 import { getAvailableSlots } from "./availability";
@@ -87,6 +87,9 @@ export async function createManualClient(input: ClientIdentity & {
 }
 
 export async function updateClientProfile(clientId: number, changes: {
+  name?: string;
+  phone?: string;
+  email?: string | null;
   birthday?: string | null;
   instagram?: string | null;
   preferredHairLength?: string | null;
@@ -98,7 +101,22 @@ export async function updateClientProfile(clientId: number, changes: {
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  return db.update(clients).set(changes).where(eq(clients.id, clientId));
+  const current = (await db.select().from(clients).where(eq(clients.id, clientId)).limit(1))[0];
+  if (!current) throw new Error("Client not found");
+  const nextPhone = changes.phone ?? current.phone;
+  const nextLookupKey = lookupKeyForPhone(nextPhone);
+  const duplicate = (await db.select({ id: clients.id }).from(clients).where(and(eq(clients.lookupKey, nextLookupKey), ne(clients.id, clientId))).limit(1))[0];
+  if (duplicate) throw new Error("A client with this phone number already exists");
+  const { name, phone, email, ...profileChanges } = changes;
+  await db.update(clients).set({
+    ...(name !== undefined ? { name } : {}),
+    ...(phone !== undefined ? { phone, lookupKey: nextLookupKey } : {}),
+    ...(email !== undefined ? { email } : {}),
+    ...profileChanges,
+  }).where(eq(clients.id, clientId));
+  const updated = (await db.select().from(clients).where(eq(clients.id, clientId)).limit(1))[0];
+  if (!updated) throw new Error("Client could not be updated");
+  return updated;
 }
 
 export async function createBookingEvent(input: {
