@@ -46,6 +46,24 @@ describe('client memory', () => {
     expect(memory?.visits[0]?.serviceIds).toEqual([1]);
   });
 
+  it('reuses one CRM profile when a returning client submits a new phone but the same email', async () => {
+    const first = await findOrCreateClient({
+      name: 'Email Identity Client',
+      phone: '+37455000666',
+      email: 'Email.Identity@Example.com',
+    });
+    const returning = await findOrCreateClient({
+      name: 'Email Identity Client Updated',
+      phone: '+374 99 000 666',
+      email: ' email.identity@example.com ',
+    });
+
+    expect(returning.id).toBe(first.id);
+    expect(returning.name).toBe('Email Identity Client Updated');
+    expect(returning.email).toBe('email.identity@example.com');
+    expect(returning.phone).toBe('+374 99 000 666');
+  });
+
   it('keeps a client cancellation reason in the private visit history', async () => {
     const client = await findOrCreateClient({
       name: 'Cancelled Memory Client',

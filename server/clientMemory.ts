@@ -18,19 +18,34 @@ function lookupKeyForPhone(phone: string) {
   return `phone:${normalized}`;
 }
 
+function normalizeClientEmail(email?: string | null) {
+  const normalized = email?.trim().toLowerCase();
+  return normalized || null;
+}
+
 export async function findOrCreateClient(identity: ClientIdentity) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const lookupKey = lookupKeyForPhone(identity.phone);
-  const existing = await db.select().from(clients).where(eq(clients.lookupKey, lookupKey)).limit(1);
+  const email = normalizeClientEmail(identity.email);
+  // Prefer the phone match. If the phone is new, fall back to an exact,
+  // normalized email match so returning clients keep one CRM profile even
+  // when they submit a new phone number.
+  const phoneMatch = await db.select().from(clients).where(eq(clients.lookupKey, lookupKey)).limit(1);
+  const existing = phoneMatch[0]
+    ? phoneMatch
+    : email
+      ? await db.select().from(clients).where(eq(clients.email, email)).limit(1)
+      : [];
 
   if (existing[0]) {
     await db.update(clients).set({
       name: identity.name,
       phone: identity.phone,
-      ...(identity.email ? { email: identity.email } : {}),
+      ...(email ? { email } : {}),
       ...(identity.birthday ? { birthday: identity.birthday } : {}),
       ...(identity.instagram ? { instagram: identity.instagram } : {}),
+      lookupKey,
     }).where(eq(clients.id, existing[0].id));
     const updated = await db.select().from(clients).where(eq(clients.id, existing[0].id)).limit(1);
     return updated[0]!;
@@ -40,7 +55,7 @@ export async function findOrCreateClient(identity: ClientIdentity) {
     lookupKey,
     name: identity.name,
     phone: identity.phone,
-    email: identity.email || null,
+    email,
     birthday: identity.birthday || null,
     instagram: identity.instagram || null,
   });
