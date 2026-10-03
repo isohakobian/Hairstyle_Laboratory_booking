@@ -31,6 +31,7 @@ vi.mock("@/lib/trpc", () => ({
       deleteBooking: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       requestReview: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       publishReview: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+      updateReview: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       rescheduleBooking: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       completeBooking: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       updateManualDepositStatus: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
@@ -108,7 +109,7 @@ describe("AdminDashboard navigation", () => {
     expect(screen.getByText("Доступность для записи")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: /Отзывы/i }));
-    expect(screen.getByText("Отзывы клиентов")).toBeTruthy();
+    expect(screen.getAllByText("Отзывы клиентов").length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole("button", { name: /Клиенты/i }));
     expect(screen.getByText("Новая запись в базе")).toBeTruthy();

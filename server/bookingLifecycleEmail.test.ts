@@ -125,6 +125,9 @@ describe("booking lifecycle emails", () => {
     if (!token) throw new Error("Review token missing from request URL");
 
     await expect(publicCaller.reviews.submit({ token, rating: 5, text: "Great visit" })).resolves.toEqual({ success: true });
+    const submittedReview = await publicCaller.reviews.getByReference({ referenceNumber: booking.referenceNumber });
+    expect(submittedReview?.moderationStatus).toBe("pending");
+    expect(submittedReview?.isPublished).toBe("no");
     await expect(publicCaller.reviews.submit({ token, rating: 5, text: "Repeated" })).rejects.toThrow(/invalid|used|expired/i);
   });
 

@@ -943,7 +943,7 @@ export async function getReviewByBookingId(bookingId: number) {
 export async function getPublishedReviews() {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(reviews).where(eq(reviews.isPublished, "yes")).orderBy(desc(reviews.createdAt));
+  return db.select().from(reviews).where(and(eq(reviews.isPublished, "yes"), eq(reviews.moderationStatus, "approved"))).orderBy(desc(reviews.createdAt));
 }
 
 export async function getAllReviews() {
@@ -1372,7 +1372,13 @@ export async function getCustomDateRangeFinancialTrend(startDateStr: string, end
 export async function updateReviewPublished(id: number, isPublished: "yes" | "no") {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  return db.update(reviews).set({ isPublished }).where(eq(reviews.id, id));
+  return db.update(reviews).set({ isPublished, moderationStatus: isPublished === "yes" ? "approved" : "rejected" }).where(eq(reviews.id, id));
+}
+
+export async function updateReviewContent(id: number, rating: number, text: string | null) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(reviews).set({ rating, text }).where(eq(reviews.id, id));
 }
 
 // ── Secure review tokens ────────────────────────────────────────────────────

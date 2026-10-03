@@ -350,6 +350,7 @@ export const reviews = mysqlTable("reviews", {
   clientName: varchar("clientName", { length: 255 }).notNull(),
   rating: int("rating").notNull(), // 1-5
   text: text("text"),
+  moderationStatus: mysqlEnum("moderationStatus", ["pending", "approved", "rejected"]).default("approved").notNull(),
   isPublished: mysqlEnum("isPublished", ["yes", "no"]).default("no").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });

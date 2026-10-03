@@ -1,0 +1,1 @@
+ALTER TABLE `reviews` ADD `moderationStatus` enum('pending','approved','rejected') DEFAULT 'approved' NOT NULL;

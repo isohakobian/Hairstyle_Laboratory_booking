@@ -8,7 +8,7 @@ import {
   getBookingsByEmail, getAllBookings, updateBookingStatus, cancelBookingByClient, isTimeSlotAvailable,
   getBlockedDates, blockDate, unblockDate, createReview, getReviewByBookingId, createReviewToken,
   getReviewTokenByHash, markReviewTokenUsed,
-  getPublishedReviews, getAllReviews, updateReviewPublished, createManagedService, setServiceActive, updateManagedService, updateBookingServices,
+  getPublishedReviews, getAllReviews, updateReviewPublished, updateReviewContent, createManagedService, setServiceActive, updateManagedService, updateBookingServices,
   createBookingStatusRecoveryToken, claimBookingStatusRecoveryToken, getSafeBookingStatusesByEmail,
   deleteBookingAndRelatedData, declineBookingForInvalidReceipt, getAdminTodaySummary, updateBookingFinalPrice, getCustomDateRangeFinancialTrend, getBookingReminderSettings, getBookingsWithUnresolvedEmailFailures, getUnresolvedEmailDeliveryErrors, getClientDirectory, getClientDatabaseStats, createManualVisit, updateManualVisit, deleteManualVisit, getManualVisitsForClient, getManualVisitAudit, getClientEmailDeliveryHistory, getLatestBookingRescheduleEvent, getBookingPage, getManualDepositSettings, getReviewRequestDashboard, getReviewRequestEmailTemplate, getReviewRequestPage, getReviewRequestStats, getWeeklyBookingSummary, recordClientEmailDelivery, saveBookingReminderSettings, saveManualDepositSettings,   saveReviewRequestEmailTemplate, getPostVisitEmailTemplate, savePostVisitEmailTemplate, getBirthdayEmailTemplate, saveBirthdayEmailTemplate, updateManualDepositStatus, getCrmCampaigns, getCrmCampaignById, createCrmCampaign, updateCrmCampaign, getCrmCampaignDeliveries, getCrmCampaignStats, recordCrmCampaignDelivery, getCrmRecipients, saveClientCrmPreference, getClientCrmPreference, CrmAudienceFilter,
 } from "./db";
@@ -488,6 +488,7 @@ export const appRouter = router({
           clientName: booking.clientName,
           rating: input.rating,
           text: input.text,
+          moderationStatus: "pending",
           isPublished: "no",
         });
         return { success: true };
@@ -1093,6 +1094,13 @@ export const appRouter = router({
       .input(z.object({ id: z.number(), publish: z.boolean() }))
       .mutation(async ({ input }) => {
         await updateReviewPublished(input.id, input.publish ? "yes" : "no");
+        return { success: true };
+      }),
+
+    updateReview: adminMiddleware
+      .input(z.object({ id: z.number(), rating: z.number().int().min(1).max(5), text: z.string().max(1000).nullable() }))
+      .mutation(async ({ input }) => {
+        await updateReviewContent(input.id, input.rating, input.text?.trim() || null);
         return { success: true };
       }),
   }),

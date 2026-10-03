@@ -112,6 +112,9 @@ export default function AdminDashboard() {
   const [rescheduleTime, setRescheduleTime] = useState('');
   const [rescheduleNote, setRescheduleNote] = useState('');
   const [completeBookingId, setCompleteBookingId] = useState<number | null>(null);
+  const [editingReviewId, setEditingReviewId] = useState<number | null>(null);
+  const [editingReviewRating, setEditingReviewRating] = useState(5);
+  const [editingReviewText, setEditingReviewText] = useState('');
   const [editingServicesBookingId, setEditingServicesBookingId] = useState<number | null>(null);
   const [editingServiceIds, setEditingServiceIds] = useState<number[]>([]);
   const [finalPriceAmd, setFinalPriceAmd] = useState('');
@@ -217,6 +220,10 @@ export default function AdminDashboard() {
   });
   const publishReviewMutation = trpc.admin.publishReview.useMutation({
     onSuccess: () => { toast.success(language === 'ru' ? 'Обновлено' : 'Updated'); refetchReviews(); },
+    onError: (e) => toast.error(e.message),
+  });
+  const updateReviewMutation = trpc.admin.updateReview.useMutation({
+    onSuccess: () => { toast.success(language === 'ru' ? 'Отзыв сохранён' : 'Review saved'); setEditingReviewId(null); refetchReviews(); },
     onError: (e) => toast.error(e.message),
   });
   const rescheduleMutation = trpc.admin.rescheduleBooking.useMutation({
@@ -1191,30 +1198,30 @@ export default function AdminDashboard() {
               </>
             )}
             <div style={{ marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px solid hsl(var(--border))' }}>
-              <p style={{ ...labelStyle, margin: '0 0 0.4rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Модерация' : 'Moderation'}</p>
-              <h4 style={{ margin: '0 0 1rem', fontStyle: 'italic' }}>{language === 'ru' ? 'Полученные отзывы' : 'Received reviews'}</h4>
-              {!allReviews?.length ? <p style={labelStyle}>{language === 'ru' ? 'Нет отзывов' : 'No reviews yet'}</p> : (
+              <p style={{ ...labelStyle, margin: '0 0 0.4rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Ручная модерация' : 'Manual moderation'}</p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                <div>
+                  <h4 style={{ margin: 0, fontStyle: 'italic' }}>{language === 'ru' ? 'Отзывы клиентов' : 'Client reviews'}</h4>
+                  <p style={{ margin: '0.45rem 0 0', color: 'hsl(var(--muted-foreground))', fontSize: '0.8rem' }}>{language === 'ru' ? 'Новые отзывы не публикуются автоматически. Сначала проверьте текст, затем одобрите его.' : 'New reviews are never published automatically. Check the text first, then approve it.'}</p>
+                </div>
+                <div style={{ ...cardStyle, padding: '0.8rem 1rem', minWidth: '8.5rem', borderColor: (allReviews?.filter(review => review.moderationStatus === 'pending' || (!review.moderationStatus && review.isPublished !== 'yes')).length ?? 0) > 0 ? statusColors.pending : 'hsl(var(--border))' }}>
+                  <p style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.5rem', color: 'var(--gold-mid)', margin: 0 }}>{allReviews?.filter(review => review.moderationStatus === 'pending' || (!review.moderationStatus && review.isPublished !== 'yes')).length ?? 0}</p>
+                  <p style={{ ...labelStyle, margin: '0.2rem 0 0', fontSize: '0.5rem' }}>{language === 'ru' ? 'На проверке' : 'Pending review'}</p>
+                </div>
+              </div>
+              {!allReviews?.length ? <p style={labelStyle}>{language === 'ru' ? 'Новых отзывов пока нет' : 'No reviews yet'}</p> : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {allReviews.map(review => (
-                  <div key={review.id} style={{ ...cardStyle }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                      <div>
-                        <p style={{ fontFamily: "'Playfair Display', serif", fontSize: '1rem', fontWeight: 700, color: 'hsl(var(--foreground))', margin: '0 0 0.25rem' }}>{review.clientName}</p>
-                        <p style={{ ...labelStyle, margin: 0, fontSize: '0.5625rem' }}>{review.referenceNumber}</p>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <span style={{ color: 'var(--gold-mid)', fontSize: '0.875rem' }}>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span>
-                        <span style={{ ...labelStyle, fontSize: '0.5625rem', color: review.isPublished === 'yes' ? statusColors.confirmed : statusColors.pending, border: `1px solid ${review.isPublished === 'yes' ? statusColors.confirmed : statusColors.pending}`, padding: '0.25rem 0.625rem' }}>
-                          {review.isPublished === 'yes' ? (language === 'ru' ? 'Опубликован' : 'Published') : (language === 'ru' ? 'Скрыт' : 'Hidden')}
-                        </span>
-                      </div>
+                {allReviews.map(review => {
+                  const status = review.moderationStatus ?? (review.isPublished === 'yes' ? 'approved' : 'pending');
+                  const isEditing = editingReviewId === review.id;
+                  return <div key={review.id} style={{ ...cardStyle, borderLeft: `3px solid ${status === 'approved' ? statusColors.confirmed : status === 'rejected' ? statusColors.declined : statusColors.pending}` }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+                      <div><p style={{ fontFamily: "'Playfair Display', serif", fontSize: '1rem', fontWeight: 700, color: 'hsl(var(--foreground))', margin: '0 0 0.25rem' }}>{review.clientName}</p><p style={{ ...labelStyle, margin: 0, fontSize: '0.5625rem' }}>{review.referenceNumber} · {new Date(review.createdAt).toLocaleDateString()}</p></div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}><span style={{ color: 'var(--gold-mid)', fontSize: '0.875rem' }}>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span><span style={{ ...labelStyle, fontSize: '0.5625rem', color: status === 'approved' ? statusColors.confirmed : status === 'rejected' ? statusColors.declined : statusColors.pending, border: `1px solid ${status === 'approved' ? statusColors.confirmed : status === 'rejected' ? statusColors.declined : statusColors.pending}`, padding: '0.25rem 0.625rem' }}>{status === 'approved' ? (language === 'ru' ? 'Опубликован' : 'Published') : status === 'rejected' ? (language === 'ru' ? 'Скрыт' : 'Hidden') : (language === 'ru' ? 'На проверке' : 'Pending review')}</span></div>
                     </div>
-                    {review.text && <p style={{ fontSize: '0.875rem', color: 'hsl(var(--muted-foreground))', fontStyle: 'italic', marginBottom: '1rem' }}>"{review.text}"</p>}
-                    <button className={review.isPublished === 'yes' ? 'btn-outline' : 'btn-primary'} style={{ fontSize: '0.5625rem', padding: '0.5rem 1rem' }} onClick={() => publishReviewMutation.mutate({ id: review.id, publish: review.isPublished !== 'yes' })} disabled={publishReviewMutation.isPending}>
-                      {review.isPublished === 'yes' ? (language === 'ru' ? 'Скрыть' : 'Hide') : (language === 'ru' ? 'Опубликовать' : 'Publish')}
-                    </button>
-                  </div>
-                ))}
+                    {isEditing ? <div style={{ display: 'grid', gap: '0.75rem' }}><label style={{ ...labelStyle, fontSize: '0.5rem' }}>{language === 'ru' ? 'Оценка' : 'Rating'}<select value={editingReviewRating} onChange={event => setEditingReviewRating(Number(event.target.value))} style={{ display: 'block', marginTop: '0.4rem', padding: '0.55rem', background: 'hsl(var(--background))', color: 'hsl(var(--foreground))', border: '1px solid hsl(var(--border))' }}>{[1, 2, 3, 4, 5].map(value => <option key={value} value={value}>{value} / 5</option>)}</select></label><textarea value={editingReviewText} onChange={event => setEditingReviewText(event.target.value)} rows={4} maxLength={1000} placeholder={language === 'ru' ? 'Текст отзыва' : 'Review text'} style={{ ...inputStyle, width: '100%', resize: 'vertical', border: '1px solid hsl(var(--border))', padding: '0.75rem' }} /><div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}><button type="button" className="btn-primary" disabled={updateReviewMutation.isPending} onClick={() => updateReviewMutation.mutate({ id: review.id, rating: editingReviewRating, text: editingReviewText.trim() || null })}>{language === 'ru' ? 'Сохранить изменения' : 'Save changes'}</button><button type="button" className="btn-outline" onClick={() => setEditingReviewId(null)}>{language === 'ru' ? 'Отмена' : 'Cancel'}</button></div></div> : <>{review.text && <p style={{ fontSize: '0.875rem', color: 'hsl(var(--muted-foreground))', fontStyle: 'italic', marginBottom: '1rem' }}>&quot;{review.text}&quot;</p>}<div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}><button type="button" className="btn-outline" style={{ fontSize: '0.5625rem', padding: '0.5rem 1rem' }} onClick={() => { setEditingReviewId(review.id); setEditingReviewRating(review.rating); setEditingReviewText(review.text ?? ''); }}>{language === 'ru' ? 'Исправить' : 'Edit'}</button><button type="button" className={status === 'approved' ? 'btn-outline' : 'btn-primary'} style={{ fontSize: '0.5625rem', padding: '0.5rem 1rem' }} onClick={() => publishReviewMutation.mutate({ id: review.id, publish: status !== 'approved' })} disabled={publishReviewMutation.isPending}>{status === 'approved' ? (language === 'ru' ? 'Скрыть' : 'Hide') : (language === 'ru' ? 'Одобрить и показать' : 'Approve & show')}</button></div></>}
+                  </div>;
+                })}
               </div>
             )}
             </div>
