@@ -475,7 +475,8 @@ export default function Booking() {
     const source = `${service.nameRu} ${service.nameEn}`.toLowerCase();
     if (source.includes('бород') || source.includes('beard')) return c.beard;
     if (source.includes('завив') || source.includes('perm')) return c.bioPerm;
-    return c.haircut;
+    if (source.includes('стриж') || source.includes('haircut')) return c.haircut;
+    return service.nameEn || service.nameRu;
   };
 
   const formatTotalPrice = () => {
