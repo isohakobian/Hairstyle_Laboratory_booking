@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 const cancelMutate = vi.fn((_input: unknown, options?: { onSuccess?: () => void }) => options?.onSuccess?.());
 const refetch = vi.fn().mockResolvedValue(undefined);
 
-vi.mock('@/contexts/LanguageContext', () => ({ useLanguage: () => ({ language: 'ru' }) }));
+vi.mock('@/contexts/LanguageContext', () => ({ useLanguage: () => ({ language: 'ru' }), SUPPORTED_LANGUAGES: ['hy', 'ru', 'en'] }));
 vi.mock('wouter', () => ({ useLocation: () => ['/status?ref=BOOKING1', vi.fn()] }));
 vi.mock('@/lib/trpc', () => ({
   trpc: {

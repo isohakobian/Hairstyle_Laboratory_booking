@@ -5,7 +5,7 @@ export type Language = 'hy' | 'ru' | 'en';
 // Future: | 'am' | 'ar' | 'es' | 'fr'
 
 export const SUPPORTED_LANGUAGES: Language[] = ['hy', 'ru', 'en'];
-export const DEFAULT_LANGUAGE: Language = 'hy';
+export const DEFAULT_LANGUAGE: Language = 'ru';
 
 interface LanguageContextType {
   language: Language;
@@ -18,14 +18,22 @@ function isValidLanguage(lang: string | null): lang is Language {
   return SUPPORTED_LANGUAGES.includes(lang as Language);
 }
 
+function detectBrowserLanguage(): Language {
+  if (typeof navigator === 'undefined') return DEFAULT_LANGUAGE;
+  const locales = navigator.languages?.length ? navigator.languages : [navigator.language];
+  if (locales.some((locale) => locale.toLowerCase().startsWith('hy'))) return 'hy';
+  if (locales.some((locale) => locale.toLowerCase().startsWith('en'))) return 'en';
+  return DEFAULT_LANGUAGE;
+}
+
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [language, setLanguageState] = useState<Language>(() => {
     if (typeof window === 'undefined') return DEFAULT_LANGUAGE;
     try {
       const saved = localStorage.getItem('hl_language');
-      return isValidLanguage(saved) ? saved : DEFAULT_LANGUAGE;
+      return isValidLanguage(saved) ? saved : detectBrowserLanguage();
     } catch {
-      return DEFAULT_LANGUAGE;
+      return detectBrowserLanguage();
     }
   });
 

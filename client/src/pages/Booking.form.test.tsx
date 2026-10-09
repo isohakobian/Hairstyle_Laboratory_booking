@@ -9,6 +9,7 @@ const { mutateAsync, slotsUseQuery } = vi.hoisted(() => ({
 
 vi.mock("@/contexts/LanguageContext", () => ({
   useLanguage: () => ({ language: "ru" }),
+  SUPPORTED_LANGUAGES: ["hy", "ru", "en"],
 }));
 
 vi.mock("@/lib/trpc", () => ({
