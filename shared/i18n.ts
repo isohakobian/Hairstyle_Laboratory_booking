@@ -1,4 +1,4 @@
-export type Language = 'en' | 'ru';
+export type Language = 'en' | 'ru' | 'hy';
 
 export const translations = {
   en: {
@@ -80,6 +80,86 @@ export const translations = {
     pleaseEnterPhone: 'Please enter your phone number',
     bookingConfirmedMessage: 'Your booking has been confirmed!',
     bookingDeclinedMessage: 'Your booking has been declined',
+  },
+  hy: {
+    // Navigation & Header
+    bookNow: 'Գրանցվել',
+    admin: 'Վահանակ',
+    logout: 'Ելք',
+    home: 'Գլխավոր էջ',
+    services: 'Ծառայություններ',
+    booking: 'Գրանցում',
+    status: 'Կարգավիճակ',
+
+    // Landing Page
+    welcomeTitle: 'Hairstyle Laboratory',
+    welcomeSubtitle: 'Անհատական գրանցում Isaac-ի մոտ',
+    aboutTitle: 'Մեր մասին',
+    aboutText: 'Անհատական տարածք այցերի գրանցման համար։ Ճշգրիտ սանրվածք և մորուքի ձևավորում։',
+    servicesTitle: 'Ծառայություններ',
+    bookingCTA: 'Գրանցվել այցի համար',
+
+    // Services
+    menHaircut: 'Սանրվածք',
+    menHaircutDesc: 'Ճշգրիտ սանրվածք և հարդարում',
+    beardModeling: 'Մորուքի ձևավորում',
+    beardModelingDesc: 'Մորուքի ձևավորում և խնամք',
+
+    // Duration & Price
+    duration: 'Տևողություն',
+    minutes: 'րոպե',
+    price: 'Արժեք',
+    rub: '₽',
+    amd: '֏',
+
+    // Booking Form
+    selectService: 'Ընտրեք ծառայությունը',
+    selectDate: 'Ընտրեք ամսաթիվը',
+    selectTime: 'Ընտրեք ժամը',
+    yourName: 'Ձեր անունը',
+    phoneOrWhatsapp: 'Հեռախոս / WhatsApp',
+    addComment: 'Ավելացնել մեկնաբանություն (ըստ ցանկության)',
+    submitBooking: 'Ուղարկել հայտը',
+    bookingRequestSent: 'Գրանցման հայտը ուղարկված է',
+    bookingReference: 'Ձեր գրանցման համարը',
+    checkStatus: 'Ստուգել կարգավիճակը',
+
+    // Booking Status
+    searchBooking: 'Գտնել ձեր գրանցումը',
+    searchByReference: 'Որոնել գրանցման համարով',
+    search: 'Որոնել',
+    bookingStatus: 'Գրանցման կարգավիճակ',
+    pending: 'Սպասում է',
+    confirmed: 'Հաստատված է',
+    declined: 'Մերժված է',
+    noBookingFound: 'Գրանցում չի գտնվել',
+    waitingForConfirmation: 'Ձեր հայտը սպասում է հաստատման։',
+    statusPending: 'Կարգավիճակ՝ սպասում',
+
+    // Admin Dashboard
+    adminDashboard: 'Ադմինիստրատորի վահանակ',
+    allBookings: 'Բոլոր գրանցումները',
+    clientName: 'Հաճախորդի անուն',
+    contact: 'Կապ',
+    service: 'Ծառայություն',
+    date: 'Ամսաթիվ',
+    time: 'Ժամ',
+    statusLabel: 'Կարգավիճակ',
+    actions: 'Գործողություններ',
+    confirm: 'Հաստատել',
+    decline: 'Մերժել',
+    noBookings: 'Գրանցումներ դեռ չկան',
+
+    // Messages
+    bookingSubmitted: 'Ձեր գրանցման հայտը հաջողությամբ ուղարկվել է։',
+    timeSlotUnavailable: 'Այս ժամը արդեն զբաղված է',
+    pleaseSelectService: 'Ընտրեք ծառայություն',
+    pleaseSelectDate: 'Ընտրեք ամսաթիվ',
+    pleaseSelectTime: 'Ընտրեք ժամ',
+    pleaseEnterName: 'Մուտքագրեք ձեր անունը',
+    pleaseEnterPhone: 'Մուտքագրեք ձեր հեռախոսահամարը',
+    bookingConfirmedMessage: 'Ձեր գրանցումը հաստատված է։',
+    bookingDeclinedMessage: 'Ձեր գրանցումը մերժված է',
   },
   ru: {
     // Navigation & Header
