@@ -157,7 +157,10 @@ export default function Home() {
     if (source.includes('завив') || source.includes('perm')) {
       return field === 'name' ? c.services.bioPerm : c.services.bioPermDesc;
     }
-    return field === 'name' ? c.services.haircut : c.services.haircutDesc;
+    if (source.includes('стриж') || source.includes('haircut')) {
+      return field === 'name' ? c.services.haircut : c.services.haircutDesc;
+    }
+    return field === 'name' ? svc.nameEn || svc.nameRu : svc.descriptionEn || svc.descriptionRu;
   };
 
   const navStyle: React.CSSProperties = {
