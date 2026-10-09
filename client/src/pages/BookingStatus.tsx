@@ -3,6 +3,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { trpc } from '@/lib/trpc';
 import { useLocation } from 'wouter';
 import type { Language } from '@/contexts/LanguageContext';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 const copy: Record<Language, any> = {
   ru: {
@@ -120,11 +121,14 @@ export default function BookingStatus() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'hsl(var(--background))' }}>
       <div className="container" style={{ maxWidth: '36rem', margin: '0 auto', paddingTop: '6rem', paddingBottom: '6rem' }}>
-        <button onClick={() => setLocation('/')} style={{ fontFamily: "'Inter', sans-serif", fontSize: '0.75rem', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'hsl(var(--muted-foreground))', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: '3rem', transition: 'color 200ms ease' }}
-          onMouseEnter={e => (e.currentTarget.style.color = 'hsl(var(--foreground))')}
-          onMouseLeave={e => (e.currentTarget.style.color = 'hsl(var(--muted-foreground))')}>
-          {c.back}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '3rem' }}>
+          <button onClick={() => setLocation('/')} style={{ fontFamily: "'Inter', sans-serif", fontSize: '0.75rem', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'hsl(var(--muted-foreground))', background: 'none', border: 'none', cursor: 'pointer', padding: 0, transition: 'color 200ms ease' }}
+            onMouseEnter={e => (e.currentTarget.style.color = 'hsl(var(--foreground))')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'hsl(var(--muted-foreground))')}>
+            {c.back}
+          </button>
+          <LanguageSwitcher />
+        </div>
         <div style={{ marginBottom: '3rem' }}>
           <p style={{ fontFamily: "'Inter', sans-serif", fontSize: '0.6875rem', fontWeight: 500, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'hsl(var(--muted-foreground))', marginBottom: '1rem' }}>Hairstyle Laboratory</p>
           <h2 style={{ fontStyle: 'italic', marginBottom: '0.5rem' }}>{c.title}</h2>
