@@ -5,7 +5,7 @@ import { getLoginUrl } from '@/const';
 import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
 
-type Lang = 'ru' | 'en';
+type Lang = 'hy' | 'ru' | 'en';
 
 const copy: Record<Lang, {
   nav: { booking: string; status: string; login: string; logout: string; admin: string };
@@ -78,10 +78,42 @@ const copy: Record<Lang, {
     },
     footer: { copy: '© Hairstyle Laboratory' },
   },
+  hy: {
+    nav: { booking: 'Գրանցվել', status: 'Կարգավիճակ', login: 'Մուտք', logout: 'Ելք', admin: 'Վահանակ' },
+    hero: {
+      eyebrow: 'Isaac Hakobian',
+      line1: 'Սանրվածք։',
+      line2: 'Ոճ։',
+      line3: 'Մանրուքներ։',
+      sub: 'Անհատական գրանցում սանրվածքի, մորուքի ձևավորման և կենսաքիմիական գանգրացման համար։',
+      cta: 'Ընտրել ժամ',
+      servicesCta: 'Դիտել ծառայությունները',
+    },
+    about: {
+      label: 'Անհատական մոտեցում',
+      title: 'Վարպետի մասին',
+      intro: 'Ճշգրիտ ձև։ Բնական արդյունք։ Ուշադրություն մանրուքներին։',
+      text: 'Ես աշխատում եմ տղամարդու կերպարի վրա՝ սանրվածքի, ձևի և մանրուքների միջոցով։ Սկզբում լսում եմ, ապա ստեղծում ճշգրիտ ու բնական արդյունք՝ ձեր ռիթմին և բնավորությանը համապատասխան։',
+    },
+    services: {
+      label: 'Ծառայություններ',
+      intro: 'Ընտրեք ծառայությունը, ապա հարմար օրը և ժամը։',
+      haircut: 'Սանրվածք',
+      haircutDesc: 'Ճշգրիտ սանրվածք և հարդարում',
+      beard: 'Մորուքի ձևավորում',
+      beardDesc: 'Մորուքի ձևավորում և խնամք',
+      bioPerm: 'Կենսաքիմիական գանգրացում',
+      bioPermDesc: 'Քիմիական գանգրացում՝ խնամքով',
+      duration: 'րոպե',
+      book: 'Գրանցվել',
+      deposit: 'Կանխավճար',
+    },
+    footer: { copy: '© Hairstyle Laboratory' },
+  },
 
 };
 
-const langs: Lang[] = ['ru', 'en'];
+const langs: Lang[] = ['hy', 'ru', 'en'];
 
 export default function Home() {
   const { language, setLanguage } = useLanguage() as { language: Lang; setLanguage: (l: Lang) => void };
@@ -106,7 +138,26 @@ export default function Home() {
       return `${svc.priceMinAmd.toLocaleString()} – ${svc.priceMaxAmd!.toLocaleString()} ֏`;
     }
     if (svc.priceAmd !== null) return `${svc.priceAmd.toLocaleString()} ֏`;
-    return language === 'ru' ? (svc.noteRu || 'По запросу') : (svc.noteEn || 'On request');
+    if (language === 'ru') return svc.noteRu || 'По запросу';
+    if (language === 'en') return svc.noteEn || 'On request';
+    return 'Հարցման դեպքում';
+  };
+
+  const getLocalizedServiceText = (
+    svc: NonNullable<typeof publicServices>[number],
+    field: 'name' | 'description',
+  ) => {
+    if (language === 'ru') return field === 'name' ? svc.nameRu : svc.descriptionRu;
+    if (language === 'en') return field === 'name' ? svc.nameEn : svc.descriptionEn;
+
+    const source = `${svc.nameRu} ${svc.nameEn}`.toLowerCase();
+    if (source.includes('бород') || source.includes('beard')) {
+      return field === 'name' ? c.services.beard : c.services.beardDesc;
+    }
+    if (source.includes('завив') || source.includes('perm')) {
+      return field === 'name' ? c.services.bioPerm : c.services.bioPermDesc;
+    }
+    return field === 'name' ? c.services.haircut : c.services.haircutDesc;
   };
 
   const navStyle: React.CSSProperties = {
@@ -356,13 +407,13 @@ export default function Home() {
             </div>
           </div>
           {(activeAnnouncements ?? []).length > 0 && (
-            <aside className="fade-up fade-up-delay-3" style={{ display: 'grid', gap: '0.75rem' }} aria-label={language === 'ru' ? 'Новости' : 'Notices'}>
+            <aside className="fade-up fade-up-delay-3" style={{ display: 'grid', gap: '0.75rem' }} aria-label={language === 'ru' ? 'Новости' : language === 'en' ? 'Notices' : 'Նորություններ'}>
               {(activeAnnouncements ?? []).slice(0, 2).map((announcement, index) => (
                 <article key={announcement.id} className="notice-card" style={{ '--notice-delay': `${index * 90}ms` } as React.CSSProperties}>
                   <div style={{ position: 'absolute', top: 0, left: '1.5rem', right: '1.5rem', height: '2px', background: 'linear-gradient(90deg, transparent, var(--gold-mid), transparent)' }} />
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '0.75rem' }}>
-                    <p className="label-caps" style={{ margin: 0, color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Новости' : 'Notice'}</p>
-                    {announcement.imageUrl && <img src={announcement.imageUrl} alt={language === 'ru' ? `Иллюстрация: ${announcement.titleRu}` : `Illustration: ${announcement.titleEn}`} style={{ width: '3rem', height: '3rem', flex: '0 0 auto', objectFit: 'cover', border: '1px solid hsl(var(--border))' }} />}
+                    <p className="label-caps" style={{ margin: 0, color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Новости' : language === 'en' ? 'Notice' : 'Նորություն'}</p>
+                    {announcement.imageUrl && <img src={announcement.imageUrl} alt={language === 'ru' ? `Иллюстрация: ${announcement.titleRu}` : language === 'en' ? `Illustration: ${announcement.titleEn}` : `Նկարազարդում․ ${announcement.titleEn}`} style={{ width: '3rem', height: '3rem', flex: '0 0 auto', objectFit: 'cover', border: '1px solid hsl(var(--border))' }} />}
                   </div>
                   <h3 className="notice-title" style={{ margin: '0 0 0.55rem', fontStyle: 'italic', fontSize: '1.4rem', lineHeight: 1.08 }}>
                     {language === 'ru' ? announcement.titleRu : announcement.titleEn}
@@ -440,9 +491,9 @@ export default function Home() {
             <p className="section-intro" style={{ margin: 0 }}>{c.services.intro}</p>
           </div>
 
-          {servicesLoading && <p style={{ color: 'hsl(var(--muted-foreground))' }}>{language === 'ru' ? 'Загружаю услуги...' : 'Loading services...'}</p>}
-          {servicesError && <p style={{ color: 'hsl(var(--destructive))' }}>{language === 'ru' ? 'Не удалось загрузить услуги. Попробуйте обновить страницу.' : 'Could not load services. Please refresh the page.'}</p>}
-          {!servicesLoading && !servicesError && (publicServices ?? []).length === 0 && <p style={{ color: 'hsl(var(--muted-foreground))' }}>{language === 'ru' ? 'Сейчас нет доступных услуг.' : 'No services are currently available.'}</p>}
+          {servicesLoading && <p style={{ color: 'hsl(var(--muted-foreground))' }}>{language === 'ru' ? 'Загружаю услуги...' : language === 'en' ? 'Loading services...' : 'Ծառայությունները բեռնվում են…'}</p>}
+          {servicesError && <p style={{ color: 'hsl(var(--destructive))' }}>{language === 'ru' ? 'Не удалось загрузить услуги. Попробуйте обновить страницу.' : language === 'en' ? 'Could not load services. Please refresh the page.' : 'Չհաջողվեց բեռնել ծառայությունները։ Թարմացրեք էջը և փորձեք կրկին։'}</p>}
+          {!servicesLoading && !servicesError && (publicServices ?? []).length === 0 && <p style={{ color: 'hsl(var(--muted-foreground))' }}>{language === 'ru' ? 'Сейчас нет доступных услуг.' : language === 'en' ? 'No services are currently available.' : 'Այս պահին հասանելի ծառայություններ չկան։'}</p>}
           {(publicServices ?? []).map((svc) => (
             <div
               key={svc.id}
@@ -461,10 +512,10 @@ export default function Home() {
                     fontSize: 'clamp(1.25rem, 3vw, 1.875rem)',
                   }}
                 >
-                  {language === 'ru' ? svc.nameRu : svc.nameEn}
+                  {getLocalizedServiceText(svc, 'name')}
                 </h3>
                 <p style={{ fontSize: '0.8125rem', margin: 0, letterSpacing: '0.03em' }}>
-                  {(language === 'ru' ? svc.descriptionRu : svc.descriptionEn) || (language === 'ru' ? 'Персональный сервис' : 'Personal service')} &nbsp;·&nbsp; {svc.durationMinutes} {c.services.duration}
+                  {getLocalizedServiceText(svc, 'description') || (language === 'ru' ? 'Персональный сервис' : language === 'en' ? 'Personal service' : 'Անհատական ծառայություն')} &nbsp;·&nbsp; {svc.durationMinutes} {c.services.duration}
                 </p>
               </div>
               <div style={{ textAlign: 'right', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.375rem' }}>
