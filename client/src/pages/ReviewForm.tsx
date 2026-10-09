@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import type { Language } from '@/contexts/LanguageContext';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
 import { useLocation } from 'wouter';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 const copy = {
   ru: {
@@ -26,6 +28,29 @@ const copy = {
       notConfirmed: 'Отзыв можно оставить только для подтверждённой записи',
       alreadySubmitted: 'Отзыв уже был отправлен',
       generic: 'Ошибка. Попробуйте ещё раз.',
+    },
+  },
+  hy: {
+    title: 'Թողնել կարծիք',
+    sub: 'Թողեք կարճ կարծիք ձեր այցի մասին',
+    refLabel: 'Կարծիքի ապահով հղում',
+    refPlaceholder: '',
+    ratingLabel: 'Գնահատական',
+    textLabel: 'Մեկնաբանություն (ըստ ցանկության)',
+    textPlaceholder: 'Պատմեք ձեր փորձի մասին…',
+    submit: 'Ուղարկել կարծիքը',
+    back: '← Հետ',
+    successTitle: 'Շնորհակալություն կարծիքի համար',
+    successSub: 'Կարծիքը կհրապարակվի ստուգումից հետո։',
+    backHome: 'Գլխավոր էջ',
+    errors: {
+      ref: 'Մուտքագրեք հայտի համարը',
+      invalidLink: 'Կարծիք թողնելու համար բացեք էլ. փոստով ստացված ապահով հղումը',
+      rating: 'Ընտրեք գնահատական',
+      notFound: 'Հայտը չի գտնվել',
+      notConfirmed: 'Կարծիք կարելի է թողնել միայն հաստատված գրանցման համար',
+      alreadySubmitted: 'Կարծիքն արդեն ուղարկվել է',
+      generic: 'Սխալ տեղի ունեցավ։ Փորձեք կրկին։',
     },
   },
   en: {
@@ -54,7 +79,7 @@ const copy = {
 };
 
 export default function ReviewForm() {
-  const { language } = useLanguage() as { language: 'ru' | 'en' };
+  const { language } = useLanguage() as { language: Language };
   const [, setLocation] = useLocation();
   const c = copy[language] ?? copy.ru;
 
@@ -114,9 +139,12 @@ export default function ReviewForm() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'hsl(var(--background))' }}>
       <div className="container" style={{ maxWidth: '36rem', margin: '0 auto', paddingTop: '6rem', paddingBottom: '6rem' }}>
-        <button onClick={() => setLocation('/')} style={{ fontFamily: "'Inter', sans-serif", fontSize: '0.75rem', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'hsl(var(--muted-foreground))', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: '3rem' }}>
-          {c.back}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '3rem' }}>
+          <button onClick={() => setLocation('/')} style={{ fontFamily: "'Inter', sans-serif", fontSize: '0.75rem', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'hsl(var(--muted-foreground))', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+            {c.back}
+          </button>
+          <LanguageSwitcher />
+        </div>
 
         <div style={{ marginBottom: '3rem' }}>
           <p style={{ fontFamily: "'Inter', sans-serif", fontSize: '0.6875rem', fontWeight: 500, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gold-mid)', marginBottom: '1rem' }}>
@@ -130,7 +158,7 @@ export default function ReviewForm() {
           <div style={{ marginBottom: '2rem', padding: '1rem 0', borderTop: '1px solid hsl(var(--border))', borderBottom: '1px solid hsl(var(--border))' }}>
             <p className="label-caps" style={{ margin: 0 }}>{c.refLabel}</p>
             <p style={{ margin: '0.5rem 0 0', color: reviewToken ? 'hsl(142, 50%, 40%)' : 'hsl(var(--destructive))', fontSize: '0.8125rem' }}>
-              {reviewToken ? (language === 'ru' ? 'Ссылка подтверждена' : 'Link verified') : c.errors.invalidLink}
+              {reviewToken ? (language === 'ru' ? 'Ссылка подтверждена' : language === 'en' ? 'Link verified' : 'Հղումը հաստատված է') : c.errors.invalidLink}
             </p>
           </div>
 

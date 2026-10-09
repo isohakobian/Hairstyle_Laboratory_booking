@@ -610,3 +610,31 @@
     opacity: 0.4;
   }
 }
+
+
+/* ── Armenian typography ── */
+html[lang="hy"] body {
+  font-family: 'Noto Sans Armenian', 'Inter', system-ui, sans-serif;
+}
+
+html[lang="hy"] h1,
+html[lang="hy"] h2,
+html[lang="hy"] h3,
+html[lang="hy"] h4,
+html[lang="hy"] h5,
+html[lang="hy"] h6,
+html[lang="hy"] .typography-modern h1,
+html[lang="hy"] .typography-modern .section-heading,
+html[lang="hy"] .typography-modern .notice-title,
+html[lang="hy"] .typography-modern .service-name {
+  font-family: 'Noto Sans Armenian', 'Inter', system-ui, sans-serif;
+  letter-spacing: -0.025em;
+}
+
+html[lang="hy"] .label-caps,
+html[lang="hy"] .btn-primary,
+html[lang="hy"] .btn-outline,
+html[lang="hy"] .btn-ghost {
+  letter-spacing: 0.02em;
+  text-transform: none;
+}

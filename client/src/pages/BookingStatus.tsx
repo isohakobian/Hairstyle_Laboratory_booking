@@ -3,6 +3,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { trpc } from '@/lib/trpc';
 import { useLocation } from 'wouter';
 import type { Language } from '@/contexts/LanguageContext';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 const copy: Record<Language, any> = {
   ru: {
@@ -13,6 +14,15 @@ const copy: Record<Language, any> = {
     pending: 'Ожидание подтверждения мастером', confirmed: 'Подтверждено', declined: 'Отклонено', cancelled: 'Отменено клиентом', bookAnother: 'Записаться снова',
     forgot: 'Не помните номер заявки?', recoveryHint: 'Введите email, указанный при записи. На него придёт одноразовая ссылка для просмотра статуса.',
     recover: 'Отправить ссылку', phone: 'Телефон', email: 'Email', recoveryTitle: 'Ваши записи', recoveryEmpty: 'Записей с такими данными не найдено.', open: 'Открыть', recoverySent: 'Если этот email есть в записи, ссылка уже отправлена. Проверьте входящие.', recoveryInvalid: 'Ссылка недействительна, истекла или уже была использована.', cancel: 'Отменить запись', cancelTitle: 'Отмена записи', cancelHint: 'Укажите e-mail, который использовали при записи, и коротко напишите причину. Время сразу освободится.', cancelReason: 'Причина отмены', cancelReasonPlaceholder: 'Например: изменились планы', cancelSubmit: 'Подтвердить отмену', cancelSuccess: 'Запись отменена. Спасибо, что предупредили.', cancelError: 'Не удалось отменить запись. Проверьте номер заявки и e-mail.', cancelBack: 'Не отменять',
+  },
+  hy: {
+    title: 'Կարգավիճակ', sub: 'Մուտքագրեք հայտի համարը', label: 'Հայտի համար',
+    placeholder: 'Օրինակ՝ AB12CD', search: 'Ստուգել', back: '← Հետ',
+    notFound: 'Հայտը չի գտնվել։ Ստուգեք համարը։', statusLabel: 'Կարգավիճակ',
+    service: 'Ծառայություն', date: 'Ամսաթիվ', time: 'Ժամ', name: 'Անուն',
+    pending: 'Վարպետի հաստատման սպասում', confirmed: 'Հաստատված է', declined: 'Մերժված է', cancelled: 'Հաճախորդի կողմից չեղարկված է', bookAnother: 'Գրանցվել կրկին',
+    forgot: 'Չե՞ք հիշում հայտի համարը', recoveryHint: 'Մուտքագրեք գրանցման ժամանակ նշված էլ. փոստը։ Դրան կուղարկվի կարգավիճակը դիտելու մեկանգամյա հղում։',
+    recover: 'Ուղարկել հղումը', phone: 'Հեռախոս', email: 'Էլ. փոստ', recoveryTitle: 'Ձեր գրանցումները', recoveryEmpty: 'Այս տվյալներով գրանցումներ չեն գտնվել։', open: 'Բացել', recoverySent: 'Եթե այս էլ. փոստը կապված է գրանցման հետ, հղումն արդեն ուղարկվել է։ Ստուգեք մուտքային նամակները։', recoveryInvalid: 'Հղումն անվավեր է, ժամկետանց է կամ արդեն օգտագործվել է։', cancel: 'Չեղարկել գրանցումը', cancelTitle: 'Գրանցման չեղարկում', cancelHint: 'Մուտքագրեք գրանցման ժամանակ օգտագործված էլ. փոստը և կարճ նշեք պատճառը։ Ժամը անմիջապես կազատվի։', cancelReason: 'Չեղարկման պատճառ', cancelReasonPlaceholder: 'Օրինակ՝ ծրագրերս փոխվել են', cancelSubmit: 'Հաստատել չեղարկումը', cancelSuccess: 'Գրանցումը չեղարկված է։ Շնորհակալություն տեղեկացնելու համար։', cancelError: 'Չհաջողվեց չեղարկել գրանցումը։ Ստուգեք հայտի համարը և էլ. փոստը։', cancelBack: 'Չեղարկել գործողությունը',
   },
   en: {
     title: 'Booking Status', sub: 'Enter your reference number', label: 'Reference number',
@@ -111,11 +121,14 @@ export default function BookingStatus() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'hsl(var(--background))' }}>
       <div className="container" style={{ maxWidth: '36rem', margin: '0 auto', paddingTop: '6rem', paddingBottom: '6rem' }}>
-        <button onClick={() => setLocation('/')} style={{ fontFamily: "'Inter', sans-serif", fontSize: '0.75rem', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'hsl(var(--muted-foreground))', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: '3rem', transition: 'color 200ms ease' }}
-          onMouseEnter={e => (e.currentTarget.style.color = 'hsl(var(--foreground))')}
-          onMouseLeave={e => (e.currentTarget.style.color = 'hsl(var(--muted-foreground))')}>
-          {c.back}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '3rem' }}>
+          <button onClick={() => setLocation('/')} style={{ fontFamily: "'Inter', sans-serif", fontSize: '0.75rem', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'hsl(var(--muted-foreground))', background: 'none', border: 'none', cursor: 'pointer', padding: 0, transition: 'color 200ms ease' }}
+            onMouseEnter={e => (e.currentTarget.style.color = 'hsl(var(--foreground))')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'hsl(var(--muted-foreground))')}>
+            {c.back}
+          </button>
+          <LanguageSwitcher />
+        </div>
         <div style={{ marginBottom: '3rem' }}>
           <p style={{ fontFamily: "'Inter', sans-serif", fontSize: '0.6875rem', fontWeight: 500, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'hsl(var(--muted-foreground))', marginBottom: '1rem' }}>Hairstyle Laboratory</p>
           <h2 style={{ fontStyle: 'italic', marginBottom: '0.5rem' }}>{c.title}</h2>
