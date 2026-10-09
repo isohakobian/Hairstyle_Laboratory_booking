@@ -6,7 +6,7 @@ import { useLocation } from 'wouter';
 import { downloadCalendarInvite, type CalendarInviteDetails } from '@/lib/calendarInvite';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
-type Lang = 'ru' | 'en';
+type Lang = 'hy' | 'ru' | 'en';
 
 const REPEAT_BOOKING_DRAFT_KEY = 'hairstyle-laboratory.repeat-booking-draft';
 
@@ -200,6 +200,92 @@ const copy: Record<Lang, {
       generic: 'Ошибка. Попробуйте ещё раз.',
     },
   },
+  hy: {
+    title: 'Գրանցում',
+    sub: 'Ընտրեք ծառայությունը, օրը և ժամը',
+    selectService: 'Ծառայություններ',
+    selectServiceHint: 'Կարող եք ընտրել մի քանի ծառայություն։ Նույն ծառայությունը կարելի է ընտրել միայն մեկ անգամ։',
+    selectionSummary: 'Ձեր այցը',
+    totalDuration: 'Ընդհանուր տևողություն',
+    totalPrice: 'Մոտավոր արժեք',
+    loadingServices: 'Ծառայությունները բեռնվում են…',
+    servicesUnavailable: 'Ծառայությունները ժամանակավորապես անհասանելի են։ Թարմացրեք էջը և փորձեք կրկին։',
+    noServicesAvailable: 'Այս պահին առցանց գրանցման համար հասանելի ծառայություններ չկան։ Կապվեք Isaac-ի հետ։',
+    selectDate: 'Ամսաթիվ',
+    selectTime: 'Ժամ',
+    name: 'Ձեր անունը',
+    phone: 'Հեռախոս / WhatsApp',
+    email: 'Հաստատման էլ. փոստ',
+    birthday: 'Ծննդյան ամսաթիվ',
+    instagram: 'Instagram (@username)',
+    comment: 'Մեկնաբանություն այցի վերաբերյալ',
+    noOpenDates: 'Այս պահին գրանցման համար բաց օրեր չկան։ Ստուգեք ավելի ուշ կամ գրեք Instagram-ում։',
+    noOpenSlots: 'Ընտրված օրվա համար ազատ ժամեր չկան։ Ընտրեք մեկ այլ օր։',
+    chooseServicesFirst: 'Սկզբում ընտրեք առնվազն մեկ ծառայություն։',
+    submit: 'Ուղարկել գրանցման հայտը',
+    back: 'Գլխավոր էջ',
+    sentTitle: 'Հայտն ուղարկված է',
+    sentSub: 'Շնորհակալություն վստահության համար։ Մենք ստացել ենք ձեր հայտը և կհաստատենք ժամը նշված էլ. փոստով։',
+    statusLabel: 'Ստուգել կարգավիճակը',
+    refLabel: 'Ձեր գրանցման կոդը',
+    checkStatus: 'Դիտել կարգավիճակը և հասցեն',
+    backHome: 'Գլխավոր էջ',
+    addToCalendar: 'Ավելացնել օրացույցում',
+    copyReference: 'Պատճենել կոդը',
+    copyStatusLink: 'Պատճենել կարգավիճակի հղումը',
+    saved: 'Պատճենված է փոխանակման բուֆերում',
+    copyFailed: 'Չհաջողվեց պատճենել',
+    repeatReady: 'Այցի տվյալներն ու ծառայությունները լրացված են ձեր պատմությունից։',
+    manualDepositTitle: 'Գրանցման կանխավճար',
+    manualDepositInstructions: 'Այս ծառայությունը ամրագրելու համար անհրաժեշտ է կանխավճար։ Փոխանցեք գումարը, կցեք անդորրագրի սքրինշոթը, և Isaac-ը կհաստատի գրանցումը։',
+    manualDepositRecipient: 'Ստացող',
+    manualDepositCard: 'Քարտ / հաշիվ',
+    receiptLabel: 'Վճարման անդորրագրի լուսանկար (JPEG, PNG, WebP)',
+    receiptHint: 'Սեղմեք՝ անդորրագրի ֆայլը ընտրելու համար (մինչև 5 ՄԲ)',
+    policyAccepted: 'Կարդացել և ընդունում եմ չեղարկման և չներկայանալու պայմանները',
+    newsletterConsent: 'Ցանկանում եմ էլ. փոստով ստանալ Isaac-ի հազվադեպ նորությունները, արձակուրդի մասին ծանուցումները և անհատական հիշեցումները',
+    receiptReady: 'Անդորրագիրը կցված է',
+    referencePhotoLabel: 'Ցանկալի արդյունքի լուսանկար-օրինակ (ըստ ցանկության)',
+    referencePhotoHint: 'Վերբեռնեք ցանկալի սանրվածքի կամ մորուքի օրինակ (մինչև 8 ՄԲ)',
+    referencePhotoReady: 'Լուսանկար-օրինակը կցված է',
+    reviewsTitle: 'Հաճախորդների կարծիքները',
+    thankYouModalTitle: 'Շնորհակալություն գրանցվելու համար',
+    thankYouModalText: 'Ձեր հայտը հաջողությամբ ընդունվել է։ Շուտով կստուգեմ ժամը և ձեր էլ. փոստին կուղարկեմ հաստատում՝ ճշգրիտ հասցեով։',
+    instagramBtn: 'Բացել Instagram @isaac_hakobian',
+    faqTitle: 'Հաճախ տրվող հարցեր',
+    faqs: [
+      {
+        q: 'Որտե՞ղ եմ ընդունում հաճախորդներին',
+        a: 'Այս պահին աշխատում եմ հետևյալ հասցեում՝ Հայաստան, Երևան, Պուշկինի 44։ Ճշգրիտ հասցեն և քարտեզի հղումը ստանում եք էլ. փոստով՝ գրանցումը հաստատելուց անմիջապես հետո։',
+      },
+      {
+        q: 'Ինչպե՞ս է հաստատվում գրանցումը',
+        a: 'Հայտն ուղարկելուց հետո ստուգում եմ ժամանակացույցը և հաստատում այցը։ Դուք էլ. փոստով կստանաք հաստատում՝ այցի մանրամասներով, օրացույցի հղումով և ստուդիայի հասցեով։',
+      },
+      {
+        q: 'Ինչպե՞ս չեղարկել կամ փոխել այցի օրը',
+        a: 'Ցանկացած պահի կարող եք բացել «Կարգավիճակ» էջը՝ օգտագործելով ձեր գրանցման կոդը, ստուգել այցը կամ չեղարկել այն՝ նշելով պատճառը։',
+      },
+      {
+        q: 'Արդյո՞ք անհրաժեշտ է կանխավճար',
+        a: 'Կանխավճար անհրաժեշտ է միայն բարդ ծառայությունների համար, օրինակ՝ կենսաքիմիական գանգրացման։ Անհրաժեշտ տվյալներն ու անդորրագիրը կցելու հնարավորությունը կհայտնվեն ձևում։',
+      },
+    ],
+    haircut: 'Սանրվածք',
+    beard: 'Մորուքի ձևավորում',
+    bioPerm: 'Կենսաքիմիական գանգրացում',
+    deposit: 'Կանխավճար',
+    errors: {
+      service: 'Ընտրեք ծառայություն',
+      date: 'Ընտրեք ամսաթիվ',
+      time: 'Ընտրեք ժամ',
+      name: 'Մուտքագրեք ձեր անունը',
+      phone: 'Մուտքագրեք ձեր հեռախոսահամարը',
+      email: 'Մուտքագրեք ճիշտ էլ. փոստի հասցե',
+      conflict: 'Այս ժամը արդեն զբաղված է',
+      generic: 'Սխալ տեղի ունեցավ։ Փորձեք կրկին։',
+    },
+  },
   en: {
     title: 'Booking',
     sub: 'Select service, date and time',
@@ -378,9 +464,18 @@ export default function Booking() {
   const formatPrice = (svc: typeof servicesList[number]) => {
     if (svc.priceMinAmd !== null && svc.priceMaxAmd !== null) return `${svc.priceMinAmd.toLocaleString()} – ${svc.priceMaxAmd.toLocaleString()} ֏`;
     if (svc.priceAmd !== null) return `${svc.priceAmd.toLocaleString()} ֏`;
-    return language === 'ru' ? (svc.noteRu || 'По запросу') : (svc.noteEn || 'On request');
+    if (language === 'ru') return svc.noteRu || 'По запросу';
+    if (language === 'en') return svc.noteEn || 'On request';
+    return 'Հարցման դեպքում';
   };
-  const serviceName = (service: typeof servicesList[number]) => language === 'ru' ? service.nameRu : service.nameEn;
+  const serviceName = (service: typeof servicesList[number]) => {
+    if (language === 'ru') return service.nameRu;
+    if (language === 'en') return service.nameEn;
+    const source = `${service.nameRu} ${service.nameEn}`.toLowerCase();
+    if (source.includes('бород') || source.includes('beard')) return c.beard;
+    if (source.includes('завив') || source.includes('perm')) return c.bioPerm;
+    return c.haircut;
+  };
 
   const formatTotalPrice = () => {
     const fixedTotal = selectedServices.reduce((total, service) => total + (service.priceAmd ?? 0), 0);
@@ -390,7 +485,7 @@ export default function Booking() {
     if (rangedServices.length > 0) {
       const min = fixedTotal + rangedServices.reduce((total, service) => total + (service.priceMinAmd ?? 0), 0);
       const max = fixedTotal + rangedServices.reduce((total, service) => total + (service.priceMaxAmd ?? 0), 0);
-      const deposit = depositTotal > 0 ? ` · ${language === 'ru' ? 'предоплата' : 'deposit'} ${depositTotal.toLocaleString()} ֏` : '';
+      const deposit = depositTotal > 0 ? ` · ${language === 'ru' ? 'предоплата' : language === 'en' ? 'deposit' : 'կանխավճար'} ${depositTotal.toLocaleString()} ֏` : '';
       return `${min.toLocaleString()} – ${max.toLocaleString()} ֏${deposit}`;
     }
 
@@ -407,8 +502,8 @@ export default function Booking() {
     if (!clientPhone.trim()) { toast.error(c.errors.phone); return; }
     const normalizedEmail = clientEmail.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) { toast.error(c.errors.email); return; }
-    if (!policyAccepted) { toast.error(language === 'ru' ? 'Подтвердите условия отмены и неявки' : 'Please accept the cancellation and no-show policy'); return; }
-    if (manualDepositRequired && !paymentReceipt) { toast.error(language === 'ru' ? 'Прикрепите фото чека об оплате' : 'Please attach your payment receipt'); return; }
+    if (!policyAccepted) { toast.error(language === 'ru' ? 'Подтвердите условия отмены и неявки' : language === 'en' ? 'Please accept the cancellation and no-show policy' : 'Հաստատեք չեղարկման և չներկայանալու պայմանները'); return; }
+    if (manualDepositRequired && !paymentReceipt) { toast.error(language === 'ru' ? 'Прикрепите фото чека об оплате' : language === 'en' ? 'Please attach your payment receipt' : 'Կցեք վճարման անդորրագրի լուսանկարը'); return; }
 
     try {
       const result = await createBookingMutation.mutateAsync({
@@ -459,17 +554,17 @@ export default function Booking() {
     event.target.value = '';
     if (!file) return;
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      toast.error(language === 'ru' ? 'Поддерживаются JPEG, PNG и WebP' : 'JPEG, PNG, and WebP are supported');
+      toast.error(language === 'ru' ? 'Поддерживаются JPEG, PNG и WebP' : language === 'en' ? 'JPEG, PNG, and WebP are supported' : 'Աջակցվում են JPEG, PNG և WebP ձևաչափերը');
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      toast.error(language === 'ru' ? 'Чек должен быть меньше 5 МБ' : 'Receipt must be smaller than 5 MB');
+      toast.error(language === 'ru' ? 'Чек должен быть меньше 5 МБ' : language === 'en' ? 'Receipt must be smaller than 5 MB' : 'Անդորրագրի չափը պետք է լինի 5 ՄԲ-ից պակաս');
       return;
     }
     try {
       setPaymentReceipt({ fileName: file.name, mimeType: file.type as PaymentReceiptDraft['mimeType'], base64Data: await readFileAsBase64(file) });
     } catch {
-      toast.error(language === 'ru' ? 'Не удалось прочитать чек' : 'Receipt could not be read');
+      toast.error(language === 'ru' ? 'Не удалось прочитать чек' : language === 'en' ? 'Receipt could not be read' : 'Չհաջողվեց կարդալ անդորրագիրը');
     }
   };
 
@@ -478,17 +573,17 @@ export default function Booking() {
     event.target.value = '';
     if (!file) return;
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      toast.error(language === 'ru' ? 'Поддерживаются JPEG, PNG и WebP' : 'JPEG, PNG, and WebP are supported');
+      toast.error(language === 'ru' ? 'Поддерживаются JPEG, PNG и WebP' : language === 'en' ? 'JPEG, PNG, and WebP are supported' : 'Աջակցվում են JPEG, PNG և WebP ձևաչափերը');
       return;
     }
     if (file.size > 8 * 1024 * 1024) {
-      toast.error(language === 'ru' ? 'Фото должно быть меньше 8 МБ' : 'Photo must be smaller than 8 MB');
+      toast.error(language === 'ru' ? 'Фото должно быть меньше 8 МБ' : language === 'en' ? 'Photo must be smaller than 8 MB' : 'Լուսանկարի չափը պետք է լինի 8 ՄԲ-ից պակաս');
       return;
     }
     try {
       setReferencePhoto({ fileName: file.name, mimeType: file.type as ReferencePhotoDraft['mimeType'], base64Data: await readFileAsBase64(file) });
     } catch {
-      toast.error(language === 'ru' ? 'Не удалось прочитать референс' : 'Reference photo could not be read');
+      toast.error(language === 'ru' ? 'Не удалось прочитать референс' : language === 'en' ? 'Reference photo could not be read' : 'Չհաջողվեց կարդալ լուսանկար-օրինակը');
     }
   };
 
@@ -625,7 +720,7 @@ export default function Booking() {
                       {serviceName(svc)}
                     </p>
                     <p className="label-caps" style={{ marginTop: '0.25rem', fontSize: '0.625rem' }}>
-                      {svc.durationMinutes} {language === 'ru' ? 'мин' : 'min'}
+                      {svc.durationMinutes} {language === 'ru' ? 'мин' : language === 'en' ? 'min' : 'րոպե'}
                     </p>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -655,7 +750,7 @@ export default function Booking() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', borderTop: '1px solid hsl(var(--border))', paddingTop: '0.8rem' }}>
                   <div>
                     <p className="label-caps" style={{ margin: 0, fontSize: '0.625rem' }}>{c.totalDuration}</p>
-                    <p style={{ margin: '0.3rem 0 0', fontSize: '0.875rem' }}>{totalDuration} {language === 'ru' ? 'мин' : 'min'}</p>
+                    <p style={{ margin: '0.3rem 0 0', fontSize: '0.875rem' }}>{totalDuration} {language === 'ru' ? 'мин' : language === 'en' ? 'min' : 'րոպե'}</p>
                   </div>
                   <div>
                     <p className="label-caps" style={{ margin: 0, fontSize: '0.625rem' }}>{c.totalPrice}</p>
@@ -682,8 +777,8 @@ export default function Booking() {
             )}
             {selectedServices.length > 0 && (
               <section style={{ marginTop: '1.25rem', padding: '1rem 1.1rem', borderLeft: '2px solid var(--gold-mid)', background: 'hsl(var(--secondary))' }}>
-                <p className="label-caps" style={{ margin: '0 0 0.55rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Отмена и неявка' : 'Cancellation and no-show'}</p>
-                <p style={{ margin: 0, color: 'hsl(var(--muted-foreground))', fontSize: '0.75rem', lineHeight: 1.55 }}>{language === 'ru' ? manualDepositSettings?.policyRu : manualDepositSettings?.policyEn}</p>
+                <p className="label-caps" style={{ margin: '0 0 0.55rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Отмена и неявка' : language === 'en' ? 'Cancellation and no-show' : 'Չեղարկում և չներկայանալը'}</p>
+                <p style={{ margin: 0, color: 'hsl(var(--muted-foreground))', fontSize: '0.75rem', lineHeight: 1.55 }}>{language === 'ru' ? manualDepositSettings?.policyRu : language === 'en' ? manualDepositSettings?.policyEn : 'Այցը չեղարկելու կամ չներկայանալու դեպքում կարող են կիրառվել ստուդիայի պայմանները։ Մանրամասները ճշտեք Isaac-ից։'}</p>
                 <label style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', marginTop: '0.85rem', fontSize: '0.75rem', lineHeight: 1.45, cursor: 'pointer' }}>
                   <input type="checkbox" checked={policyAccepted} onChange={event => setPolicyAccepted(event.target.checked)} style={{ marginTop: '0.15rem' }} />
                   <span>{c.policyAccepted}</span>
@@ -792,7 +887,9 @@ export default function Booking() {
               <p style={{ margin: '0.55rem 0 0', color: 'hsl(var(--muted-foreground))', fontSize: '0.75rem', lineHeight: 1.45 }}>
                 {language === 'ru'
                   ? 'После подтверждения записи на этот email придут все детали визита и адрес: Armenia, Yerevan, Pushkin 44. Проверьте также папку «Спам».'
-                  : 'After confirmation, all appointment details and the address — Armenia, Yerevan, Pushkin 44 — will be sent to this email. Please check your spam folder too.'}
+                  : language === 'en'
+                    ? 'After confirmation, all appointment details and the address — Armenia, Yerevan, Pushkin 44 — will be sent to this email. Please check your spam folder too.'
+                    : 'Հաստատումից հետո այցի բոլոր մանրամասներն ու հասցեն՝ Հայաստան, Երևան, Պուշկինի 44, կուղարկվեն այս էլ. փոստին։ Ստուգեք նաև «Սպամ» թղթապանակը։'}
               </p>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.5rem' }}>
@@ -852,7 +949,7 @@ export default function Booking() {
                   display: 'inline-block',
                   animation: 'spin 0.8s linear infinite',
                 }} />
-                {language === 'ru' ? 'Отправка заявки...' : 'Sending request...'}
+                {language === 'ru' ? 'Отправка заявки...' : language === 'en' ? 'Sending request...' : 'Հայտն ուղարկվում է…'}
               </span>
             ) : c.submit}
           </button>
