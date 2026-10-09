@@ -1,11 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 // Scalable language type — add new languages here only
-export type Language = 'ru' | 'en';
+export type Language = 'hy' | 'ru' | 'en';
 // Future: | 'am' | 'ar' | 'es' | 'fr'
 
-export const SUPPORTED_LANGUAGES: Language[] = ['ru', 'en'];
-export const DEFAULT_LANGUAGE: Language = 'ru';
+export const SUPPORTED_LANGUAGES: Language[] = ['hy', 'ru', 'en'];
+export const DEFAULT_LANGUAGE: Language = 'hy';
 
 interface LanguageContextType {
   language: Language;
@@ -39,6 +39,11 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       // localStorage not available
     }
   }, []);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    document.documentElement.lang = language;
+  }, [language]);
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
