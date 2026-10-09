@@ -4,6 +4,7 @@ import type { Language } from '@/contexts/LanguageContext';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
 import { useLocation } from 'wouter';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 const copy = {
   ru: {
@@ -138,9 +139,12 @@ export default function ReviewForm() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'hsl(var(--background))' }}>
       <div className="container" style={{ maxWidth: '36rem', margin: '0 auto', paddingTop: '6rem', paddingBottom: '6rem' }}>
-        <button onClick={() => setLocation('/')} style={{ fontFamily: "'Inter', sans-serif", fontSize: '0.75rem', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'hsl(var(--muted-foreground))', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: '3rem' }}>
-          {c.back}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '3rem' }}>
+          <button onClick={() => setLocation('/')} style={{ fontFamily: "'Inter', sans-serif", fontSize: '0.75rem', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'hsl(var(--muted-foreground))', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+            {c.back}
+          </button>
+          <LanguageSwitcher />
+        </div>
 
         <div style={{ marginBottom: '3rem' }}>
           <p style={{ fontFamily: "'Inter', sans-serif", fontSize: '0.6875rem', fontWeight: 500, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gold-mid)', marginBottom: '1rem' }}>
