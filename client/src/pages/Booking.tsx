@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { useLocation } from 'wouter';
 import { downloadCalendarInvite, type CalendarInviteDetails } from '@/lib/calendarInvite';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 type Lang = 'hy' | 'ru' | 'en';
 
@@ -661,14 +662,16 @@ export default function Booking() {
     <div style={{ minHeight: '100vh', backgroundColor: 'hsl(var(--background))' }}>
       <div className="container" style={{ maxWidth: '40rem', margin: '0 auto', paddingTop: '6rem', paddingBottom: '6rem' }}>
 
-        {/* Back */}
-        <button
-          className="btn-ghost"
-          onClick={() => setLocation('/')}
-          style={{ marginBottom: '3rem', padding: '0' }}
-        >
-          {c.back}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '3rem' }}>
+          <button
+            className="btn-ghost"
+            onClick={() => setLocation('/')}
+            style={{ padding: '0' }}
+          >
+            {c.back}
+          </button>
+          <LanguageSwitcher />
+        </div>
 
         {/* Title */}
         <div style={{ marginBottom: '3rem' }}>
