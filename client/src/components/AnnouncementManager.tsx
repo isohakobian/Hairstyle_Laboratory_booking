@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
 
-type Language = 'ru' | 'en';
-type AnnouncementForm = { titleRu: string; titleEn: string; bodyRu: string; bodyEn: string; imageUrl: string; startDate: string; endDate: string; isPublished: 'yes' | 'no'; priority: string };
+type Language = 'hy' | 'ru' | 'en';
+type AnnouncementForm = { titleRu: string; titleEn: string; titleHy: string; bodyRu: string; bodyEn: string; bodyHy: string; imageUrl: string; startDate: string; endDate: string; isPublished: 'yes' | 'no'; priority: string };
 
 function readFileAsBase64(file: File) {
   return new Promise<string>((resolve, reject) => {
@@ -23,7 +23,7 @@ function todayYmd() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 }
 
-const emptyForm = (): AnnouncementForm => ({ titleRu: '', titleEn: '', bodyRu: '', bodyEn: '', imageUrl: '', startDate: todayYmd(), endDate: todayYmd(), isPublished: 'no', priority: '0' });
+const emptyForm = (): AnnouncementForm => ({ titleRu: '', titleEn: '', titleHy: '', bodyRu: '', bodyEn: '', bodyHy: '', imageUrl: '', startDate: todayYmd(), endDate: todayYmd(), isPublished: 'no', priority: '0' });
 
 export default function AnnouncementManager({ language }: { language: Language }) {
   const ru = language === 'ru';
@@ -48,7 +48,7 @@ export default function AnnouncementManager({ language }: { language: Language }
   const update = (key: keyof typeof form, value: string) => setForm(current => ({ ...current, [key]: value }));
   const edit = (item: NonNullable<typeof announcements>[number]) => {
     setEditingId(item.id);
-    setForm({ titleRu: item.titleRu, titleEn: item.titleEn, bodyRu: item.bodyRu, bodyEn: item.bodyEn, imageUrl: item.imageUrl ?? '', startDate: item.startDate, endDate: item.endDate, isPublished: item.isPublished, priority: String(item.priority ?? 0) });
+    setForm({ titleRu: item.titleRu, titleEn: item.titleEn, titleHy: item.titleHy ?? '', bodyRu: item.bodyRu, bodyEn: item.bodyEn, bodyHy: item.bodyHy ?? '', imageUrl: item.imageUrl ?? '', startDate: item.startDate, endDate: item.endDate, isPublished: item.isPublished, priority: String(item.priority ?? 0) });
   };
   const submit = () => saveMutation.mutate({ ...form, priority: Math.max(0, Math.min(9999, Number(form.priority) || 0)), imageUrl: form.imageUrl || null, ...(editingId ? { id: editingId } : {}) });
   const uploadImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -79,8 +79,10 @@ export default function AnnouncementManager({ language }: { language: Language }
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(15rem, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
       <label style={{ display: 'grid', gap: '0.4rem' }}><span style={labelStyle}>RU · {ru ? 'Заголовок' : 'Title'}</span><input value={form.titleRu} onChange={event => update('titleRu', event.target.value)} style={inputStyle} /></label>
       <label style={{ display: 'grid', gap: '0.4rem' }}><span style={labelStyle}>EN · Title</span><input value={form.titleEn} onChange={event => update('titleEn', event.target.value)} style={inputStyle} /></label>
+      <label style={{ display: 'grid', gap: '0.4rem' }}><span style={labelStyle}>HY · Վերնագիր</span><input value={form.titleHy} onChange={event => update('titleHy', event.target.value)} style={inputStyle} /></label>
       <label style={{ display: 'grid', gap: '0.4rem' }}><span style={labelStyle}>RU · {ru ? 'Текст' : 'Body'}</span><textarea value={form.bodyRu} onChange={event => update('bodyRu', event.target.value)} rows={4} style={{ ...inputStyle, border: '1px solid hsl(var(--border))', padding: '0.75rem', resize: 'vertical' }} /></label>
       <label style={{ display: 'grid', gap: '0.4rem' }}><span style={labelStyle}>EN · Body</span><textarea value={form.bodyEn} onChange={event => update('bodyEn', event.target.value)} rows={4} style={{ ...inputStyle, border: '1px solid hsl(var(--border))', padding: '0.75rem', resize: 'vertical' }} /></label>
+      <label style={{ display: 'grid', gap: '0.4rem' }}><span style={labelStyle}>HY · Տեքստ</span><textarea value={form.bodyHy} onChange={event => update('bodyHy', event.target.value)} rows={4} style={{ ...inputStyle, border: '1px solid hsl(var(--border))', padding: '0.75rem', resize: 'vertical' }} /></label>
     </div>
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(9rem, 1fr))', gap: '0.75rem', marginBottom: '1rem' }}>
       <label style={{ display: 'grid', gap: '0.4rem' }}><span style={labelStyle}>{ru ? 'С даты' : 'From'}</span><input type="date" value={form.startDate} onChange={event => update('startDate', event.target.value)} style={inputStyle} /></label>
@@ -106,7 +108,7 @@ export default function AnnouncementManager({ language }: { language: Language }
     </div>
     <div style={{ display: 'grid', gap: '0.75rem' }}>
       {(announcements ?? []).length === 0 ? <p style={labelStyle}>{ru ? 'Афиш пока нет' : 'No notices yet'}</p> : announcements?.map(item => <article key={item.id} style={{ padding: '1rem', border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))' }}>
-        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'space-between', flexWrap: 'wrap' }}><div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>{item.imageUrl && <img src={item.imageUrl} alt="" style={{ width: '2.5rem', height: '2.5rem', objectFit: 'cover', border: '1px solid hsl(var(--border))' }} />}<div><p style={{ margin: 0, fontFamily: "'Playfair Display', serif", fontWeight: 700 }}>{item.titleRu} <span style={{ color: 'hsl(var(--muted-foreground))' }}>/ {item.titleEn}</span></p><p style={{ margin: '0.25rem 0 0', color: 'hsl(var(--muted-foreground))', fontSize: '0.75rem' }}>{item.startDate} — {item.endDate} · {ru ? 'приоритет' : 'priority'} {item.priority ?? 0}</p></div></div><span style={{ ...labelStyle, color: item.isPublished === 'yes' ? 'hsl(142 50% 40%)' : 'hsl(var(--muted-foreground))' }}>{item.isPublished === 'yes' ? (ru ? 'Опубликовано' : 'Published') : (ru ? 'Черновик' : 'Draft')}</span></div>
+        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'space-between', flexWrap: 'wrap' }}><div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>{item.imageUrl && <img src={item.imageUrl} alt="" style={{ width: '2.5rem', height: '2.5rem', objectFit: 'cover', border: '1px solid hsl(var(--border))' }} />}<div><p style={{ margin: 0, fontFamily: "'Playfair Display', serif", fontWeight: 700 }}>{item.titleRu} <span style={{ color: 'hsl(var(--muted-foreground))' }}>/ {item.titleEn} / {item.titleHy || 'HY —'}</span></p><p style={{ margin: '0.25rem 0 0', color: 'hsl(var(--muted-foreground))', fontSize: '0.75rem' }}>{item.startDate} — {item.endDate} · {ru ? 'приоритет' : 'priority'} {item.priority ?? 0}</p></div></div><span style={{ ...labelStyle, color: item.isPublished === 'yes' ? 'hsl(142 50% 40%)' : 'hsl(var(--muted-foreground))' }}>{item.isPublished === 'yes' ? (ru ? 'Опубликовано' : 'Published') : (ru ? 'Черновик' : 'Draft')}</span></div>
         <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.75rem' }}><button type="button" className="btn-ghost" style={{ fontSize: '0.625rem', padding: 0 }} onClick={() => edit(item)}>{ru ? 'Редактировать' : 'Edit'}</button><button type="button" className="btn-ghost" style={{ fontSize: '0.625rem', padding: 0 }} disabled={publicationMutation.isPending} onClick={() => publicationMutation.mutate({ id: item.id, isPublished: item.isPublished === 'yes' ? 'no' : 'yes' })}>{item.isPublished === 'yes' ? (ru ? 'Скрыть' : 'Hide') : (ru ? 'Опубликовать' : 'Publish')}</button></div>
       </article>)}
     </div>

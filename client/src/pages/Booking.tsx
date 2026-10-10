@@ -467,11 +467,12 @@ export default function Booking() {
     if (svc.priceAmd !== null) return `${svc.priceAmd.toLocaleString()} ֏`;
     if (language === 'ru') return svc.noteRu || 'По запросу';
     if (language === 'en') return svc.noteEn || 'On request';
-    return 'Հարցման դեպքում';
+    return svc.noteHy || 'Հարցման դեպքում';
   };
   const serviceName = (service: typeof servicesList[number]) => {
     if (language === 'ru') return service.nameRu;
     if (language === 'en') return service.nameEn;
+    if (service.nameHy) return service.nameHy;
     const source = `${service.nameRu} ${service.nameEn}`.toLowerCase();
     if (source.includes('бород') || source.includes('beard')) return c.beard;
     if (source.includes('завив') || source.includes('perm')) return c.bioPerm;

@@ -109,8 +109,10 @@ export async function getServiceById(id: number, includeArchived = false) {
 export type ManagedServiceInput = {
   nameRu: string;
   nameEn: string;
+  nameHy?: string | null;
   descriptionRu?: string | null;
   descriptionEn?: string | null;
+  descriptionHy?: string | null;
   durationMinutes: number;
   priceAmd?: number | null;
   priceMinAmd?: number | null;
@@ -118,6 +120,7 @@ export type ManagedServiceInput = {
   depositAmd?: number | null;
   noteRu?: string | null;
   noteEn?: string | null;
+  noteHy?: string | null;
   isActive: "yes" | "no";
   displayOrder: number;
 };

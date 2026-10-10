@@ -2,14 +2,16 @@ import { useMemo, useState } from 'react';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
 
-type Language = 'ru' | 'en';
+type Language = 'hy' | 'ru' | 'en';
 type PricingMode = 'fixed' | 'range' | 'request';
 
 type ServiceForm = {
   nameRu: string;
   nameEn: string;
+  nameHy: string;
   descriptionRu: string;
   descriptionEn: string;
+  descriptionHy: string;
   durationMinutes: string;
   pricingMode: PricingMode;
   priceAmd: string;
@@ -18,13 +20,14 @@ type ServiceForm = {
   depositAmd: string;
   noteRu: string;
   noteEn: string;
+  noteHy: string;
   isActive: 'yes' | 'no';
   displayOrder: string;
 };
 
 const emptyForm = (order = 0): ServiceForm => ({
-  nameRu: '', nameEn: '', descriptionRu: '', descriptionEn: '', durationMinutes: '45', pricingMode: 'fixed',
-  priceAmd: '', priceMinAmd: '', priceMaxAmd: '', depositAmd: '', noteRu: '', noteEn: '', isActive: 'yes', displayOrder: String(order),
+  nameRu: '', nameEn: '', nameHy: '', descriptionRu: '', descriptionEn: '', descriptionHy: '', durationMinutes: '45', pricingMode: 'fixed',
+  priceAmd: '', priceMinAmd: '', priceMaxAmd: '', depositAmd: '', noteRu: '', noteEn: '', noteHy: '', isActive: 'yes', displayOrder: String(order),
 });
 
 function toOptionalAmd(value: string) {
@@ -59,9 +62,9 @@ export default function ServiceManager({ language }: { language: Language }) {
     const pricingMode: PricingMode = service.priceAmd !== null ? 'fixed' : service.priceMinAmd !== null ? 'range' : 'request';
     setEditingId(service.id);
     setForm({
-      nameRu: service.nameRu, nameEn: service.nameEn, descriptionRu: service.descriptionRu ?? '', descriptionEn: service.descriptionEn ?? '', durationMinutes: String(service.durationMinutes),
+      nameRu: service.nameRu, nameEn: service.nameEn, nameHy: service.nameHy ?? '', descriptionRu: service.descriptionRu ?? '', descriptionEn: service.descriptionEn ?? '', descriptionHy: service.descriptionHy ?? '', durationMinutes: String(service.durationMinutes),
       pricingMode, priceAmd: service.priceAmd?.toString() ?? '', priceMinAmd: service.priceMinAmd?.toString() ?? '', priceMaxAmd: service.priceMaxAmd?.toString() ?? '',
-      depositAmd: service.depositAmd?.toString() ?? '', noteRu: service.noteRu ?? '', noteEn: service.noteEn ?? '', isActive: service.isActive, displayOrder: String(service.displayOrder),
+      depositAmd: service.depositAmd?.toString() ?? '', noteRu: service.noteRu ?? '', noteEn: service.noteEn ?? '', noteHy: service.noteHy ?? '', isActive: service.isActive, displayOrder: String(service.displayOrder),
     });
   };
   const submit = () => {
@@ -73,9 +76,9 @@ export default function ServiceManager({ language }: { language: Language }) {
     if (form.pricingMode === 'range' && priceMinAmd! > priceMaxAmd!) return toast.error(ru ? 'Максимальная цена не может быть меньше минимальной' : 'Maximum price cannot be below minimum price');
     saveMutation.mutate({
       ...(editingId ? { id: editingId } : {}),
-      nameRu: form.nameRu, nameEn: form.nameEn, descriptionRu: form.descriptionRu || null, descriptionEn: form.descriptionEn || null,
+      nameRu: form.nameRu, nameEn: form.nameEn, nameHy: form.nameHy || null, descriptionRu: form.descriptionRu || null, descriptionEn: form.descriptionEn || null, descriptionHy: form.descriptionHy || null,
       durationMinutes: Math.round(Number(form.durationMinutes)), priceAmd, priceMinAmd, priceMaxAmd,
-      depositAmd: toOptionalAmd(form.depositAmd), noteRu: form.noteRu || null, noteEn: form.noteEn || null,
+      depositAmd: toOptionalAmd(form.depositAmd), noteRu: form.noteRu || null, noteEn: form.noteEn || null, noteHy: form.noteHy || null,
       isActive: form.isActive, displayOrder: Math.max(0, Math.round(Number(form.displayOrder))),
     });
   };
@@ -94,8 +97,10 @@ export default function ServiceManager({ language }: { language: Language }) {
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(15rem, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
       <label style={{ display: 'grid', gap: '0.35rem' }}><span style={labelStyle}>RU · {ru ? 'Название' : 'Name'}</span><input value={form.nameRu} onChange={event => update('nameRu', event.target.value)} style={inputStyle} placeholder="Стрижка" /></label>
       <label style={{ display: 'grid', gap: '0.35rem' }}><span style={labelStyle}>EN · Name</span><input value={form.nameEn} onChange={event => update('nameEn', event.target.value)} style={inputStyle} placeholder="Haircut" /></label>
+      <label style={{ display: 'grid', gap: '0.35rem' }}><span style={labelStyle}>HY · Անվանում</span><input value={form.nameHy} onChange={event => update('nameHy', event.target.value)} style={inputStyle} placeholder="Սանրվածք" /></label>
       <label style={{ display: 'grid', gap: '0.35rem' }}><span style={labelStyle}>RU · {ru ? 'Описание' : 'Description'}</span><textarea value={form.descriptionRu} onChange={event => update('descriptionRu', event.target.value)} rows={3} style={{ ...inputStyle, border: '1px solid hsl(var(--border))', padding: '0.75rem', resize: 'vertical' }} /></label>
       <label style={{ display: 'grid', gap: '0.35rem' }}><span style={labelStyle}>EN · Description</span><textarea value={form.descriptionEn} onChange={event => update('descriptionEn', event.target.value)} rows={3} style={{ ...inputStyle, border: '1px solid hsl(var(--border))', padding: '0.75rem', resize: 'vertical' }} /></label>
+      <label style={{ display: 'grid', gap: '0.35rem' }}><span style={labelStyle}>HY · Նկարագրություն</span><textarea value={form.descriptionHy} onChange={event => update('descriptionHy', event.target.value)} rows={3} style={{ ...inputStyle, border: '1px solid hsl(var(--border))', padding: '0.75rem', resize: 'vertical' }} /></label>
     </div>
 
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(10rem, 1fr))', gap: '0.85rem', marginBottom: '1rem' }}>
@@ -107,7 +112,7 @@ export default function ServiceManager({ language }: { language: Language }) {
       <label style={{ display: 'grid', gap: '0.35rem' }}><span style={labelStyle}>{ru ? 'Порядок' : 'Order'}</span><input type="number" min="0" value={form.displayOrder} onChange={event => update('displayOrder', event.target.value)} style={inputStyle} /></label>
       <label style={{ display: 'grid', gap: '0.35rem' }}><span style={labelStyle}>{ru ? 'В каталоге' : 'Catalog status'}</span><select value={form.isActive} onChange={event => update('isActive', event.target.value as 'yes' | 'no')} style={{ ...inputStyle, background: 'hsl(var(--card))' }}><option value="yes">{ru ? 'Активна' : 'Active'}</option><option value="no">{ru ? 'Архив' : 'Archived'}</option></select></label>
     </div>
-    {form.pricingMode === 'request' && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(15rem, 1fr))', gap: '1rem', marginBottom: '1rem' }}><label style={{ display: 'grid', gap: '0.35rem' }}><span style={labelStyle}>RU · {ru ? 'Примечание о цене' : 'Price note'}</span><input value={form.noteRu} onChange={event => update('noteRu', event.target.value)} style={inputStyle} placeholder={ru ? 'Цена после консультации' : 'Price after consultation'} /></label><label style={{ display: 'grid', gap: '0.35rem' }}><span style={labelStyle}>EN · Price note</span><input value={form.noteEn} onChange={event => update('noteEn', event.target.value)} style={inputStyle} placeholder="Price after consultation" /></label></div>}
+    {form.pricingMode === 'request' && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(15rem, 1fr))', gap: '1rem', marginBottom: '1rem' }}><label style={{ display: 'grid', gap: '0.35rem' }}><span style={labelStyle}>RU · {ru ? 'Примечание о цене' : 'Price note'}</span><input value={form.noteRu} onChange={event => update('noteRu', event.target.value)} style={inputStyle} placeholder={ru ? 'Цена после консультации' : 'Price after consultation'} /></label><label style={{ display: 'grid', gap: '0.35rem' }}><span style={labelStyle}>EN · Price note</span><input value={form.noteEn} onChange={event => update('noteEn', event.target.value)} style={inputStyle} placeholder="Price after consultation" /></label><label style={{ display: 'grid', gap: '0.35rem' }}><span style={labelStyle}>HY · Նշում գնի մասին</span><input value={form.noteHy} onChange={event => update('noteHy', event.target.value)} style={inputStyle} placeholder="Գինը՝ խորհրդատվությունից հետո" /></label></div>}
     <button type="button" className="btn-primary" disabled={saveMutation.isPending} onClick={submit}>{saveMutation.isPending ? '...' : editingId ? (ru ? 'Сохранить изменения' : 'Save changes') : (ru ? 'Добавить услугу' : 'Add service')}</button>
 
     <div style={{ display: 'grid', gap: '0.75rem', marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid hsl(var(--border))' }}>
@@ -115,7 +120,7 @@ export default function ServiceManager({ language }: { language: Language }) {
       {isError && <p style={{ ...labelStyle, color: 'hsl(var(--destructive))' }}>{ru ? 'Не удалось загрузить каталог. Обновите страницу.' : 'Could not load the catalog. Refresh the page.'}</p>}
       {!isLoading && !isError && (services ?? []).length === 0 && <p style={labelStyle}>{ru ? 'В каталоге пока нет услуг. Добавьте первую выше.' : 'The catalog is empty. Add the first service above.'}</p>}
       {(services ?? []).map(service => <article key={service.id} style={{ padding: '1rem', border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))', opacity: service.isActive === 'yes' ? 1 : 0.62 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}><div><p style={{ margin: 0, fontFamily: "'Playfair Display', serif", fontWeight: 700, color: 'hsl(var(--foreground))' }}>{service.nameRu} <span style={{ color: 'hsl(var(--muted-foreground))' }}>/ {service.nameEn}</span></p><p style={{ margin: '0.3rem 0 0', fontSize: '0.8125rem', color: 'hsl(var(--muted-foreground))' }}>{formatPrice(service)} · {service.durationMinutes} {ru ? 'мин.' : 'min'}{service.depositAmd ? ` · ${ru ? 'предоплата' : 'deposit'} ${service.depositAmd.toLocaleString()} ֏` : ''}</p></div><span style={{ ...labelStyle, color: service.isActive === 'yes' ? 'hsl(142 50% 40%)' : 'hsl(var(--muted-foreground))' }}>{service.isActive === 'yes' ? (ru ? 'Активна' : 'Active') : (ru ? 'Архив' : 'Archived')}</span></div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}><div><p style={{ margin: 0, fontFamily: "'Playfair Display', serif", fontWeight: 700, color: 'hsl(var(--foreground))' }}>{service.nameRu} <span style={{ color: 'hsl(var(--muted-foreground))' }}>/ {service.nameEn} / {service.nameHy || 'HY —'}</span></p><p style={{ margin: '0.3rem 0 0', fontSize: '0.8125rem', color: 'hsl(var(--muted-foreground))' }}>{formatPrice(service)} · {service.durationMinutes} {ru ? 'мин.' : 'min'}{service.depositAmd ? ` · ${ru ? 'предоплата' : 'deposit'} ${service.depositAmd.toLocaleString()} ֏` : ''}</p></div><span style={{ ...labelStyle, color: service.isActive === 'yes' ? 'hsl(142 50% 40%)' : 'hsl(var(--muted-foreground))' }}>{service.isActive === 'yes' ? (ru ? 'Активна' : 'Active') : (ru ? 'Архив' : 'Archived')}</span></div>
         <div style={{ display: 'flex', gap: '1rem', marginTop: '0.75rem' }}><button type="button" className="btn-ghost" style={{ padding: 0, fontSize: '0.625rem' }} onClick={() => beginEdit(service)}>{ru ? 'Изменить' : 'Edit'}</button><button type="button" className="btn-ghost" style={{ padding: 0, fontSize: '0.625rem' }} disabled={activeMutation.isPending} onClick={() => activeMutation.mutate({ id: service.id, isActive: service.isActive === 'yes' ? 'no' : 'yes' })}>{service.isActive === 'yes' ? (ru ? 'В архив' : 'Archive') : (ru ? 'Вернуть в каталог' : 'Restore')}</button></div>
       </article>)}
     </div>

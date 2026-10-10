@@ -140,7 +140,7 @@ export default function Home() {
     if (svc.priceAmd !== null) return `${svc.priceAmd.toLocaleString()} ֏`;
     if (language === 'ru') return svc.noteRu || 'По запросу';
     if (language === 'en') return svc.noteEn || 'On request';
-    return 'Հարցման դեպքում';
+    return svc.noteHy || 'Հարցման դեպքում';
   };
 
   const getLocalizedServiceText = (
@@ -149,6 +149,8 @@ export default function Home() {
   ) => {
     if (language === 'ru') return field === 'name' ? svc.nameRu : svc.descriptionRu;
     if (language === 'en') return field === 'name' ? svc.nameEn : svc.descriptionEn;
+    if (field === 'name' && svc.nameHy) return svc.nameHy;
+    if (field === 'description' && svc.descriptionHy) return svc.descriptionHy;
 
     const source = `${svc.nameRu} ${svc.nameEn}`.toLowerCase();
     if (source.includes('бород') || source.includes('beard')) {
@@ -416,13 +418,13 @@ export default function Home() {
                   <div style={{ position: 'absolute', top: 0, left: '1.5rem', right: '1.5rem', height: '2px', background: 'linear-gradient(90deg, transparent, var(--gold-mid), transparent)' }} />
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '0.75rem' }}>
                     <p className="label-caps" style={{ margin: 0, color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Новости' : language === 'en' ? 'Notice' : 'Նորություն'}</p>
-                    {announcement.imageUrl && <img src={announcement.imageUrl} alt={language === 'ru' ? `Иллюстрация: ${announcement.titleRu}` : language === 'en' ? `Illustration: ${announcement.titleEn}` : `Նկարազարդում․ ${announcement.titleEn}`} style={{ width: '3rem', height: '3rem', flex: '0 0 auto', objectFit: 'cover', border: '1px solid hsl(var(--border))' }} />}
+                    {announcement.imageUrl && <img src={announcement.imageUrl} alt={language === 'ru' ? `Иллюстрация: ${announcement.titleRu}` : language === 'en' ? `Illustration: ${announcement.titleEn}` : `Նկարազարդում․ ${announcement.titleHy || announcement.titleEn}`} style={{ width: '3rem', height: '3rem', flex: '0 0 auto', objectFit: 'cover', border: '1px solid hsl(var(--border))' }} />}
                   </div>
                   <h3 className="notice-title" style={{ margin: '0 0 0.55rem', fontStyle: 'italic', fontSize: '1.4rem', lineHeight: 1.08 }}>
-                    {language === 'ru' ? announcement.titleRu : announcement.titleEn}
+                    {language === 'ru' ? announcement.titleRu : language === 'en' ? announcement.titleEn : announcement.titleHy || announcement.titleEn}
                   </h3>
                   <p style={{ margin: '0 0 1rem', color: 'hsl(var(--muted-foreground))', fontSize: '0.8125rem', lineHeight: 1.55 }}>
-                    {language === 'ru' ? announcement.bodyRu : announcement.bodyEn}
+                    {language === 'ru' ? announcement.bodyRu : language === 'en' ? announcement.bodyEn : announcement.bodyHy || announcement.bodyEn}
                   </p>
                   <p style={{ fontFamily: "'Inter', sans-serif", margin: 0, color: 'hsl(var(--muted-foreground))', fontSize: '0.5625rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}>{announcement.startDate} — {announcement.endDate}</p>
                 </article>

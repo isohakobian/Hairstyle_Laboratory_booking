@@ -38,8 +38,10 @@ export async function getAllAnnouncements() {
 export type AnnouncementInput = {
   titleRu: string;
   titleEn: string;
+  titleHy?: string | null;
   bodyRu: string;
   bodyEn: string;
+  bodyHy?: string | null;
   imageUrl?: string | null;
   startDate: string;
   endDate: string;
