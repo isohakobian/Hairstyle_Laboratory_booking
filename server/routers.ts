@@ -646,7 +646,7 @@ export const appRouter = router({
       .input(z.object({ campaignId: z.number().int().positive() }))
       .query(({ input }) => getCrmCampaignDeliveries(input.campaignId)),
     crmAudiencePreview: adminMiddleware
-      .input(z.object({ audienceFilter: z.enum(["newsletter_consented", "upcoming_booking", "recent_6m", "specific_service"]), targetServiceId: z.number().int().positive().nullable().optional() }))
+      .input(z.object({ audienceFilter: z.enum(["newsletter_consented", "upcoming_booking", "recent_6m", "specific_service", "inactive_30d", "inactive_60d", "inactive_90d"]), targetServiceId: z.number().int().positive().nullable().optional() }))
       .query(({ input }) => getCrmRecipients(input.audienceFilter, input.targetServiceId)),
     crmCampaignStats: adminMiddleware
       .input(z.object({ campaignId: z.number().int().positive() }))
@@ -660,7 +660,7 @@ export const appRouter = router({
         bodyRu: z.string().trim().min(1).max(6000),
         bodyEn: z.string().trim().min(1).max(6000),
         imageUrl: z.string().trim().max(1000).nullable().optional(),
-        audienceFilter: z.enum(["newsletter_consented", "upcoming_booking", "recent_6m", "specific_service"]),
+        audienceFilter: z.enum(["newsletter_consented", "upcoming_booking", "recent_6m", "specific_service", "inactive_30d", "inactive_60d", "inactive_90d"]),
         targetServiceId: z.number().int().positive().nullable().optional(),
       }))
       .mutation(async ({ input }) => {

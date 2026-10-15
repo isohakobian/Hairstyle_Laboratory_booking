@@ -1407,7 +1407,7 @@ export async function markReviewTokenUsed(id: number) {
   return db.update(reviewTokens).set({ usedAt: new Date() }).where(and(eq(reviewTokens.id, id), isNull(reviewTokens.usedAt)));
 }
 
-export type CrmAudienceFilter = "newsletter_consented" | "upcoming_booking" | "recent_6m" | "specific_service";
+export type CrmAudienceFilter = "newsletter_consented" | "upcoming_booking" | "recent_6m" | "specific_service" | "inactive_30d" | "inactive_60d" | "inactive_90d";
 
 export type CrmCampaignInput = {
   title: string;
@@ -1449,6 +1449,26 @@ export async function getCrmRecipients(filter: CrmAudienceFilter, targetServiceI
         or(eq(bookings.serviceId, targetServiceId), eq(bookingServices.serviceId, targetServiceId)),
       ))
     : [];
+  const inactiveDays = filter === "inactive_30d" ? 30 : filter === "inactive_60d" ? 60 : filter === "inactive_90d" ? 90 : null;
+  const inactiveRows = inactiveDays
+    ? await db.select({ clientId: bookings.clientId, completedAt: bookings.completedAt })
+      .from(bookings)
+      .where(and(eq(bookings.status, "completed"), isNotNull(bookings.completedAt)))
+    : [];
+  const latestVisitByClient = new Map<number, Date>();
+  for (const row of inactiveRows) {
+    if (typeof row.clientId !== "number" || !row.completedAt) continue;
+    const completedAt = new Date(row.completedAt);
+    const previous = latestVisitByClient.get(row.clientId);
+    if (!previous || completedAt > previous) latestVisitByClient.set(row.clientId, completedAt);
+  }
+  const inactiveCutoff = inactiveDays === null ? null : Date.now() - inactiveDays * 24 * 60 * 60 * 1000;
+  const inactiveIds = inactiveCutoff === null
+    ? new Set<number>()
+    : new Set(Array.from(latestVisitByClient.entries()).filter(([, completedAt]) => completedAt.getTime() <= inactiveCutoff).map(([clientId]) => clientId));
+  const upcomingClientIds = inactiveDays
+    ? new Set((await db.select({ clientId: bookings.clientId }).from(bookings).where(and(gte(bookings.bookingDate, today), or(eq(bookings.status, "pending"), eq(bookings.status, "confirmed"))))).map(row => row.clientId).filter((id): id is number => typeof id === "number"))
+    : new Set<number>();
   const eligibleIds = new Set((filter === "upcoming_booking" ? upcomingRows : filter === "recent_6m" ? recentRows : serviceRows).map(row => row.clientId).filter((id): id is number => typeof id === "number"));
   return rows
     .map(row => ({ ...row.client, newsletterConsented: row.preference?.newsletterConsented === "yes" }))
@@ -1456,6 +1476,7 @@ export async function getCrmRecipients(filter: CrmAudienceFilter, targetServiceI
       if (!client.email) return false;
       if (filter === "newsletter_consented") return client.newsletterConsented;
       if (filter === "upcoming_booking") return eligibleIds.has(client.id);
+      if (inactiveDays) return client.newsletterConsented && inactiveIds.has(client.id) && !upcomingClientIds.has(client.id);
       return client.newsletterConsented && eligibleIds.has(client.id);
     });
 }

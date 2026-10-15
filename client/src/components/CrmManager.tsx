@@ -5,7 +5,7 @@ import { Loader2, Eye, X } from 'lucide-react';
 import CrmTemplateEditor from './CrmTemplateEditor';
 
 type Language = 'ru' | 'en';
-type AudienceFilter = 'newsletter_consented' | 'upcoming_booking' | 'recent_6m' | 'specific_service';
+type AudienceFilter = 'newsletter_consented' | 'upcoming_booking' | 'recent_6m' | 'specific_service' | 'inactive_30d' | 'inactive_60d' | 'inactive_90d';
 
 type CampaignForm = {
   title: string;
@@ -165,6 +165,9 @@ export default function CrmManager({ language }: { language: Language }) {
     upcoming_booking: ru ? 'Клиенты с ближайшей записью' : 'Clients with an upcoming booking',
     recent_6m: ru ? 'Были у меня за последние 6 месяцев' : 'Visited in the last 6 months',
     specific_service: ru ? 'Пользователи конкретной услуги' : 'Clients of a specific service',
+    inactive_30d: ru ? 'Не были 30 дней' : 'No visit for 30 days',
+    inactive_60d: ru ? 'Не были 60 дней' : 'No visit for 60 days',
+    inactive_90d: ru ? 'Не были 90 дней' : 'No visit for 90 days',
   }[value]);
   const selectedService = services?.find(service => String(service.id) === form.targetServiceId);
 
@@ -204,7 +207,7 @@ export default function CrmManager({ language }: { language: Language }) {
           {uploadMutation.isPending && <p aria-live="polite" style={{ ...labelStyle, margin: '0.6rem 0 0', fontSize: '0.5625rem' }}>{ru ? 'Загружаю баннер…' : 'Uploading banner…'}</p>}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(15rem, 1fr))', gap: '1rem' }}>
-          <label style={{ display: 'grid', gap: '0.4rem' }}><span style={labelStyle}>{ru ? 'Аудитория' : 'Audience'}</span><select value={form.audienceFilter} onChange={event => update('audienceFilter', event.target.value)} style={{ ...inputStyle, background: 'hsl(var(--card))' }}>{(['upcoming_booking', 'newsletter_consented', 'recent_6m', 'specific_service'] as AudienceFilter[]).map(value => <option key={value} value={value}>{audienceLabel(value)}</option>)}</select></label>
+          <label style={{ display: 'grid', gap: '0.4rem' }}><span style={labelStyle}>{ru ? 'Аудитория' : 'Audience'}</span><select value={form.audienceFilter} onChange={event => update('audienceFilter', event.target.value)} style={{ ...inputStyle, background: 'hsl(var(--card))' }}>{(['upcoming_booking', 'newsletter_consented', 'recent_6m', 'inactive_30d', 'inactive_60d', 'inactive_90d', 'specific_service'] as AudienceFilter[]).map(value => <option key={value} value={value}>{audienceLabel(value)}</option>)}</select></label>
           {form.audienceFilter === 'specific_service' && <label style={{ display: 'grid', gap: '0.4rem' }}><span style={labelStyle}>{ru ? 'Оказанная услуга' : 'Completed service'}</span><select value={form.targetServiceId} onChange={event => update('targetServiceId', event.target.value)} style={{ ...inputStyle, background: 'hsl(var(--card))' }}><option value="">{ru ? 'Выбери процедуру' : 'Choose a service'}</option>{(services ?? []).map(service => <option key={service.id} value={service.id}>{service.nameRu} / {service.nameEn}</option>)}</select></label>}
         </div>
         {form.audienceFilter === 'specific_service' && form.targetServiceId && <div style={{ padding: '0.85rem 1rem', border: '1px solid color-mix(in srgb, var(--gold-mid) 45%, hsl(var(--border)))', background: 'color-mix(in srgb, var(--gold-mid) 7%, hsl(var(--card)))' }}>
