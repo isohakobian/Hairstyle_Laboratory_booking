@@ -40,7 +40,6 @@ export async function findOrCreateClient(identity: ClientIdentity) {
 
   if (existing[0]) {
     await db.update(clients).set({
-      name: identity.name,
       phone: identity.phone,
       ...(email ? { email } : {}),
       ...(identity.birthday ? { birthday: identity.birthday } : {}),

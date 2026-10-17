@@ -59,9 +59,26 @@ describe('client memory', () => {
     });
 
     expect(returning.id).toBe(first.id);
-    expect(returning.name).toBe('Email Identity Client Updated');
+    expect(returning.name).toBe('Email Identity Client');
     expect(returning.email).toBe('email.identity@example.com');
     expect(returning.phone).toBe('+374 99 000 666');
+  });
+
+  it('keeps the original CRM name when the same phone is submitted with a different name', async () => {
+    const first = await findOrCreateClient({
+      name: 'Original Archive Name',
+      phone: '+37455000777',
+      email: 'original-name@example.com',
+    });
+    const returning = await findOrCreateClient({
+      name: 'Different Name From Booking Form',
+      phone: '+374 55 000 777',
+      email: 'different-name@example.com',
+    });
+
+    expect(returning.id).toBe(first.id);
+    expect(returning.name).toBe('Original Archive Name');
+    expect(returning.phone).toBe('+374 55 000 777');
   });
 
   it('keeps a client cancellation reason in the private visit history', async () => {
