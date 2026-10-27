@@ -4,7 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import {
-  getAllServices, getServiceById, createBookingWithServices, getBookingByReference, getBookingById, BookingIntervalConflictError,
+  getAllServices, getServiceById, createBookingWithServices, createAdminBooking, getBookingByReference, getBookingById, BookingIntervalConflictError,
   getBookingsByEmail, getAllBookings, updateBookingStatus, cancelBookingByClient, isTimeSlotAvailable,
   getBlockedDates, blockDate, unblockDate, createReview, getReviewByBookingId, createReviewToken,
   getReviewTokenByHash, markReviewTokenUsed,
@@ -512,6 +512,43 @@ export const appRouter = router({
 
   admin: router({
     bookings: adminMiddleware.query(() => getAllBookings()),
+    createBooking: adminMiddleware
+      .input(z.object({
+        clientId: z.number().int().positive(),
+        serviceIds: z.array(z.number().int().positive()).min(1).max(12),
+        bookingDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        bookingTime: z.string().regex(/^\d{2}:\d{2}$/),
+        comment: z.string().trim().max(2000).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        let booking;
+        try {
+          booking = await createAdminBooking(input);
+        } catch (error) {
+          if (error instanceof BookingIntervalConflictError) {
+            throw new TRPCError({ code: "CONFLICT", message: "This date or time overlaps another booking" });
+          }
+          throw error;
+        }
+        if (!booking) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Booking could not be created" });
+        await createBookingEvent({ bookingId: booking.id, eventType: "created", note: "Created by admin from CRM" });
+        if (booking.clientEmail) {
+          const details = {
+            referenceNumber: booking.referenceNumber,
+            serviceName: booking.serviceSummary || booking.serviceName,
+            totalDurationMinutes: booking.totalDurationMinutes || undefined,
+            totalPriceSummary: booking.totalPriceSummary || undefined,
+            bookingDate: booking.bookingDate,
+            bookingTime: booking.bookingTime,
+            clientName: booking.clientName,
+            clientPhone: booking.clientPhone,
+            clientEmail: booking.clientEmail,
+            comment: booking.comment,
+          };
+          trackClientEmailDelivery(booking.id, booking.clientEmail, "booking-confirmed", sendConfirmedBookingEmail(details), "no", buildClientConfirmationEmail(details));
+        }
+        return booking;
+      }),
     today: adminMiddleware.query(() => getAdminTodaySummary()),
     weeklyBookingStats: adminMiddleware.query(async () => {
       const end = new Date();

@@ -107,6 +107,8 @@ export default function AdminDashboard() {
   const [clientSearch, setClientSearch] = useState('');
   const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
   const [manualClientForm, setManualClientForm] = useState({ name: '', phone: '', email: '', birthday: '', instagram: '', stylistNotes: '' });
+  const [adminBookingSearch, setAdminBookingSearch] = useState('');
+  const [adminBookingForm, setAdminBookingForm] = useState({ clientId: '', serviceIds: [] as number[], bookingDate: new Date().toISOString().slice(0, 10), bookingTime: '10:00', comment: '' });
   const [rescheduleBookingId, setRescheduleBookingId] = useState<number | null>(null);
   const [rescheduleDate, setRescheduleDate] = useState('');
   const [rescheduleTime, setRescheduleTime] = useState('');
@@ -269,6 +271,17 @@ export default function AdminDashboard() {
     },
     onError: (e) => toast.error(e.message),
   });
+  const createAdminBookingMutation = trpc.admin.createBooking.useMutation({
+    onSuccess: () => {
+      toast.success(language === 'ru' ? 'Запись добавлена и подтверждена' : 'Booking added and confirmed');
+      setAdminBookingForm(current => ({ ...current, clientId: '', serviceIds: [], comment: '' }));
+      setAdminBookingSearch('');
+      refreshBookingLists();
+      void utils.admin.clientDirectory.invalidate();
+      void utils.admin.clientStats.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
   const deleteBookingMutation = trpc.admin.deleteBooking.useMutation({
     onSuccess: (data) => {
       setDeleteBookingId(null);
@@ -322,6 +335,11 @@ export default function AdminDashboard() {
 
   const visibleBookings = bookingPageData?.items ?? [];
   const visibleReviewRequests = reviewRequestPageData?.items ?? [];
+  const adminBookingClients = useMemo(() => {
+    const query = adminBookingSearch.trim().toLowerCase();
+    return (clientDirectory ?? []).filter(client => !query || [client.name, client.phone, client.email ?? ''].some(value => value.toLowerCase().includes(query))).slice(0, 30);
+  }, [adminBookingSearch, clientDirectory]);
+  const selectedAdminBookingClient = (clientDirectory ?? []).find(client => String(client.id) === adminBookingForm.clientId);
   const bookingPageCount = Math.max(1, Math.ceil((bookingPageData?.total ?? 0) / (bookingPageData?.pageSize ?? 15)));
   const reviewRequestPageCount = Math.max(1, Math.ceil((reviewRequestPageData?.total ?? 0) / (reviewRequestPageData?.pageSize ?? 15)));
 
@@ -618,6 +636,32 @@ export default function AdminDashboard() {
               <p style={{ ...labelStyle, margin: '0 0 0.4rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Рабочая очередь' : 'Work queue'}</p>
               <h3 style={{ margin: 0, fontStyle: 'italic' }}>{language === 'ru' ? 'Заявки клиентов' : 'Client bookings'}</h3>
             </div>
+            <section style={{ ...cardStyle, marginBottom: '1.5rem', borderColor: 'var(--gold-mid)' }}>
+              <p style={{ ...labelStyle, margin: '0 0 0.4rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Запись от администратора' : 'Admin booking'}</p>
+              <h4 style={{ margin: 0, fontFamily: "'Playfair Display', serif", fontStyle: 'italic', fontSize: '1.3rem' }}>{language === 'ru' ? 'Добавить визит для клиента' : 'Add a visit for a client'}</h4>
+              <p style={{ margin: '0.55rem 0 1.1rem', color: 'hsl(var(--muted-foreground))', fontSize: '0.8rem', lineHeight: 1.5 }}>{language === 'ru' ? 'Выбери существующего клиента, услугу, дату и время. Запись сразу получит статус «подтверждено».' : 'Choose an existing client, service, date, and time. The booking will be confirmed immediately.'}</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(14rem, 1fr))', gap: '1rem' }}>
+                <label style={{ display: 'grid', gap: '0.4rem' }}>
+                  <span style={labelStyle}>{language === 'ru' ? 'Клиент' : 'Client'}</span>
+                  <input value={adminBookingSearch} onChange={event => setAdminBookingSearch(event.target.value)} placeholder={language === 'ru' ? 'Поиск по имени или телефону' : 'Search by name or phone'} style={{ ...inputStyle, border: '1px solid hsl(var(--border))', padding: '0.65rem 0.75rem' }} />
+                  <select value={adminBookingForm.clientId} onChange={event => setAdminBookingForm(current => ({ ...current, clientId: event.target.value }))} style={{ ...inputStyle, background: 'hsl(var(--card))' }}>
+                    <option value="">{language === 'ru' ? 'Выбери клиента' : 'Choose a client'}</option>
+                    {adminBookingClients.map(client => <option key={client.id} value={client.id}>{client.name} · {client.phone}</option>)}
+                  </select>
+                  {selectedAdminBookingClient && <small style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.7rem' }}>{selectedAdminBookingClient.email || (language === 'ru' ? 'Email не указан' : 'No email')}</small>}
+                </label>
+                <div style={{ display: 'grid', gap: '0.4rem' }}>
+                  <span style={labelStyle}>{language === 'ru' ? 'Услуги' : 'Services'}</span>
+                  <div style={{ display: 'grid', gap: '0.45rem' }}>
+                    {(managedServices ?? []).filter(service => service.isActive === 'yes').map(service => <label key={service.id} style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', padding: '0.55rem 0.65rem', border: '1px solid hsl(var(--border))', cursor: 'pointer', fontSize: '0.8rem' }}><input type="checkbox" checked={adminBookingForm.serviceIds.includes(service.id)} onChange={event => setAdminBookingForm(current => ({ ...current, serviceIds: event.target.checked ? [...current.serviceIds, service.id] : current.serviceIds.filter(id => id !== service.id) }))} /><span>{language === 'ru' ? service.nameRu : service.nameEn}</span><small style={{ marginLeft: 'auto', color: 'hsl(var(--muted-foreground))' }}>{service.priceAmd !== null ? `${service.priceAmd.toLocaleString()} ֏` : service.priceMinAmd !== null && service.priceMaxAmd !== null ? `${service.priceMinAmd.toLocaleString()}–${service.priceMaxAmd.toLocaleString()} ֏` : '—'}</small></label>)}
+                  </div>
+                </div>
+                <label style={{ display: 'grid', gap: '0.4rem' }}><span style={labelStyle}>{language === 'ru' ? 'Дата' : 'Date'}</span><input type="date" value={adminBookingForm.bookingDate} onChange={event => setAdminBookingForm(current => ({ ...current, bookingDate: event.target.value }))} style={{ ...inputStyle, border: '1px solid hsl(var(--border))', padding: '0.65rem 0.75rem' }} /></label>
+                <label style={{ display: 'grid', gap: '0.4rem' }}><span style={labelStyle}>{language === 'ru' ? 'Время' : 'Time'}</span><input type="time" value={adminBookingForm.bookingTime} onChange={event => setAdminBookingForm(current => ({ ...current, bookingTime: event.target.value }))} style={{ ...inputStyle, border: '1px solid hsl(var(--border))', padding: '0.65rem 0.75rem' }} /></label>
+              </div>
+              <label style={{ display: 'grid', gap: '0.4rem', marginTop: '1rem' }}><span style={labelStyle}>{language === 'ru' ? 'Комментарий' : 'Note'}</span><textarea value={adminBookingForm.comment} onChange={event => setAdminBookingForm(current => ({ ...current, comment: event.target.value }))} rows={2} placeholder={language === 'ru' ? 'Например: запись по телефону' : 'For example: booked by phone'} style={{ ...inputStyle, border: '1px solid hsl(var(--border))', padding: '0.65rem 0.75rem', resize: 'vertical' }} /></label>
+              <button type="button" className="btn-primary" disabled={!adminBookingForm.clientId || adminBookingForm.serviceIds.length === 0 || !adminBookingForm.bookingDate || !adminBookingForm.bookingTime || createAdminBookingMutation.isPending} onClick={() => createAdminBookingMutation.mutate({ clientId: Number(adminBookingForm.clientId), serviceIds: adminBookingForm.serviceIds, bookingDate: adminBookingForm.bookingDate, bookingTime: adminBookingForm.bookingTime, comment: adminBookingForm.comment.trim() || undefined })} style={{ marginTop: '1rem' }}>{createAdminBookingMutation.isPending ? (language === 'ru' ? 'Создаю...' : 'Creating...') : (language === 'ru' ? 'Добавить подтверждённую запись' : 'Add confirmed booking')}</button>
+            </section>
             {bookingPageLoading ? <p style={labelStyle}>{language === 'ru' ? 'Загрузка...' : 'Loading...'}</p>
             : bookingPageError ? <p style={{ ...labelStyle, color: 'hsl(0, 60%, 50%)' }}>{language === 'ru' ? 'Не удалось загрузить заявки. Обновите страницу.' : 'Bookings could not be loaded. Refresh the page.'}</p>
             : (bookingPageData?.total ?? 0) === 0 ? <p style={labelStyle}>{language === 'ru' ? 'Нет заявок' : 'No bookings yet'}</p>

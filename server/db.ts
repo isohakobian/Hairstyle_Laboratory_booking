@@ -210,6 +210,64 @@ export async function createBookingWithServices(booking: InsertBooking, selected
   });
 }
 
+export async function createAdminBooking(input: {
+  clientId: number;
+  serviceIds: number[];
+  bookingDate: string;
+  bookingTime: string;
+  comment?: string | null;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const client = (await db.select().from(clients).where(eq(clients.id, input.clientId)).limit(1))[0];
+  if (!client) throw new Error("Client not found");
+  const uniqueServiceIds = Array.from(new Set(input.serviceIds));
+  if (uniqueServiceIds.length === 0) throw new Error("At least one service is required");
+  const selected = await db.select().from(services).where(inArray(services.id, uniqueServiceIds));
+  if (selected.length !== uniqueServiceIds.length) throw new Error("One or more selected services are unavailable");
+  const byId = new Map(selected.map(service => [service.id, service]));
+  const ordered = uniqueServiceIds.map(id => byId.get(id)!);
+  const totalDurationMinutes = ordered.reduce((total, service) => total + service.durationMinutes, 0);
+  if (!(await isTimeSlotAvailable(input.bookingDate, input.bookingTime, totalDurationMinutes))) {
+    throw new BookingIntervalConflictError();
+  }
+  const serviceSummary = ordered.map(service => service.nameEn).join(" + ");
+  const fixedTotalAmd = ordered.reduce((total, service) => total + (service.priceAmd ?? 0), 0);
+  const rangedServices = ordered.filter(service => service.priceMinAmd !== null && service.priceMaxAmd !== null);
+  const formatPrice = (service: typeof ordered[number]) => {
+    if (service.priceAmd !== null) return `${service.priceAmd.toLocaleString()} ֏`;
+    if (service.priceMinAmd !== null && service.priceMaxAmd !== null) return `${service.priceMinAmd.toLocaleString()} – ${service.priceMaxAmd.toLocaleString()} ֏`;
+    return service.noteEn || service.noteRu || "Price on request";
+  };
+  const totalPriceSummary = rangedServices.length > 0
+    ? `${(fixedTotalAmd + rangedServices.reduce((total, service) => total + (service.priceMinAmd ?? 0), 0)).toLocaleString()} – ${(fixedTotalAmd + rangedServices.reduce((total, service) => total + (service.priceMaxAmd ?? 0), 0)).toLocaleString()} ֏`
+    : `${fixedTotalAmd.toLocaleString()} ֏`;
+  const referenceNumber = `ADM${Math.random().toString(36).substring(2, 8).toUpperCase()}${Date.now().toString(36).substring(0, 3).toUpperCase()}`.slice(0, 12);
+  const bookingId = await createBookingWithServices({
+    referenceNumber,
+    serviceId: ordered[0].id,
+    serviceName: ordered[0].nameEn,
+    serviceSummary,
+    totalDurationMinutes,
+    totalPriceSummary,
+    bookingDate: input.bookingDate,
+    bookingTime: input.bookingTime,
+    clientName: client.name,
+    clientPhone: client.phone,
+    clientEmail: client.email,
+    clientId: client.id,
+    comment: input.comment?.trim() || null,
+    status: "confirmed",
+    manualDepositStatus: "not_required",
+  }, ordered.map(service => ({
+    serviceId: service.id,
+    serviceName: service.nameEn,
+    durationMinutes: service.durationMinutes,
+    priceSummary: formatPrice(service),
+  })));
+  return getBookingById(bookingId);
+}
+
 export async function getBookingByReference(referenceNumber: string) {
   const db = await getDb();
   if (!db) return undefined;

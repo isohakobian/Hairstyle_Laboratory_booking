@@ -29,6 +29,7 @@ vi.mock("@/lib/trpc", () => ({
       confirmBooking: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       declineBooking: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       deleteBooking: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+      createBooking: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       requestReview: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       publishReview: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       updateReview: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
