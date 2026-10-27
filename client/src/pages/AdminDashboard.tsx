@@ -272,13 +272,14 @@ export default function AdminDashboard() {
     onError: (e) => toast.error(e.message),
   });
   const createAdminBookingMutation = trpc.admin.createBooking.useMutation({
-    onSuccess: () => {
+    onSuccess: (booking) => {
       toast.success(language === 'ru' ? 'Запись добавлена и подтверждена' : 'Booking added and confirmed');
       setAdminBookingForm(current => ({ ...current, clientId: '', serviceIds: [], comment: '' }));
       setAdminBookingSearch('');
       refreshBookingLists();
       void utils.admin.clientDirectory.invalidate();
       void utils.admin.clientStats.invalidate();
+      window.open(buildGoogleCalendarBookingUrl(booking), '_blank', 'noopener,noreferrer');
     },
     onError: (e) => toast.error(e.message),
   });

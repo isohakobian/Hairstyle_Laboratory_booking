@@ -46,5 +46,6 @@ export function buildGoogleCalendarBookingUrl(booking: GoogleCalendarBooking) {
     details,
     location: STUDIO_ADDRESS,
   });
+  if (booking.clientEmail) params.set('add', booking.clientEmail.trim().toLowerCase());
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }

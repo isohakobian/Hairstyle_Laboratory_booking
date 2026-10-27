@@ -13,6 +13,7 @@ describe('buildGoogleCalendarBookingUrl', () => {
     expect(url.searchParams.get('location')).toBe('Armenia, Yerevan, Pushkin 44');
     expect(url.searchParams.get('dates')).toBe('20991230T141500/20991230T155000');
     expect(url.searchParams.get('text')).toBe('Hairstyle Laboratory — Alex');
+    expect(url.searchParams.get('add')).toBe('alex@example.com');
     expect(url.searchParams.get('details')).toContain('Услуги: Haircut + Beard Modeling');
     expect(url.searchParams.get('details')).toContain('Email: alex@example.com');
     expect(url.searchParams.get('details')).toContain('Instagram: @alex.style');
