@@ -339,6 +339,7 @@ export async function getAllBookings() {
 export type BookingPageInput = {
   page: number;
   pageSize: number;
+  view?: "active" | "archive" | "all";
   status?: "all" | "pending" | "confirmed" | "completed" | "declined" | "cancelled";
   search?: string;
   sort?: "appointmentAsc" | "appointmentDesc" | "newest" | "statusAsc";
@@ -351,6 +352,9 @@ export async function getBookingPage(input: BookingPageInput) {
   const pageSize = Math.min(Math.max(1, input.pageSize), 50);
   const normalizedSearch = input.search?.trim() ?? "";
   const conditions = [
+    input.view === "active" ? or(eq(bookings.status, "pending"), eq(bookings.status, "confirmed"))
+      : input.view === "archive" ? or(eq(bookings.status, "completed"), eq(bookings.status, "declined"), eq(bookings.status, "cancelled"))
+      : undefined,
     input.status && input.status !== "all" ? eq(bookings.status, input.status) : undefined,
     normalizedSearch ? or(
       like(bookings.clientName, `%${normalizedSearch}%`),

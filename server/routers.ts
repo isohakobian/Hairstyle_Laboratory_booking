@@ -666,6 +666,7 @@ export const appRouter = router({
       .input(z.object({
         page: z.number().int().min(1),
         pageSize: z.number().int().min(1).max(50),
+        view: z.enum(["active", "archive", "all"]).optional(),
         status: z.enum(["all", "pending", "confirmed", "completed", "declined", "cancelled"]).optional(),
         search: z.string().trim().max(160).optional(),
         sort: z.enum(["appointmentAsc", "appointmentDesc", "newest", "statusAsc"]).optional(),

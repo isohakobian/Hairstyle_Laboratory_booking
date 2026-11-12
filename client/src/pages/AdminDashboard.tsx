@@ -25,6 +25,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 
 type Tab = 'bookings' | 'calendar' | 'schedule' | 'services' | 'reviews' | 'clients' | 'news' | 'crm' | 'payment' | 'settings';
 type BookingStatusFilter = 'all' | 'pending' | 'confirmed' | 'completed' | 'declined' | 'cancelled';
+type BookingView = 'active' | 'archive' | 'all';
 type BookingSort = 'appointmentAsc' | 'appointmentDesc' | 'newest' | 'statusAsc';
 type ReviewRequestStatusFilter = 'all' | 'awaiting' | 'received';
 type ReviewRequestSort = 'sentDesc' | 'sentAsc' | 'receivedDesc';
@@ -97,6 +98,7 @@ export default function AdminDashboard() {
   const [, setLocation] = useLocation();
   const { user, isAuthenticated, logout, loading } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>(getInitialTab);
+  const [bookingView, setBookingView] = useState<BookingView>('active');
   const [bookingStatusFilter, setBookingStatusFilter] = useState<BookingStatusFilter>('all');
   const [bookingSort, setBookingSort] = useState<BookingSort>('appointmentAsc');
   const [bookingSearch, setBookingSearch] = useState('');
@@ -152,6 +154,7 @@ export default function AdminDashboard() {
   const { data: bookingPageData, isLoading: bookingPageLoading, isError: bookingPageError } = trpc.admin.bookingPage.useQuery({
     page: bookingPage,
     pageSize: 15,
+    view: bookingView,
     status: bookingStatusFilter,
     search: bookingSearch.trim() || undefined,
     sort: bookingSort,
@@ -331,7 +334,7 @@ export default function AdminDashboard() {
     if (!loading && (!isAuthenticated || user?.role !== 'admin')) setLocation('/');
   }, [isAuthenticated, user, loading, setLocation]);
 
-  useEffect(() => setBookingPage(1), [bookingStatusFilter, bookingSort, bookingSearch]);
+  useEffect(() => setBookingPage(1), [bookingView, bookingStatusFilter, bookingSort, bookingSearch]);
   useEffect(() => setReviewRequestPage(1), [reviewRequestStatusFilter, reviewRequestSort]);
 
   const visibleBookings = bookingPageData?.items ?? [];
@@ -663,6 +666,19 @@ export default function AdminDashboard() {
               <label style={{ display: 'grid', gap: '0.4rem', marginTop: '1rem' }}><span style={labelStyle}>{language === 'ru' ? 'Комментарий' : 'Note'}</span><textarea value={adminBookingForm.comment} onChange={event => setAdminBookingForm(current => ({ ...current, comment: event.target.value }))} rows={2} placeholder={language === 'ru' ? 'Например: запись по телефону' : 'For example: booked by phone'} style={{ ...inputStyle, border: '1px solid hsl(var(--border))', padding: '0.65rem 0.75rem', resize: 'vertical' }} /></label>
               <button type="button" className="btn-primary" disabled={!adminBookingForm.clientId || adminBookingForm.serviceIds.length === 0 || !adminBookingForm.bookingDate || !adminBookingForm.bookingTime || createAdminBookingMutation.isPending} onClick={() => createAdminBookingMutation.mutate({ clientId: Number(adminBookingForm.clientId), serviceIds: adminBookingForm.serviceIds, bookingDate: adminBookingForm.bookingDate, bookingTime: adminBookingForm.bookingTime, comment: adminBookingForm.comment.trim() || undefined })} style={{ marginTop: '1rem' }}>{createAdminBookingMutation.isPending ? (language === 'ru' ? 'Создаю...' : 'Creating...') : (language === 'ru' ? 'Добавить подтверждённую запись' : 'Add confirmed booking')}</button>
             </section>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: '1rem' }}>
+              <span style={{ ...labelStyle, fontSize: '0.5625rem', marginRight: '0.35rem' }}>{language === 'ru' ? 'Раздел заявок' : 'Booking section'}</span>
+              {([
+                { id: 'active', label: language === 'ru' ? 'Текущие записи' : 'Current bookings' },
+                { id: 'archive', label: language === 'ru' ? 'Архив' : 'Archive' },
+                { id: 'all', label: language === 'ru' ? 'Все записи' : 'All bookings' },
+              ] as { id: BookingView; label: string }[]).map(view => (
+                <button type="button" key={view.id} onClick={() => { setBookingView(view.id); setBookingStatusFilter('all'); }} aria-pressed={bookingView === view.id} style={{ ...labelStyle, fontSize: '0.5625rem', padding: '0.55rem 0.75rem', color: bookingView === view.id ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))', background: bookingView === view.id ? 'hsl(var(--secondary))' : 'transparent', border: `1px solid ${bookingView === view.id ? 'var(--gold-mid)' : 'hsl(var(--border))'}`, cursor: 'pointer' }}>
+                  {view.label}
+                </button>
+              ))}
+              <span style={{ ...labelStyle, fontSize: '0.5625rem', marginLeft: '0.25rem' }}>{language === 'ru' ? 'Завершённые визиты автоматически переходят в архив.' : 'Completed visits move to the archive automatically.'}</span>
+            </div>
             {bookingPageLoading ? <p style={labelStyle}>{language === 'ru' ? 'Загрузка...' : 'Loading...'}</p>
             : bookingPageError ? <p style={{ ...labelStyle, color: 'hsl(0, 60%, 50%)' }}>{language === 'ru' ? 'Не удалось загрузить заявки. Обновите страницу.' : 'Bookings could not be loaded. Refresh the page.'}</p>
             : (bookingPageData?.total ?? 0) === 0 ? <p style={labelStyle}>{language === 'ru' ? 'Нет заявок' : 'No bookings yet'}</p>
@@ -673,7 +689,8 @@ export default function AdminDashboard() {
                     ? 'Сначала обработайте новые заявки. После визита откройте подтверждённую запись и отправьте клиенту личную просьбу оставить отзыв.'
                     : 'Handle new requests first. After a completed visit, open the confirmed booking and send the client a personal review request.'}
                 </p>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid hsl(var(--border))' }}>
+                <div style={{ display: 'grid', gap: '1rem', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid hsl(var(--border))' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', gap: '1rem', flexWrap: 'wrap' }}>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem', minWidth: 'min(100%, 16rem)', flex: '1 1 15rem' }}>
                     <span style={{ ...labelStyle, fontSize: '0.5625rem' }}>{language === 'ru' ? 'Поиск клиента или заявки' : 'Search clients or bookings'}</span>
                     <input value={bookingSearch} onChange={event => setBookingSearch(event.target.value)} placeholder={language === 'ru' ? 'Имя, телефон или email' : 'Name, phone, or email'} style={{ ...inputStyle, border: '1px solid hsl(var(--border))', padding: '0.625rem 0.75rem' }} />
@@ -683,11 +700,15 @@ export default function AdminDashboard() {
                     <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap' }}>
                       {([
                         { id: 'all', label: language === 'ru' ? 'Все' : 'All' },
-                        { id: 'pending', label: language === 'ru' ? 'Новые' : 'New' },
-                        { id: 'confirmed', label: language === 'ru' ? 'Запланированы' : 'Scheduled' },
-                        { id: 'completed', label: language === 'ru' ? 'Завершены' : 'Completed' },
-                        { id: 'declined', label: language === 'ru' ? 'Отклонены' : 'Declined' },
-                        { id: 'cancelled', label: language === 'ru' ? 'Отменены' : 'Cancelled' },
+                        ...(bookingView !== 'archive' ? [
+                          { id: 'pending', label: language === 'ru' ? 'Новые' : 'New' },
+                          { id: 'confirmed', label: language === 'ru' ? 'Запланированы' : 'Scheduled' },
+                        ] : []),
+                        ...(bookingView !== 'active' ? [
+                          { id: 'completed', label: language === 'ru' ? 'Завершены' : 'Completed' },
+                          { id: 'declined', label: language === 'ru' ? 'Отклонены' : 'Declined' },
+                          { id: 'cancelled', label: language === 'ru' ? 'Отменены' : 'Cancelled' },
+                        ] : []),
                       ] as { id: BookingStatusFilter; label: string }[]).map(filter => (
                         <button
                           key={filter.id}
@@ -724,6 +745,7 @@ export default function AdminDashboard() {
                   <button type="button" className="btn-outline" onClick={exportBookingsCsv} disabled={visibleBookings.length === 0} style={{ fontSize: '0.5625rem', padding: '0.625rem 0.9rem' }}>
                     {language === 'ru' ? 'Скачать CSV' : 'Download CSV'}
                   </button>
+                </div>
                 </div>
                 {visibleBookings.length === 0 ? (
                   <p style={labelStyle}>{language === 'ru' ? 'Заявок с таким статусом нет' : 'No bookings match this status'}</p>
@@ -913,7 +935,7 @@ export default function AdminDashboard() {
                           <button type="button" className="btn-outline" style={{ fontSize: '0.625rem', padding: '0.625rem 1rem' }} onClick={() => { setRescheduleBookingId(booking.id); setRescheduleDate(booking.bookingDate); setRescheduleTime(booking.bookingTime); setRescheduleNote(''); }}>
                             {language === 'ru' ? 'Перенести' : 'Reschedule'}
                           </button>
-                          {booking.status === 'confirmed' && <button type="button" className="btn-primary" style={{ fontSize: '0.625rem', padding: '0.625rem 1rem' }} onClick={() => { setCompleteBookingId(booking.id); setFinalPriceAmd(''); setCompletionNote(''); }}>
+                          {booking.status === 'confirmed' && <button type="button" className="btn-primary" style={{ fontSize: '0.625rem', padding: '0.625rem 1rem' }} onClick={() => { setCompleteBookingId(booking.id); setFinalPriceAmd(String(booking.finalPriceAmd ?? 15000)); setCompletionNote(''); }}>
                             {language === 'ru' ? 'Визит завершён' : 'Complete visit'}
                           </button>}
                         </div>
