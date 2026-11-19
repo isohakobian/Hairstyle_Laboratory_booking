@@ -414,6 +414,11 @@ export default function Home() {
                 {c.hero.servicesCta}
               </button>
             </div>
+            <button type="button" className="fade-up fade-up-delay-4" onClick={() => document.getElementById('loyalty')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} style={{ display: 'grid', gap: '0.25rem', marginTop: '1.4rem', padding: '0.9rem 1rem', textAlign: 'left', border: '1px solid var(--gold-mid)', background: 'linear-gradient(90deg, rgba(201,168,76,0.1), transparent)', color: 'hsl(var(--foreground))', cursor: 'pointer', maxWidth: '23rem' }}>
+              <span className="label-caps" style={{ color: 'var(--gold-mid)', fontSize: '0.5625rem' }}>{c.loyalty.label} ↓</span>
+              <strong style={{ fontFamily: "'Playfair Display', serif", fontSize: '1rem' }}>{c.loyalty.title}</strong>
+              <span style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.72rem' }}>{language === 'ru' ? 'Нажми, чтобы узнать, как это работает' : language === 'en' ? 'Tap to see how it works' : 'Սեղմեք՝ իմանալու համար, թե ինչպես է աշխատում'}</span>
+            </button>
           </div>
           {(activeAnnouncements ?? []).length > 0 && (
             <aside className="fade-up fade-up-delay-3" style={{ display: 'grid', gap: '0.75rem' }} aria-label={language === 'ru' ? 'Новости' : language === 'en' ? 'Notices' : 'Նորություններ'}>
@@ -563,7 +568,7 @@ export default function Home() {
       </section>
 
       {/* ── Loyalty card ── */}
-      <section style={{ paddingTop: '5rem', paddingBottom: '5rem', borderTop: '1px solid hsl(var(--border))', position: 'relative' }}>
+      <section id="loyalty" style={{ paddingTop: '5rem', paddingBottom: '5rem', borderTop: '1px solid hsl(var(--border))', position: 'relative', scrollMarginTop: '5rem' }}>
         <div className="container">
           <div style={{ maxWidth: '42rem', padding: '1.75rem', border: '1px solid var(--gold-mid)', background: 'linear-gradient(135deg, hsl(var(--secondary)), hsl(var(--card)))' }}>
             <p className="label-caps" style={{ margin: '0 0 0.7rem', color: 'var(--gold-mid)' }}>{c.loyalty.label}</p>
@@ -573,6 +578,13 @@ export default function Home() {
               {Array.from({ length: 5 }).map((_, index) => <span key={index} style={{ width: '1.35rem', height: '1.35rem', border: '1px solid var(--gold-mid)', borderRadius: '50%', display: 'grid', placeItems: 'center', color: 'var(--gold-mid)', fontSize: '0.6rem' }}>{index + 1}</span>)}
             </div>
             <p style={{ margin: 0, color: 'hsl(var(--muted-foreground))', fontSize: '0.75rem' }}>{c.loyalty.reward}</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(9rem, 1fr))', gap: '1rem', marginTop: '1.5rem' }}>
+              {([
+                { number: '01', title: language === 'ru' ? 'Записываешься' : language === 'en' ? 'You book' : 'Գրանցվում եք', text: language === 'ru' ? 'Выбираешь услугу и приходишь на визит.' : language === 'en' ? 'Choose a service and come in for your appointment.' : 'Ընտրում եք ծառայությունը և գալիս այցի։' },
+                { number: '02', title: language === 'ru' ? 'Собираешь визиты' : language === 'en' ? 'You collect visits' : 'Հավաքում եք այցեր', text: language === 'ru' ? 'Каждый завершённый визит добавляет один знак в CRM-карту.' : language === 'en' ? 'Every completed visit adds one stamp to your CRM card.' : 'Յուրաքանչյուր ավարտված այց ավելացնում է մեկ նշան։' },
+                { number: '03', title: language === 'ru' ? 'Получаешь бонус' : language === 'en' ? 'You unlock a reward' : 'Ստանում եք բոնուս', text: language === 'ru' ? 'После пятого визита доступно 10 000 ֏ на следующую стрижку или бороду.' : language === 'en' ? 'After visit five, 10,000 ֏ is available for your next haircut or beard service.' : 'Հինգերորդ այցից հետո հասանելի է 10 000 ֏ բոնուս։' },
+              ]).map(step => <div key={step.number} style={{ borderTop: '1px solid hsl(var(--border))', paddingTop: '0.7rem' }}><span className="label-caps" style={{ color: 'var(--gold-mid)' }}>{step.number}</span><h3 style={{ margin: '0.45rem 0', fontSize: '1rem' }}>{step.title}</h3><p style={{ margin: 0, color: 'hsl(var(--muted-foreground))', fontSize: '0.75rem', lineHeight: 1.5 }}>{step.text}</p></div>)}
+            </div>
             <button className="btn-primary" onClick={() => setLocation('/booking')} style={{ marginTop: '1.2rem' }}>{c.loyalty.cta} →</button>
           </div>
         </div>
