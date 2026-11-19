@@ -1,5 +1,5 @@
 import { and, desc, eq, inArray, ne } from "drizzle-orm";
-import { bookingEvents, bookings, bookingServices, clients, reviewRequestHistory, reviews, visitMedia } from "../drizzle/schema";
+import { bookingEvents, bookings, bookingServices, clients, loyaltyRedemptions, manualVisits, reviewRequestHistory, reviews, visitMedia } from "../drizzle/schema";
 import { getDb } from "./db";
 import { getAvailableSlots } from "./availability";
 import { storageGetSignedUrl, storagePut } from "./storage";
@@ -254,12 +254,14 @@ export async function getClientMemory(clientId: number) {
     .map(([service]) => service)
     .slice(0, 3);
 
-  const [events, media, reviewRequests, visitReviews, visitServices] = await Promise.all([
+  const [events, media, reviewRequests, visitReviews, visitServices, historicalVisits, redemptions] = await Promise.all([
     visitIds.length ? db.select().from(bookingEvents).where(inArray(bookingEvents.bookingId, visitIds)).orderBy(desc(bookingEvents.createdAt)) : [],
     visitIds.length ? db.select().from(visitMedia).where(inArray(visitMedia.bookingId, visitIds)).orderBy(desc(visitMedia.createdAt)) : [],
     visitIds.length ? db.select().from(reviewRequestHistory).where(inArray(reviewRequestHistory.bookingId, visitIds)).orderBy(desc(reviewRequestHistory.sentAt)) : [],
     visitIds.length ? db.select().from(reviews).where(inArray(reviews.bookingId, visitIds)).orderBy(desc(reviews.createdAt)) : [],
     visitIds.length ? db.select().from(bookingServices).where(inArray(bookingServices.bookingId, visitIds)) : [],
+    db.select().from(manualVisits).where(eq(manualVisits.clientId, clientId)).orderBy(desc(manualVisits.visitDate)),
+    db.select().from(loyaltyRedemptions).where(eq(loyaltyRedemptions.clientId, clientId)).orderBy(desc(loyaltyRedemptions.redeemedAt)),
   ]);
   const serviceIdsByBooking = new Map<number, number[]>();
   visitServices.forEach((service) => {
@@ -267,6 +269,11 @@ export async function getClientMemory(clientId: number) {
     selected.push(service.serviceId);
     serviceIdsByBooking.set(service.bookingId, selected);
   });
+
+  const loyaltyVisitCount = completedVisits.length + historicalVisits.length;
+  const loyaltyStamps = loyaltyVisitCount % 5;
+  const loyaltyRewardsEarned = Math.floor(loyaltyVisitCount / 5);
+  const loyaltyRewardsAvailable = Math.max(0, loyaltyRewardsEarned - redemptions.length);
 
   return {
     profile,
@@ -282,6 +289,29 @@ export async function getClientMemory(clientId: number) {
       popularServices,
       lastVisit,
       daysSinceLastVisit,
+      loyalty: {
+        visitCount: loyaltyVisitCount,
+        stamps: loyaltyStamps,
+        stampsRequired: 5,
+        rewardsEarned: loyaltyRewardsEarned,
+        rewardsAvailable: loyaltyRewardsAvailable,
+        rewardAmountAmd: 10000,
+        redemptions,
+      },
     },
   };
+}
+
+export async function redeemClientLoyaltyReward(clientId: number, bookingId?: number, note?: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [completed, historical, redemptions] = await Promise.all([
+    db.select({ id: bookings.id }).from(bookings).where(and(eq(bookings.clientId, clientId), eq(bookings.status, "completed"))),
+    db.select({ id: manualVisits.id }).from(manualVisits).where(eq(manualVisits.clientId, clientId)),
+    db.select({ id: loyaltyRedemptions.id }).from(loyaltyRedemptions).where(eq(loyaltyRedemptions.clientId, clientId)),
+  ]);
+  const available = Math.floor((completed.length + historical.length) / 5) - redemptions.length;
+  if (available <= 0) throw new Error("No loyalty reward is available");
+  await db.insert(loyaltyRedemptions).values({ clientId, bookingId: bookingId ?? null, rewardAmountAmd: 10000, note: note || null });
+  return { success: true, rewardAmountAmd: 10000, remainingRewards: available - 1 };
 }

@@ -16,7 +16,7 @@ import { TRPCError } from "@trpc/server";
 import { buildAppointmentReminderEmail, buildBookingCancelledEmail, buildBookingDeclinedEmail, buildBookingRescheduledEmail, buildClientBookingEmail, buildClientConfirmationEmail, buildCrmBroadcastEmail, buildCrmTestEmail, sendAppointmentReminderEmail, sendBookingCancelledEmail, sendBookingDeclinedEmail, sendBookingEmails, sendBookingRescheduledEmail, sendBookingStatusRecoveryEmail, sendClientBookingRequestEmail, sendConfirmedBookingEmail, sendReviewRequestEmail, sendCrmEmail } from "./bookingEmail";
 import { createReviewTokenValue, getBookingStatusRecoveryExpiry, getReviewTokenExpiry, hashReviewToken } from "./reviewToken";
 import { blockDates, clearAvailabilityForDates, getAvailabilityWindows, getAvailableSlots, getPublicAvailableDates, setAvailabilityForDates } from "./availability";
-import { completeBooking, createBookingEvent, createManualClient, findOrCreateClient, getClientMemory, getSignedVisitMediaUrl, recordReviewRequest, rescheduleBooking, updateClientProfile, uploadVisitMedia } from "./clientMemory";
+import { completeBooking, createBookingEvent, createManualClient, findOrCreateClient, getClientMemory, getSignedVisitMediaUrl, redeemClientLoyaltyReward, recordReviewRequest, rescheduleBooking, updateClientProfile, uploadVisitMedia } from "./clientMemory";
 import { getActiveAnnouncements, getAllAnnouncements, saveAnnouncement, setAnnouncementPublished, uploadAnnouncementImage } from "./announcements";
 import { getManualDepositReceiptUrl, storeManualDepositReceipt } from "./manualDeposit";
 import { getReferencePhotoUrl, storeReferencePhoto } from "./referencePhoto";
@@ -997,6 +997,10 @@ export const appRouter = router({
     clientMemory: adminMiddleware
       .input(z.object({ clientId: z.number().int().positive() }))
       .query(({ input }) => getClientMemory(input.clientId)),
+
+    redeemLoyaltyReward: adminMiddleware
+      .input(z.object({ clientId: z.number().int().positive(), bookingId: z.number().int().positive().optional(), note: z.string().trim().max(500).optional() }))
+      .mutation(({ input }) => redeemClientLoyaltyReward(input.clientId, input.bookingId, input.note)),
 
     manualVisits: adminMiddleware
       .input(z.object({ clientId: z.number().int().positive(), fromDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), toDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), serviceName: z.string().trim().max(255).optional() }))

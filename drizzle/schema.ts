@@ -117,6 +117,22 @@ export const clients = mysqlTable("clients", {
 export type Client = typeof clients.$inferSelect;
 export type InsertClient = typeof clients.$inferInsert;
 
+// One loyalty reward is earned after every five completed visits.
+// Redemptions are kept separately so Isaac can see and audit used rewards.
+export const loyaltyRedemptions = mysqlTable("loyaltyRedemptions", {
+  id: int("id").autoincrement().primaryKey(),
+  clientId: int("clientId").notNull(),
+  bookingId: int("bookingId"),
+  rewardAmountAmd: int("rewardAmountAmd").notNull().default(10000),
+  note: text("note"),
+  redeemedAt: timestamp("redeemedAt").defaultNow().notNull(),
+}, (table) => [
+  index("loyaltyRedemptions_clientId_idx").on(table.clientId),
+  index("loyaltyRedemptions_redeemedAt_idx").on(table.redeemedAt),
+]);
+
+export type LoyaltyRedemption = typeof loyaltyRedemptions.$inferSelect;
+
 // Historical visits entered manually after restoring an older client database.
 // They are kept separate from online bookings so original booking records stay untouched.
 export const manualVisits = mysqlTable("manualVisits", {

@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 const clientMemory = {
   profile: { id: 7, name: 'Alex', phone: '+37455000000', email: 'alex@example.com', birthday: null, instagram: null, preferredHairLength: null, preferredBeardShape: null, preferredStyling: null, dislikes: null, skinSensitivity: null, stylistNotes: null },
-  metrics: { completedVisitCount: 0, totalSpentAmd: 0, averageCheckAmd: 0, popularServices: [], lastVisit: null, daysSinceLastVisit: null },
+  metrics: { completedVisitCount: 0, totalSpentAmd: 0, averageCheckAmd: 0, popularServices: [], lastVisit: null, daysSinceLastVisit: null, loyalty: { visitCount: 0, stamps: 0, stampsRequired: 5, rewardsEarned: 0, rewardsAvailable: 0, rewardAmountAmd: 10000, redemptions: [] } },
   visits: [{ id: 11, bookingDate: '2099-12-30', bookingTime: '14:00', status: 'cancelled', serviceName: 'Haircut', serviceSummary: 'Haircut', totalDurationMinutes: 45, totalPriceSummary: '15,000 ֏', finalPriceAmd: null, completedAt: null, repeatFollowUpSentAt: null, serviceIds: [1] }],
   events: [{ id: 4, bookingId: 11, eventType: 'cancelled', note: 'Plans changed', createdAt: new Date() }],
   media: [],
@@ -26,6 +26,7 @@ vi.mock('@/lib/trpc', () => ({
       deleteManualVisit: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       saveClientCrmPreference: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       updateClientMemory: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+      redeemLoyaltyReward: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       uploadVisitMedia: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       visitMediaUrl: { useQuery: () => ({ data: null }) },
     },

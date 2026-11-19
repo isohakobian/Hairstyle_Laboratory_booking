@@ -97,6 +97,10 @@ export default function ClientMemoryPanel({ clientId, language, onClose }: Props
     onSuccess: () => { toast.success(ru ? 'Карточка клиента сохранена' : 'Client profile saved'); refetch(); },
     onError: error => toast.error(error.message),
   });
+  const redeemLoyaltyMutation = trpc.admin.redeemLoyaltyReward.useMutation({
+    onSuccess: () => { toast.success(ru ? 'Бонус списан и записан в историю' : 'Reward redeemed and added to history'); refetch(); },
+    onError: error => toast.error(error.message),
+  });
   const crmPreferenceMutation = trpc.admin.saveClientCrmPreference.useMutation({
     onSuccess: () => { toast.success(ru ? 'Согласие на новости обновлено' : 'News consent updated'); void refetchCrmPreference(); },
     onError: error => toast.error(error.message),
@@ -155,6 +159,7 @@ export default function ClientMemoryPanel({ clientId, language, onClose }: Props
   if (isLoading || !memory) return <div style={{ padding: '2rem 0' }}><p style={labelStyle}>{ru ? 'Загружаем память о клиенте...' : 'Loading client memory...'}</p></div>;
 
   const { profile, metrics } = memory;
+  const loyaltyDisplayStamps = metrics.loyalty.rewardsAvailable > 0 ? metrics.loyalty.stampsRequired : metrics.loyalty.stamps;
   const repeatBooking = (visit: typeof memory.visits[number]) => {
     if (visit.serviceIds.length === 0) {
       toast.error(ru ? 'Не удалось определить услуги прошлого визита' : 'The previous visit services could not be identified');
@@ -202,6 +207,21 @@ export default function ClientMemoryPanel({ clientId, language, onClose }: Props
         ].map(item => <div key={item.label} style={{ borderTop: '1px solid hsl(var(--border))', paddingTop: '0.65rem' }}><p style={{ ...labelStyle, margin: 0 }}>{item.label}</p><p style={{ margin: '0.35rem 0 0', fontFamily: "'Playfair Display', serif", color: 'hsl(var(--foreground))', fontWeight: 700 }}>{item.value}</p></div>)}
       </div>
       {metrics.popularServices.length > 0 && <p style={{ margin: '-0.9rem 0 1.5rem', fontSize: '0.8125rem', color: 'hsl(var(--muted-foreground))' }}>{ru ? 'Чаще всего: ' : 'Most frequent: '}{metrics.popularServices.join(' · ')}</p>}
+
+      <div style={{ marginBottom: '1.75rem', padding: '1.1rem 1.2rem', border: '1px solid var(--gold-mid)', background: 'linear-gradient(135deg, hsl(var(--secondary)), hsl(var(--card)))' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+          <div>
+            <p style={{ ...labelStyle, margin: '0 0 0.35rem', color: 'var(--gold-mid)' }}>{ru ? 'Карта лояльности' : 'Loyalty card'}</p>
+            <h4 style={{ margin: 0, fontFamily: "'Playfair Display', serif", fontSize: '1.25rem' }}>{ru ? '5 визитов — бонус 10 000 ֏' : '5 visits — 10,000 ֏ reward'}</h4>
+          </div>
+          <span style={{ ...labelStyle, color: metrics.loyalty.rewardsAvailable > 0 ? 'hsl(142 50% 40%)' : 'hsl(var(--muted-foreground))' }}>{metrics.loyalty.rewardsAvailable > 0 ? (ru ? `Доступно: ${metrics.loyalty.rewardsAvailable}` : `Available: ${metrics.loyalty.rewardsAvailable}`) : (ru ? 'В процессе' : 'In progress')}</span>
+        </div>
+        <div style={{ display: 'flex', gap: '0.45rem', margin: '1rem 0 0.6rem' }} aria-label={ru ? `${loyaltyDisplayStamps} из 5 визитов` : `${loyaltyDisplayStamps} of 5 visits`}>
+          {Array.from({ length: metrics.loyalty.stampsRequired }).map((_, index) => <span key={index} style={{ width: '1.25rem', height: '1.25rem', borderRadius: '50%', display: 'grid', placeItems: 'center', border: '1px solid var(--gold-mid)', background: index < loyaltyDisplayStamps ? 'var(--gold-mid)' : 'transparent', color: index < loyaltyDisplayStamps ? '#17181b' : 'hsl(var(--muted-foreground))', fontSize: '0.6rem', fontWeight: 700 }}>{index < loyaltyDisplayStamps ? '✓' : index + 1}</span>)}
+        </div>
+        <p style={{ margin: 0, color: 'hsl(var(--muted-foreground))', fontSize: '0.75rem', lineHeight: 1.45 }}>{metrics.loyalty.rewardsAvailable > 0 ? (ru ? 'Бонус можно применить к следующей стрижке или моделированию бороды.' : 'Apply the reward to the next haircut or beard modeling.') : (ru ? `До следующего бонуса: ${5 - metrics.loyalty.stamps} визит(а).` : `${5 - metrics.loyalty.stamps} visit(s) until the next reward.`)}</p>
+        {metrics.loyalty.rewardsAvailable > 0 && <button type="button" className="btn-primary" disabled={redeemLoyaltyMutation.isPending} onClick={() => { if (window.confirm(ru ? 'Списать один бонус 10 000 ֏? Это действие попадёт в историю клиента.' : 'Redeem one 10,000 ֏ reward? This will be added to the client history.')) redeemLoyaltyMutation.mutate({ clientId }); }} style={{ marginTop: '0.8rem', fontSize: '0.6rem', padding: '0.6rem 0.8rem' }}>{redeemLoyaltyMutation.isPending ? '...' : (ru ? 'Списать бонус' : 'Redeem reward')}</button>}
+      </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(13rem, 1fr))', gap: '1.25rem', marginBottom: '1.5rem' }}>
         {([

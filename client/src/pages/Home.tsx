@@ -12,6 +12,7 @@ const copy: Record<Lang, {
   hero: { eyebrow: string; line1: string; line2: string; line3: string; sub: string; cta: string; servicesCta: string };
   about: { label: string; title: string; intro: string; text: string };
   services: { label: string; intro: string; haircut: string; haircutDesc: string; beard: string; beardDesc: string; bioPerm: string; bioPermDesc: string; duration: string; book: string; deposit: string };
+  loyalty: { label: string; title: string; text: string; reward: string; cta: string };
   footer: { copy: string };
 }> = {
   ru: {
@@ -44,6 +45,7 @@ const copy: Record<Lang, {
       book: 'Записаться',
       deposit: 'Предоплата',
     },
+    loyalty: { label: 'Карта лояльности', title: '5 визитов — бонус 10 000 ֏', text: 'После пяти завершённых визитов Isaac отмечает бонус в твоей CRM-карточке.', reward: 'Бонус можно применить к следующей стрижке или моделированию бороды.', cta: 'Записаться на следующий визит' },
     footer: { copy: '© Hairstyle Laboratory' },
   },
   en: {
@@ -76,6 +78,7 @@ const copy: Record<Lang, {
       book: 'Book',
       deposit: 'Deposit',
     },
+    loyalty: { label: 'Loyalty card', title: '5 visits — 10,000 ֏ reward', text: 'After five completed visits, Isaac adds a reward to your private CRM profile.', reward: 'Use it on your next haircut or beard modeling appointment.', cta: 'Book your next visit' },
     footer: { copy: '© Hairstyle Laboratory' },
   },
   hy: {
@@ -108,6 +111,7 @@ const copy: Record<Lang, {
       book: 'Գրանցվել',
       deposit: 'Կանխավճար',
     },
+    loyalty: { label: 'Հավատարմության քարտ', title: '5 այց — 10 000 ֏ բոնուս', text: 'Հինգ ավարտված այցից հետո Իսահակը բոնուս է ավելացնում ձեր անձնական պրոֆիլում։', reward: 'Բոնուսը կարող եք օգտագործել հաջորդ սանրվածքի կամ մորուքի ձևավորման ժամանակ։', cta: 'Գրանցվել հաջորդ այցին' },
     footer: { copy: '© Hairstyle Laboratory' },
   },
 
@@ -554,6 +558,22 @@ export default function Home() {
             <button className="btn-primary" onClick={() => setLocation('/booking')}>
               {c.hero.cta}
             </button>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Loyalty card ── */}
+      <section style={{ paddingTop: '5rem', paddingBottom: '5rem', borderTop: '1px solid hsl(var(--border))', position: 'relative' }}>
+        <div className="container">
+          <div style={{ maxWidth: '42rem', padding: '1.75rem', border: '1px solid var(--gold-mid)', background: 'linear-gradient(135deg, hsl(var(--secondary)), hsl(var(--card)))' }}>
+            <p className="label-caps" style={{ margin: '0 0 0.7rem', color: 'var(--gold-mid)' }}>{c.loyalty.label}</p>
+            <h2 className="section-heading" style={{ margin: 0 }}>{c.loyalty.title}</h2>
+            <p style={{ margin: '1rem 0 0', maxWidth: '34rem', color: 'hsl(var(--muted-foreground))', lineHeight: 1.6 }}>{c.loyalty.text}</p>
+            <div style={{ display: 'flex', gap: '0.45rem', margin: '1.25rem 0 0.75rem' }} aria-label={c.loyalty.title}>
+              {Array.from({ length: 5 }).map((_, index) => <span key={index} style={{ width: '1.35rem', height: '1.35rem', border: '1px solid var(--gold-mid)', borderRadius: '50%', display: 'grid', placeItems: 'center', color: 'var(--gold-mid)', fontSize: '0.6rem' }}>{index + 1}</span>)}
+            </div>
+            <p style={{ margin: 0, color: 'hsl(var(--muted-foreground))', fontSize: '0.75rem' }}>{c.loyalty.reward}</p>
+            <button className="btn-primary" onClick={() => setLocation('/booking')} style={{ marginTop: '1.2rem' }}>{c.loyalty.cta} →</button>
           </div>
         </div>
       </section>
