@@ -6,6 +6,7 @@ import { useLocation } from 'wouter';
 import { downloadCalendarInvite, type CalendarInviteDetails } from '@/lib/calendarInvite';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
+import AddToHomeScreen from '@/components/AddToHomeScreen';
 
 type Lang = 'hy' | 'ru' | 'en';
 
@@ -636,6 +637,8 @@ export default function Booking() {
                 <button className="btn-outline" onClick={() => copyToClipboard(`${window.location.origin}/status?ref=${encodeURIComponent(referenceNumber)}`)} style={{ padding: '0.7rem 0.5rem', fontSize: '0.625rem' }}>{c.copyStatusLink}</button>
               </div>
             </div>
+
+            <AddToHomeScreen />
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
               {calendarInvite && (

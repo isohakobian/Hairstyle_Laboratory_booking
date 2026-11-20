@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { trpc } from "@/lib/trpc";
+import AddToHomeScreen from "@/components/AddToHomeScreen";
 
 type Lang = "hy" | "ru" | "en";
 
@@ -66,6 +67,7 @@ export default function Loyalty() {
           <h2 style={{ fontFamily: "'Playfair Display', serif", margin: "0.4rem 0" }}>{member.rewardsAvailable > 0 ? (language === "ru" ? "Бонус доступен" : language === "en" ? "Your reward is ready" : "Ձեր բոնուսը պատրաստ է") : (language === "ru" ? `Осталось визитов: ${member.visitsRemaining}` : language === "en" ? `${member.visitsRemaining} visits to go` : `Մնացել է ${member.visitsRemaining} այց`)}</h2>
           <div style={{ display: "flex", gap: "0.45rem", marginTop: "1rem" }}>{Array.from({ length: 5 }).map((_, index) => <span key={index} style={{ width: "1.4rem", height: "1.4rem", borderRadius: "50%", border: "1px solid var(--gold-mid)", background: index < (member.rewardsAvailable > 0 ? 5 : member.stamps) ? "var(--gold-mid)" : "transparent" }} />)}</div>
         </div>
+        <AddToHomeScreen />
         <h2 style={{ fontFamily: "'Playfair Display', serif", marginTop: "2.5rem" }}>{c.history}</h2>
         {member.visits.length === 0 ? <p style={{ color: "hsl(var(--muted-foreground))" }}>{c.empty}</p> : <div style={{ display: "grid", gap: "0.6rem" }}>{member.visits.map((visit, index) => <div key={`${visit.date}-${index}`} style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid hsl(var(--border))", padding: "0.7rem 0", gap: "1rem" }}><span>{visit.serviceName}</span><span style={{ color: "hsl(var(--muted-foreground))" }}>{visit.date}</span></div>)}</div>}
         {memberQuery.isError && <p style={{ color: "hsl(var(--destructive))" }}>{c.error}</p>}
