@@ -10,6 +10,7 @@ import Booking from "@/pages/Booking";
 import BookingStatus from "@/pages/BookingStatus";
 import AdminDashboard from "@/pages/AdminDashboard";
 import ReviewForm from "@/pages/ReviewForm";
+import Loyalty from "@/pages/Loyalty";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -20,6 +21,7 @@ function Router() {
       <Route path="/status" component={BookingStatus} />
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/review" component={ReviewForm} />
+      <Route path="/loyalty" component={Loyalty} />
       <Route path="/404" component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, gte, inArray, isNotNull, isNull, like, lt, lte, ne, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, InsertBooking, InsertBookingService, users, services, bookings, bookingServices, reviewTokens, bookingStatusRecoveryTokens, bookingEvents, visitMedia, reviewRequestHistory, clientEmailDeliveries, reviews, clients, emailTemplates, availabilityWindows, manualDepositSettings, automationEmailDeliveries, bookingReminderDeliveries, bookingReminderSettings, crmCampaigns, clientCrmPreferences, crmCampaignDeliveries, manualVisits, manualVisitAuditLog, CrmCampaign, ClientCrmPreference } from "../drizzle/schema";
+import { InsertUser, InsertBooking, InsertBookingService, users, services, bookings, bookingServices, reviewTokens, bookingStatusRecoveryTokens, bookingEvents, visitMedia, reviewRequestHistory, clientEmailDeliveries, reviews, clients, emailTemplates, availabilityWindows, manualDepositSettings, automationEmailDeliveries, bookingReminderDeliveries, bookingReminderSettings, crmCampaigns, clientCrmPreferences, crmCampaignDeliveries, manualVisits, manualVisitAuditLog, loyaltyRegistrations, CrmCampaign, ClientCrmPreference } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -457,13 +457,15 @@ export async function getUnresolvedEmailDeliveryErrors() {
 export async function getClientDirectory() {
   const db = await getDb();
   if (!db) return [];
-  return db.select({
+  const [directory, registrations] = await Promise.all([db.select({
     id: clients.id,
     name: clients.name,
     phone: clients.phone,
     email: clients.email,
     updatedAt: clients.updatedAt,
-  }).from(clients).orderBy(desc(clients.updatedAt));
+  }).from(clients).orderBy(desc(clients.updatedAt)), db.select({ clientId: loyaltyRegistrations.clientId }).from(loyaltyRegistrations)]);
+  const registeredIds = new Set(registrations.map(row => row.clientId));
+  return directory.map(client => ({ ...client, loyaltyRegistered: registeredIds.has(client.id) }));
 }
 
 async function recordManualVisitAudit(input: { visitId: number; action: "created" | "updated" | "deleted"; visitDate: string; serviceName: string; priceAmd: number; paidAmd: number; note?: string | null }) {

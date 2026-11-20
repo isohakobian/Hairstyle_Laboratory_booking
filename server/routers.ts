@@ -21,6 +21,7 @@ import { getActiveAnnouncements, getAllAnnouncements, saveAnnouncement, setAnnou
 import { getManualDepositReceiptUrl, storeManualDepositReceipt } from "./manualDeposit";
 import { getReferencePhotoUrl, storeReferencePhoto } from "./referencePhoto";
 import { uploadCrmCampaignImage } from "./crmCampaignMedia";
+import { getLoyaltyMember, registerLoyaltyMember } from "./loyalty";
 
 // Admin middleware
 const adminMiddleware = protectedProcedure.use(async ({ ctx, next }) => {
@@ -201,6 +202,14 @@ export const appRouter = router({
   services: router({
     list: publicProcedure.query(() => getAllServices()),
     getById: publicProcedure.input(z.object({ id: z.number() })).query(({ input }) => getServiceById(input.id)),
+  }),
+  loyalty: router({
+    register: publicProcedure
+      .input(z.object({ name: z.string().trim().min(2).max(255), phone: z.string().trim().min(5).max(30), email: z.string().trim().email().max(320) }))
+      .mutation(({ input }) => registerLoyaltyMember(input)),
+    me: publicProcedure
+      .input(z.object({ token: z.string().regex(/^[a-f0-9]{64}$/) }))
+      .query(({ input }) => getLoyaltyMember(input.token)),
   }),
 
   availability: router({

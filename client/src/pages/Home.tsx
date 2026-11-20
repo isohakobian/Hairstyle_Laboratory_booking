@@ -585,7 +585,10 @@ export default function Home() {
                 { number: '03', title: language === 'ru' ? 'Получаешь бонус' : language === 'en' ? 'You unlock a reward' : 'Ստանում եք բոնուս', text: language === 'ru' ? 'После пятого визита доступно 10 000 ֏ на следующую стрижку или бороду.' : language === 'en' ? 'After visit five, 10,000 ֏ is available for your next haircut or beard service.' : 'Հինգերորդ այցից հետո հասանելի է 10 000 ֏ բոնուս։' },
               ]).map(step => <div key={step.number} style={{ borderTop: '1px solid hsl(var(--border))', paddingTop: '0.7rem' }}><span className="label-caps" style={{ color: 'var(--gold-mid)' }}>{step.number}</span><h3 style={{ margin: '0.45rem 0', fontSize: '1rem' }}>{step.title}</h3><p style={{ margin: 0, color: 'hsl(var(--muted-foreground))', fontSize: '0.75rem', lineHeight: 1.5 }}>{step.text}</p></div>)}
             </div>
-            <button className="btn-primary" onClick={() => setLocation('/booking')} style={{ marginTop: '1.2rem' }}>{c.loyalty.cta} →</button>
+            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '1.2rem' }}>
+              <button className="btn-primary" onClick={() => setLocation('/booking')}>{c.loyalty.cta} →</button>
+              <button className="btn-outline" onClick={() => setLocation('/loyalty')}>{language === 'ru' ? 'Зарегистрироваться бесплатно' : language === 'en' ? 'Join for free' : 'Միանալ անվճար'} →</button>
+            </div>
           </div>
         </div>
       </section>

@@ -117,6 +117,20 @@ export const clients = mysqlTable("clients", {
 export type Client = typeof clients.$inferSelect;
 export type InsertClient = typeof clients.$inferInsert;
 
+// Public loyalty enrollment. The raw access token never enters the database;
+// only its SHA-256 hash is stored for the customer dashboard lookup.
+export const loyaltyRegistrations = mysqlTable("loyaltyRegistrations", {
+  id: int("id").autoincrement().primaryKey(),
+  clientId: int("clientId").notNull().unique(),
+  accessTokenHash: varchar("accessTokenHash", { length: 64 }).notNull().unique(),
+  enrolledAt: timestamp("enrolledAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  index("loyaltyRegistrations_clientId_idx").on(table.clientId),
+]);
+
+export type LoyaltyRegistration = typeof loyaltyRegistrations.$inferSelect;
+
 // One loyalty reward is earned after every five completed visits.
 // Redemptions are kept separately so Isaac can see and audit used rewards.
 export const loyaltyRedemptions = mysqlTable("loyaltyRedemptions", {
