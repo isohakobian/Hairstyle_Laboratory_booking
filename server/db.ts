@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, gte, inArray, isNotNull, isNull, like, lt, lte, ne, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, InsertBooking, InsertBookingService, users, services, bookings, bookingServices, reviewTokens, bookingStatusRecoveryTokens, bookingEvents, visitMedia, reviewRequestHistory, clientEmailDeliveries, reviews, clients, emailTemplates, availabilityWindows, manualDepositSettings, automationEmailDeliveries, bookingReminderDeliveries, bookingReminderSettings, crmCampaigns, clientCrmPreferences, crmCampaignDeliveries, manualVisits, manualVisitAuditLog, loyaltyRegistrations, CrmCampaign, ClientCrmPreference } from "../drizzle/schema";
+import { InsertUser, InsertBooking, InsertBookingService, users, services, bookings, bookingServices, reviewTokens, bookingStatusRecoveryTokens, bookingEvents, visitMedia, reviewRequestHistory, clientEmailDeliveries, reviews, clients, emailTemplates, availabilityWindows, manualDepositSettings, automationEmailDeliveries, bookingReminderDeliveries, bookingReminderSettings, crmCampaigns, clientCrmPreferences, crmCampaignDeliveries, manualVisits, manualVisitAuditLog, loyaltyRegistrations, loyaltyRedemptions, CrmCampaign, ClientCrmPreference } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -588,6 +588,44 @@ export async function deleteBookingAndRelatedData(bookingId: number) {
     }
 
     return { deleted: true, deletedClientProfile };
+  });
+}
+
+export async function deleteClientAndRelatedData(clientId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db.transaction(async (tx) => {
+    const client = (await tx.select({ id: clients.id }).from(clients).where(eq(clients.id, clientId)).limit(1))[0];
+    if (!client) return { deleted: false, deletedBookings: 0, deletedManualVisits: 0 };
+
+    const clientBookings = await tx.select({ id: bookings.id }).from(bookings).where(eq(bookings.clientId, clientId));
+    const bookingIds = clientBookings.map(booking => booking.id);
+    const clientManualVisits = await tx.select({ id: manualVisits.id }).from(manualVisits).where(eq(manualVisits.clientId, clientId));
+    const manualVisitIds = clientManualVisits.map(visit => visit.id);
+
+    if (bookingIds.length > 0) {
+      await tx.delete(reviews).where(inArray(reviews.bookingId, bookingIds));
+      await tx.delete(reviewTokens).where(inArray(reviewTokens.bookingId, bookingIds));
+      await tx.delete(reviewRequestHistory).where(inArray(reviewRequestHistory.bookingId, bookingIds));
+      await tx.delete(clientEmailDeliveries).where(inArray(clientEmailDeliveries.bookingId, bookingIds));
+      await tx.delete(bookingReminderDeliveries).where(inArray(bookingReminderDeliveries.bookingId, bookingIds));
+      await tx.delete(bookingEvents).where(inArray(bookingEvents.bookingId, bookingIds));
+      await tx.delete(visitMedia).where(inArray(visitMedia.bookingId, bookingIds));
+      await tx.delete(bookingServices).where(inArray(bookingServices.bookingId, bookingIds));
+      await tx.delete(bookings).where(inArray(bookings.id, bookingIds));
+    }
+    if (manualVisitIds.length > 0) {
+      await tx.delete(manualVisitAuditLog).where(inArray(manualVisitAuditLog.visitId, manualVisitIds));
+      await tx.delete(manualVisits).where(inArray(manualVisits.id, manualVisitIds));
+    }
+    await tx.delete(loyaltyRedemptions).where(eq(loyaltyRedemptions.clientId, clientId));
+    await tx.delete(loyaltyRegistrations).where(eq(loyaltyRegistrations.clientId, clientId));
+    await tx.delete(crmCampaignDeliveries).where(eq(crmCampaignDeliveries.clientId, clientId));
+    await tx.delete(clientCrmPreferences).where(eq(clientCrmPreferences.clientId, clientId));
+    await tx.delete(clients).where(eq(clients.id, clientId));
+
+    return { deleted: true, deletedBookings: bookingIds.length, deletedManualVisits: manualVisitIds.length };
   });
 }
 

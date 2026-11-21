@@ -99,5 +99,19 @@ describe("Admin client directory", () => {
     expect(visitsAfterDelete.some(item => item.id === visit.id)).toBe(false);
     const auditAfterDelete = await admin.admin.manualVisitAudit({ visitId: visit.id });
     expect(auditAfterDelete[0]?.action).toBe("deleted");
+
+    const remainingVisit = await admin.admin.createManualVisit({
+      clientId: first.client.id,
+      visitDate: "2025-07-01",
+      serviceName: "Haircut",
+      priceAmd: 15000,
+      paidAmd: 15000,
+    });
+    expect(remainingVisit.clientId).toBe(first.client.id);
+
+    const deletedClient = await admin.admin.deleteClient({ clientId: first.client.id });
+    expect(deletedClient).toMatchObject({ deleted: true, deletedBookings: 0, deletedManualVisits: 1 });
+    expect(await admin.admin.clientMemory({ clientId: first.client.id })).toBeUndefined();
+    expect((await admin.admin.clientDirectory()).some(client => client.id === first.client.id)).toBe(false);
   });
 });

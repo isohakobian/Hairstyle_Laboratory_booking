@@ -9,6 +9,7 @@ type Props = {
   clientId: number;
   language: Language;
   onClose: () => void;
+  onDeleted?: () => void;
 };
 
 const REPEAT_BOOKING_DRAFT_KEY = 'hairstyle-laboratory.repeat-booking-draft';
@@ -53,7 +54,7 @@ function readFileAsBase64(file: File) {
   });
 }
 
-export default function ClientMemoryPanel({ clientId, language, onClose }: Props) {
+export default function ClientMemoryPanel({ clientId, language, onClose, onDeleted }: Props) {
   const ru = language === 'ru';
   const [, setLocation] = useLocation();
   const { data: memory, isLoading, refetch } = trpc.admin.clientMemory.useQuery({ clientId });
@@ -95,6 +96,14 @@ export default function ClientMemoryPanel({ clientId, language, onClose }: Props
 
   const updateMutation = trpc.admin.updateClientMemory.useMutation({
     onSuccess: () => { toast.success(ru ? 'Карточка клиента сохранена' : 'Client profile saved'); refetch(); },
+    onError: error => toast.error(error.message),
+  });
+  const deleteClientMutation = trpc.admin.deleteClient.useMutation({
+    onSuccess: result => {
+      toast.success(ru ? `Клиент удалён вместе с данными: ${result.deletedBookings} записей, ${result.deletedManualVisits} исторических визитов` : `Client deleted with ${result.deletedBookings} bookings and ${result.deletedManualVisits} historical visits`);
+      onDeleted?.();
+      onClose();
+    },
     onError: error => toast.error(error.message),
   });
   const redeemLoyaltyMutation = trpc.admin.redeemLoyaltyReward.useMutation({
@@ -191,7 +200,14 @@ export default function ClientMemoryPanel({ clientId, language, onClose }: Props
             {profile.instagram && <span style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.8125rem', overflowWrap: 'anywhere' }}><span style={{ ...labelStyle, fontSize: '0.5rem', marginRight: '0.4rem' }}>Instagram</span>@{profile.instagram.replace(/^@/, '')}</span>}
           </div>
         </div>
-        <button type="button" className="btn-ghost" onClick={onClose} style={{ fontSize: '0.625rem', padding: 0 }}>{ru ? 'Закрыть' : 'Close'}</button>
+        <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <button type="button" className="btn-ghost" onClick={() => {
+            const confirmed = window.confirm(ru ? `Удалить клиента «${profile.name}» из базы? Будут удалены его записи, исторические визиты, loyalty и CRM-данные.` : `Delete “${profile.name}” from the database? Their bookings, historical visits, loyalty, and CRM data will be removed.`);
+            if (!confirmed) return;
+            if (window.confirm(ru ? 'Это действие нельзя отменить. Подтвердить полное удаление?' : 'This cannot be undone. Confirm permanent deletion?')) deleteClientMutation.mutate({ clientId });
+          }} disabled={deleteClientMutation.isPending} style={{ fontSize: '0.6rem', padding: 0, color: 'hsl(0 55% 45%)' }}>{deleteClientMutation.isPending ? (ru ? 'Удаляю…' : 'Deleting…') : (ru ? 'Удалить клиента' : 'Delete client')}</button>
+          <button type="button" className="btn-ghost" onClick={onClose} style={{ fontSize: '0.625rem', padding: 0 }}>{ru ? 'Закрыть' : 'Close'}</button>
+        </div>
       </div>
 
       <p style={{ margin: '0 0 1.25rem', padding: '0.8rem 1rem', borderLeft: '2px solid var(--gold-mid)', background: 'hsl(var(--secondary))', color: 'hsl(var(--muted-foreground))', fontSize: '0.8125rem', lineHeight: 1.5 }}>
