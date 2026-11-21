@@ -23,6 +23,7 @@ type Copy = {
   chooseStep: string;
   iosHint: string;
   androidHint: string;
+  close: string;
 };
 
 const copy: Record<Lang, Copy> = {
@@ -44,6 +45,7 @@ const copy: Record<Lang, Copy> = {
     chooseStep: "Нажми «Добавить»",
     iosHint: "Показываем для iPhone",
     androidHint: "Показываем для Android",
+    close: "Понятно",
   },
   en: {
     title: "Save the site to your home screen",
@@ -63,6 +65,7 @@ const copy: Record<Lang, Copy> = {
     chooseStep: "Tap Add",
     iosHint: "For iPhone",
     androidHint: "For Android",
+    close: "Maybe later",
   },
   hy: {
     title: "Պահպանեք կայքը գլխավոր էկրանին",
@@ -82,6 +85,7 @@ const copy: Record<Lang, Copy> = {
     chooseStep: "Սեղմեք Add",
     iosHint: "iPhone-ի համար",
     androidHint: "Android-ի համար",
+    close: "Հետո",
   },
 };
 
@@ -122,20 +126,30 @@ function VisualStep({ number, title, children }: { number: string; title: string
   </div>;
 }
 
-export default function AddToHomeScreen() {
+export default function AddToHomeScreen({ autoPopup = false }: { autoPopup?: boolean }) {
   const { language } = useLanguage() as { language: Lang };
   const c = copy[language] ?? copy.ru;
   const [installEvent, setInstallEvent] = useState<InstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
+  const [showPopup, setShowPopup] = useState(false);
 
   useEffect(() => {
     const onBeforeInstallPrompt = (event: Event) => { event.preventDefault(); setInstallEvent(event as InstallPromptEvent); };
-    const onAppInstalled = () => { setInstalled(true); setInstallEvent(null); };
+    const onAppInstalled = () => { setInstalled(true); setInstallEvent(null); setShowPopup(false); try { localStorage.setItem("hl_add_to_home_seen", "installed"); } catch { /* localStorage unavailable */ } };
     window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
     window.addEventListener("appinstalled", onAppInstalled);
-    if (window.matchMedia?.("(display-mode: standalone)").matches || (window.navigator as Navigator & { standalone?: boolean }).standalone) setInstalled(true);
+    const isStandalone = Boolean(window.matchMedia?.("(display-mode: standalone)").matches || (window.navigator as Navigator & { standalone?: boolean }).standalone);
+    if (isStandalone) setInstalled(true);
+    if (autoPopup && !isStandalone) {
+      let seen = false;
+      try { seen = Boolean(localStorage.getItem("hl_add_to_home_seen")); } catch { /* localStorage unavailable */ }
+      if (!seen) {
+        const timer = window.setTimeout(() => setShowPopup(true), 2800);
+        return () => { window.clearTimeout(timer); window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt); window.removeEventListener("appinstalled", onAppInstalled); };
+      }
+    }
     return () => { window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt); window.removeEventListener("appinstalled", onAppInstalled); };
-  }, []);
+  }, [autoPopup]);
 
   const install = async () => {
     if (!installEvent) return;
@@ -145,7 +159,7 @@ export default function AddToHomeScreen() {
     setInstallEvent(null);
   };
 
-  return <section aria-label={c.title} style={{ marginTop: "2rem", border: "1px solid var(--gold-mid)", padding: "1.25rem", background: "linear-gradient(135deg, hsl(var(--secondary)), hsl(var(--card)))", textAlign: "left", overflow: "hidden" }}>
+  const guide = <section aria-label={c.title} style={{ marginTop: "2rem", border: "1px solid var(--gold-mid)", padding: "1.25rem", background: "linear-gradient(135deg, hsl(var(--secondary)), hsl(var(--card)))", textAlign: "left", overflow: "hidden" }}>
     <div style={{ display: "flex", gap: "0.7rem", alignItems: "flex-start" }}>
       <div style={{ flex: "0 0 auto", width: "2rem", height: "2rem", display: "grid", placeItems: "center", border: "1px solid var(--gold-mid)", color: "var(--gold-mid)" }}><Smartphone size={17} /></div>
       <div><p className="label-caps" style={{ color: "var(--gold-mid)", marginBottom: "0.4rem" }}>Hairstyle Laboratory</p><h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.35rem", margin: 0 }}>{c.title}</h2></div>
@@ -173,4 +187,13 @@ export default function AddToHomeScreen() {
     </div>
     <p style={{ color: "hsl(var(--muted-foreground))", fontSize: "0.68rem", lineHeight: 1.45, margin: "1rem 0 0", display: "flex", gap: "0.35rem", alignItems: "flex-start" }}><Check size={13} color="var(--gold-mid)" style={{ flex: "0 0 auto", marginTop: "0.08rem" }} />{c.note}</p>
   </section>;
+
+  if (!autoPopup) return guide;
+  if (!showPopup || installed) return null;
+  return <div role="dialog" aria-modal="true" aria-label={c.title} style={{ position: "fixed", inset: 0, zIndex: 120, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem", background: "hsl(var(--foreground) / 0.58)", overflowY: "auto" }}>
+    <div style={{ width: "min(100%, 38rem)", position: "relative" }}>
+      <button type="button" aria-label={c.close} onClick={() => { setShowPopup(false); try { localStorage.setItem("hl_add_to_home_seen", "dismissed"); } catch { /* localStorage unavailable */ } }} style={{ position: "absolute", top: "0.7rem", right: "0.7rem", zIndex: 2, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))", color: "hsl(var(--foreground))", width: "2rem", height: "2rem", display: "grid", placeItems: "center", cursor: "pointer", fontSize: "1.1rem" }}>×</button>
+      {guide}
+    </div>
+  </div>;
 }

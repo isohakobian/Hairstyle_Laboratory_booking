@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import { Route, Switch } from "wouter";
+import { Route, Switch, useLocation } from "wouter";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
@@ -11,6 +11,13 @@ import BookingStatus from "@/pages/BookingStatus";
 import AdminDashboard from "@/pages/AdminDashboard";
 import ReviewForm from "@/pages/ReviewForm";
 import Loyalty from "@/pages/Loyalty";
+import AddToHomeScreen from "@/components/AddToHomeScreen";
+
+function InstallPromptGate() {
+  const [location] = useLocation();
+  if (!['/', '/booking', '/loyalty'].includes(location)) return null;
+  return <AddToHomeScreen autoPopup />;
+}
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -45,6 +52,7 @@ function App() {
           <TooltipProvider>
             <Toaster />
             <Router />
+            <InstallPromptGate />
           </TooltipProvider>
         </LanguageProvider>
       </ThemeProvider>
