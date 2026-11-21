@@ -1,5 +1,5 @@
 import React from "react";
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/contexts/LanguageContext", () => ({
@@ -25,6 +25,28 @@ describe("AddToHomeScreen", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     act(() => { vi.advanceTimersByTime(2800); });
     expect(screen.getByRole("dialog")).toBeTruthy();
+    vi.useRealTimers();
+  });
+
+  it("shows again after seven days when the visitor dismissed it", () => {
+    localStorage.removeItem("hl_add_to_home_seen");
+    vi.useFakeTimers();
+    const firstVisit = render(<AddToHomeScreen autoPopup />);
+    act(() => { vi.advanceTimersByTime(2800); });
+    fireEvent.click(within(firstVisit.container).getByRole("button", { name: "Maybe later" }));
+    expect(Number(localStorage.getItem("hl_add_to_home_seen"))).toBeGreaterThan(0);
+    firstVisit.unmount();
+
+    const sameWeekVisit = render(<AddToHomeScreen autoPopup />);
+    act(() => { vi.advanceTimersByTime(2800); });
+    expect(within(sameWeekVisit.container).queryByRole("dialog")).toBeNull();
+    sameWeekVisit.unmount();
+
+    localStorage.setItem("hl_add_to_home_seen", String(Date.now() - 7 * 24 * 60 * 60 * 1000 - 1));
+    const nextWeekVisit = render(<AddToHomeScreen autoPopup />);
+    act(() => { vi.advanceTimersByTime(2800); });
+    expect(within(nextWeekVisit.container).getByRole("dialog")).toBeTruthy();
+    nextWeekVisit.unmount();
     vi.useRealTimers();
   });
 });

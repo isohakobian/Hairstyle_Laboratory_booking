@@ -4,6 +4,8 @@ import { useLanguage } from "@/contexts/LanguageContext";
 
 type Lang = "hy" | "ru" | "en";
 type InstallPromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed" }> };
+const INSTALL_SEEN_KEY = "hl_add_to_home_seen";
+const DISMISS_REAPPEAR_MS = 7 * 24 * 60 * 60 * 1000;
 
 type Copy = {
   title: string;
@@ -135,14 +137,17 @@ export default function AddToHomeScreen({ autoPopup = false }: { autoPopup?: boo
 
   useEffect(() => {
     const onBeforeInstallPrompt = (event: Event) => { event.preventDefault(); setInstallEvent(event as InstallPromptEvent); };
-    const onAppInstalled = () => { setInstalled(true); setInstallEvent(null); setShowPopup(false); try { localStorage.setItem("hl_add_to_home_seen", "installed"); } catch { /* localStorage unavailable */ } };
+    const onAppInstalled = () => { setInstalled(true); setInstallEvent(null); setShowPopup(false); try { localStorage.setItem(INSTALL_SEEN_KEY, "installed"); } catch { /* localStorage unavailable */ } };
     window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
     window.addEventListener("appinstalled", onAppInstalled);
     const isStandalone = Boolean(window.matchMedia?.("(display-mode: standalone)").matches || (window.navigator as Navigator & { standalone?: boolean }).standalone);
     if (isStandalone) setInstalled(true);
     if (autoPopup && !isStandalone) {
       let seen = false;
-      try { seen = Boolean(localStorage.getItem("hl_add_to_home_seen")); } catch { /* localStorage unavailable */ }
+      try {
+        const stored = localStorage.getItem(INSTALL_SEEN_KEY);
+        seen = stored === "installed" || Boolean(stored && Date.now() - Number(stored) < DISMISS_REAPPEAR_MS);
+      } catch { /* localStorage unavailable */ }
       if (!seen) {
         const timer = window.setTimeout(() => setShowPopup(true), 2800);
         return () => { window.clearTimeout(timer); window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt); window.removeEventListener("appinstalled", onAppInstalled); };
@@ -192,7 +197,7 @@ export default function AddToHomeScreen({ autoPopup = false }: { autoPopup?: boo
   if (!showPopup || installed) return null;
   return <div role="dialog" aria-modal="true" aria-label={c.title} style={{ position: "fixed", inset: 0, zIndex: 120, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem", background: "hsl(var(--foreground) / 0.58)", overflowY: "auto" }}>
     <div style={{ width: "min(100%, 38rem)", position: "relative" }}>
-      <button type="button" aria-label={c.close} onClick={() => { setShowPopup(false); try { localStorage.setItem("hl_add_to_home_seen", "dismissed"); } catch { /* localStorage unavailable */ } }} style={{ position: "absolute", top: "0.7rem", right: "0.7rem", zIndex: 2, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))", color: "hsl(var(--foreground))", width: "2rem", height: "2rem", display: "grid", placeItems: "center", cursor: "pointer", fontSize: "1.1rem" }}>×</button>
+      <button type="button" aria-label={c.close} onClick={() => { setShowPopup(false); try { localStorage.setItem(INSTALL_SEEN_KEY, String(Date.now())); } catch { /* localStorage unavailable */ } }} style={{ position: "absolute", top: "0.7rem", right: "0.7rem", zIndex: 2, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))", color: "hsl(var(--foreground))", width: "2rem", height: "2rem", display: "grid", placeItems: "center", cursor: "pointer", fontSize: "1.1rem" }}>×</button>
       {guide}
     </div>
   </div>;
