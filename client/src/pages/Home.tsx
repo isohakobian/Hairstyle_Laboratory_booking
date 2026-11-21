@@ -4,6 +4,8 @@ import { useAuth } from '@/_core/hooks/useAuth';
 import { getLoginUrl } from '@/const';
 import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
+import { getHomeTheme } from '@/homeTheme';
+import GtaLaunchHome from './GtaLaunchHome';
 
 type Lang = 'hy' | 'ru' | 'en';
 
@@ -119,7 +121,7 @@ const copy: Record<Lang, {
 
 const langs: Lang[] = ['hy', 'ru', 'en'];
 
-export default function Home() {
+function OriginalHome() {
   const { language, setLanguage } = useLanguage() as { language: Lang; setLanguage: (l: Lang) => void };
   const { user, isAuthenticated, logout } = useAuth();
   const [, setLocation] = useLocation();
@@ -624,4 +626,8 @@ export default function Home() {
 
     </div>
   );
+}
+
+export default function Home() {
+  return getHomeTheme() === 'gta' ? <GtaLaunchHome /> : <OriginalHome />;
 }
