@@ -863,3 +863,37 @@ html[lang="hy"] .btn-ghost {
 .new-year-home .gta-footer { background: #09100d; }
 @keyframes new-year-twinkle { from { opacity: 0.38; transform: translateY(0); } to { opacity: 1; transform: translateY(0.4rem); } }
 @media (prefers-reduced-motion: reduce) { .new-year-home::before { animation: none; } }
+
+/* ── New Year visual layer on the original homepage structure ── */
+.new-year-original-home {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 86% 5%, rgba(210, 177, 103, 0.18), transparent 24rem),
+    radial-gradient(circle at 8% 72%, rgba(127, 171, 143, 0.14), transparent 28rem),
+    linear-gradient(145deg, #0d1512 0%, #14221a 48%, #101713 100%) !important;
+  color: #f5f0e7;
+}
+.new-year-original-home::before {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  content: '';
+  opacity: 0.55;
+  background-image: radial-gradient(circle, rgba(238, 219, 166, 0.75) 0 1px, transparent 1.5px), radial-gradient(circle, rgba(184, 215, 194, 0.52) 0 1px, transparent 1.5px);
+  background-position: 12% 18%, 72% 8%;
+  background-size: 10rem 12rem, 14rem 16rem;
+  animation: new-year-original-drift 18s linear infinite alternate;
+}
+.new-year-original-home > * { position: relative; z-index: 1; }
+.new-year-original-home header { color: #f5f0e7 !important; }
+.new-year-original-home .noise-overlay { background: linear-gradient(180deg, rgba(13, 21, 18, 0.9), rgba(13, 21, 18, 0.52)) !important; }
+.new-year-original-home .noise-overlay > div:first-child { background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(217, 184, 115, 0.18) 0%, transparent 70%) !important; }
+.new-year-original-home .hero-ambient-orb-a { background: radial-gradient(circle, #d9b873 0%, transparent 68%); opacity: 0.18; }
+.new-year-original-home .hero-ambient-orb-b { background: radial-gradient(circle, #b8d7c2 0%, transparent 70%); opacity: 0.11; }
+.new-year-original-home .service-block:hover { background: rgba(217, 184, 115, 0.08); }
+.new-year-original-home .notice-card { background: linear-gradient(145deg, rgba(25, 42, 32, 0.92), rgba(16, 27, 21, 0.9)); border-color: rgba(217, 184, 115, 0.3); }
+.new-year-original-home section, .new-year-original-home footer { border-color: rgba(217, 184, 115, 0.2) !important; }
+@keyframes new-year-original-drift { from { transform: translateY(-0.35rem); } to { transform: translateY(0.35rem); } }
+@media (prefers-reduced-motion: reduce) { .new-year-original-home::before { animation: none; } }

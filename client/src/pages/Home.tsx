@@ -6,7 +6,6 @@ import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
 import { getHomeTheme } from '@/homeTheme';
 import GtaLaunchHome from './GtaLaunchHome';
-import NewYearHome from './NewYearHome';
 
 type Lang = 'hy' | 'ru' | 'en';
 
@@ -122,7 +121,7 @@ const copy: Record<Lang, {
 
 const langs: Lang[] = ['hy', 'ru', 'en'];
 
-function OriginalHome() {
+function OriginalHome({ seasonal = false }: { seasonal?: boolean }) {
   const { language, setLanguage } = useLanguage() as { language: Lang; setLanguage: (l: Lang) => void };
   const { user, isAuthenticated, logout } = useAuth();
   const [, setLocation] = useLocation();
@@ -185,7 +184,7 @@ function OriginalHome() {
   };
 
   return (
-    <div className="typography-modern" style={{ minHeight: '100vh', backgroundColor: 'hsl(var(--background))' }}>
+    <div className={`typography-modern ${seasonal ? 'new-year-original-home' : ''}`} style={{ minHeight: '100vh', backgroundColor: 'hsl(var(--background))' }}>
 
       {/* ── Navigation ── */}
       <header style={navStyle}>
@@ -423,7 +422,7 @@ function OriginalHome() {
               <span style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.72rem' }}>{language === 'ru' ? 'Нажми, чтобы узнать, как это работает' : language === 'en' ? 'Tap to see how it works' : 'Սեղմեք՝ իմանալու համար, թե ինչպես է աշխատում'}</span>
             </button>
           </div>
-          {(activeAnnouncements ?? []).length > 0 && (
+          {(activeAnnouncements ?? []).length > 0 ? (
             <aside className="fade-up fade-up-delay-3" style={{ display: 'grid', gap: '0.75rem' }} aria-label={language === 'ru' ? 'Новости' : language === 'en' ? 'Notices' : 'Նորություններ'}>
               {(activeAnnouncements ?? []).slice(0, 2).map((announcement, index) => (
                 <article key={announcement.id} className="notice-card" style={{ '--notice-delay': `${index * 90}ms` } as React.CSSProperties}>
@@ -441,6 +440,20 @@ function OriginalHome() {
                   <p style={{ fontFamily: "'Inter', sans-serif", margin: 0, color: 'hsl(var(--muted-foreground))', fontSize: '0.5625rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}>{announcement.startDate} — {announcement.endDate}</p>
                 </article>
               ))}
+            </aside>
+          ) : (
+            <aside className="fade-up fade-up-delay-3" style={{ display: 'grid', gap: '0.75rem' }} aria-label={language === 'ru' ? 'Новости' : language === 'en' ? 'Notices' : 'Նորություններ'}>
+              <article className="notice-card">
+                <div style={{ position: 'absolute', top: 0, left: '1.5rem', right: '1.5rem', height: '2px', background: 'linear-gradient(90deg, transparent, var(--gold-mid), transparent)' }} />
+                <p className="label-caps" style={{ margin: '0 0 0.75rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Открытый набор' : language === 'en' ? 'Open call' : 'Բաց հրավեր'}</p>
+                <h3 className="notice-title" style={{ margin: '0 0 0.55rem', fontStyle: 'italic', fontSize: '1.4rem', lineHeight: 1.08 }}>
+                  {language === 'ru' ? 'Ищу моделей и UGC-креаторов' : language === 'en' ? 'Models and UGC creators wanted' : 'Մոդելների և UGC ստեղծողների որոնում'}
+                </h3>
+                <p style={{ margin: 0, color: 'hsl(var(--muted-foreground))', fontSize: '0.8125rem', lineHeight: 1.55 }}>
+                  {language === 'ru' ? 'Для съёмок мужских образов, ухода и визуальных историй Hairstyle Laboratory.' : language === 'en' ? 'For men’s grooming, style and visual storytelling shoots with Hairstyle Laboratory.' : 'Hairstyle Laboratory-ի տղամարդկանց խնամքի, ոճի և տեսողական պատմությունների նկարահանումների համար։'}
+                </p>
+                <p style={{ fontFamily: "'Inter', sans-serif", margin: '1rem 0 0', color: 'hsl(var(--muted-foreground))', fontSize: '0.5625rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}>{language === 'ru' ? 'Напиши Isaac для деталей' : language === 'en' ? 'Message Isaac for details' : 'Մանրամասների համար գրեք Իսահակին'}</p>
+              </article>
             </aside>
           )}
           </div>
@@ -631,6 +644,6 @@ function OriginalHome() {
 
 export default function Home() {
   const theme = getHomeTheme();
-  if (theme === 'new-year') return <NewYearHome />;
+  if (theme === 'new-year') return <OriginalHome seasonal />;
   return theme === 'gta' ? <GtaLaunchHome /> : <OriginalHome />;
 }
