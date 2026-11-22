@@ -657,6 +657,16 @@ html[lang="hy"] .btn-ghost {
   font-family: 'Inter', system-ui, sans-serif;
 }
 .gta-home button { font: inherit; }
+.gta-sound-toggle { position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 110; display: inline-flex; align-items: center; gap: 0.55rem; min-height: 2.6rem; padding: 0.65rem 0.8rem; color: var(--gta-ink); background: rgba(16, 17, 26, 0.78); border: 1px solid var(--gta-line); backdrop-filter: blur(14px); cursor: pointer; font-size: 0.56rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; transition: border-color 180ms ease, color 180ms ease, background-color 180ms ease, transform 160ms ease; }
+.gta-sound-toggle:hover, .gta-sound-toggle.is-playing { color: var(--gta-night); background: var(--gta-teal); border-color: var(--gta-teal); }
+.gta-sound-toggle:active { transform: scale(0.97); }
+.gta-sound-icon { display: inline-flex; align-items: center; gap: 2px; height: 0.8rem; }
+.gta-sound-icon i { display: block; width: 2px; height: 0.35rem; background: currentColor; }
+.gta-sound-icon i:nth-child(2) { height: 0.75rem; }
+.gta-sound-icon i:nth-child(3) { height: 0.52rem; }
+.gta-sound-toggle.is-playing .gta-sound-icon i { animation: gta-sound-wave 900ms ease-in-out infinite alternate; }
+.gta-sound-toggle.is-playing .gta-sound-icon i:nth-child(2) { animation-delay: 160ms; }
+.gta-sound-toggle.is-playing .gta-sound-icon i:nth-child(3) { animation-delay: 300ms; }
 .gta-shell { width: 100%; max-width: 80rem; margin: 0 auto; padding-left: 1.25rem; padding-right: 1.25rem; }
 .gta-nav { position: fixed; inset: 0 0 auto; z-index: 100; color: var(--gta-ink); border-bottom: 1px solid transparent; transition: background-color 260ms ease, border-color 260ms ease, backdrop-filter 260ms ease; }
 .gta-nav.is-scrolled { background: rgba(16, 17, 26, 0.82); border-color: var(--gta-line); backdrop-filter: blur(18px); }
@@ -750,6 +760,7 @@ html[lang="hy"] .btn-ghost {
 .gta-delay-4 { animation-delay: 340ms; }
 @keyframes gta-reveal { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes gta-pulse { 0% { box-shadow: 0 0 0 0 rgba(255,111,117,0.62); } 75%, 100% { box-shadow: 0 0 0 0.65rem rgba(255,111,117,0); } }
+@keyframes gta-sound-wave { from { transform: scaleY(0.55); } to { transform: scaleY(1.35); } }
 @media (min-width: 640px) {
   .gta-shell { padding-left: 2rem; padding-right: 2rem; }
   .gta-hero { padding-top: 8rem; }
@@ -786,5 +797,6 @@ html[lang="hy"] .btn-ghost {
 }
 @media (prefers-reduced-motion: reduce) {
   .gta-reveal, .gta-pulse-dot { animation: none; }
-  .gta-service-row, .gta-primary-button, .gta-secondary-button, .gta-outline-button { transition: none; }
+  .gta-service-row, .gta-primary-button, .gta-secondary-button, .gta-outline-button, .gta-sound-toggle { transition: none; }
+  .gta-sound-toggle.is-playing .gta-sound-icon i { animation: none; }
 }
