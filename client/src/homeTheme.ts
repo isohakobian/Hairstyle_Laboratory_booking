@@ -17,7 +17,7 @@ export function getHomeTheme(): HomeTheme {
   const today = new Date();
   const month = today.getMonth();
   const day = today.getDate();
-  const isNewYearWindow = (month === 11 && day >= 25) || (month === 0 && day <= 7);
+  const isNewYearWindow = (month === 11 && day >= 1) || (month === 0 && day <= 7);
   if (isNewYearWindow) return 'new-year';
 
   return HOMEPAGE_THEME;
