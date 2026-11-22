@@ -6,6 +6,7 @@ import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
 import { getHomeTheme } from '@/homeTheme';
 import GtaLaunchHome from './GtaLaunchHome';
+import NewYearHome from './NewYearHome';
 
 type Lang = 'hy' | 'ru' | 'en';
 
@@ -629,5 +630,7 @@ function OriginalHome() {
 }
 
 export default function Home() {
-  return getHomeTheme() === 'gta' ? <GtaLaunchHome /> : <OriginalHome />;
+  const theme = getHomeTheme();
+  if (theme === 'new-year') return <NewYearHome />;
+  return theme === 'gta' ? <GtaLaunchHome /> : <OriginalHome />;
 }

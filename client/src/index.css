@@ -800,3 +800,66 @@ html[lang="hy"] .btn-ghost {
   .gta-service-row, .gta-primary-button, .gta-secondary-button, .gta-outline-button, .gta-sound-toggle { transition: none; }
   .gta-sound-toggle.is-playing .gta-sound-icon i { animation: none; }
 }
+
+/* ── New Year Edition: midnight / evergreen / champagne ── */
+.new-year-home {
+  --gta-ink: #f5f0e7;
+  --gta-muted: #b5b9ad;
+  --gta-line: rgba(229, 215, 183, 0.2);
+  --gta-panel: rgba(21, 31, 26, 0.8);
+  --gta-night: #0d1512;
+  --gta-coral: #e7c98e;
+  --gta-pink: #d9b873;
+  --gta-teal: #b8d7c2;
+  position: relative;
+  background:
+    radial-gradient(circle at 82% 8%, rgba(217, 184, 115, 0.2), transparent 23rem),
+    radial-gradient(circle at 10% 82%, rgba(184, 215, 194, 0.13), transparent 26rem),
+    #0d1512;
+}
+.new-year-home::before,
+.new-year-home::after {
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  content: '';
+  border-radius: 999px;
+  filter: blur(2px);
+  opacity: 0.75;
+}
+.new-year-home::before {
+  top: 8rem;
+  right: 14%;
+  width: 0.3rem;
+  height: 0.3rem;
+  background: var(--gta-coral);
+  box-shadow: 3rem 5rem 0 0.08rem var(--gta-teal), -10rem 11rem 0 0.05rem var(--gta-coral), 8rem 16rem 0 0.1rem var(--gta-pink), -21rem 4rem 0 0.04rem var(--gta-teal), 15rem 26rem 0 0.06rem var(--gta-coral);
+  animation: new-year-twinkle 3.8s ease-in-out infinite alternate;
+}
+.new-year-home::after {
+  top: 5rem;
+  right: 7%;
+  width: 18rem;
+  height: 18rem;
+  border: 1px solid rgba(217, 184, 115, 0.16);
+  box-shadow: 0 0 0 2rem rgba(217, 184, 115, 0.035), 0 0 0 4rem rgba(184, 215, 194, 0.025);
+}
+.new-year-home .gta-nav.is-scrolled { background: rgba(13, 21, 18, 0.86); border-color: var(--gta-line); }
+.new-year-home .gta-title span:nth-child(2) { color: var(--gta-pink); }
+.new-year-home .gta-title em { -webkit-text-stroke-color: var(--gta-teal); }
+.new-year-home .gta-campaign-pill { color: var(--gta-night); background: var(--gta-pink); }
+.new-year-home .gta-panel-art { background: linear-gradient(145deg, #b8d7c2 0%, #1d3528 47%, #0d1512 100%); }
+.new-year-home .gta-panel-sun { background: radial-gradient(circle, #fff1c7 0%, #d9b873 25%, transparent 66%); }
+.new-year-home .gta-panel-label strong { color: #f2d99f; }
+.new-year-home .gta-primary-button { color: var(--gta-night); background: var(--gta-pink); border-color: var(--gta-pink); }
+.new-year-home .gta-primary-button:hover { background: var(--gta-ink); border-color: var(--gta-ink); }
+.new-year-home .gta-secondary-button:hover,
+.new-year-home .gta-outline-button:hover { border-color: var(--gta-teal); color: var(--gta-teal); }
+.new-year-home .gta-statement { background: #111d17; }
+.new-year-home .gta-services { background: #0f1a15; }
+.new-year-home .gta-loyalty { background: linear-gradient(120deg, #18261d 0%, #142019 52%, #0f1914 100%); }
+.new-year-home .gta-notices { background: #111d17; }
+.new-year-home .gta-notice-card { background: rgba(217, 184, 115, 0.06); }
+.new-year-home .gta-footer { background: #09100d; }
+@keyframes new-year-twinkle { from { opacity: 0.38; transform: translateY(0); } to { opacity: 1; transform: translateY(0.4rem); } }
+@media (prefers-reduced-motion: reduce) { .new-year-home::before { animation: none; } }
