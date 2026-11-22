@@ -164,7 +164,12 @@ export default function AddToHomeScreen({ autoPopup = false }: { autoPopup?: boo
     setInstallEvent(null);
   };
 
-  const guide = <section aria-label={c.title} style={{ marginTop: "2rem", border: "1px solid var(--gold-mid)", padding: "1.25rem", background: "linear-gradient(135deg, hsl(var(--secondary)), hsl(var(--card)))", textAlign: "left", overflow: "hidden" }}>
+  const dismiss = () => {
+    setShowPopup(false);
+    try { localStorage.setItem(INSTALL_SEEN_KEY, String(Date.now())); } catch { /* localStorage unavailable */ }
+  };
+
+  const guide = <section aria-label={c.title} style={{ marginTop: "2rem", width: "100%", boxSizing: "border-box", border: "1px solid var(--gold-mid)", padding: "1.25rem", background: "linear-gradient(135deg, hsl(var(--secondary)), hsl(var(--card)))", textAlign: "left", overflow: "hidden" }}>
     <div style={{ display: "flex", gap: "0.7rem", alignItems: "flex-start" }}>
       <div style={{ flex: "0 0 auto", width: "2rem", height: "2rem", display: "grid", placeItems: "center", border: "1px solid var(--gold-mid)", color: "var(--gold-mid)" }}><Smartphone size={17} /></div>
       <div><p className="label-caps" style={{ color: "var(--gold-mid)", marginBottom: "0.4rem" }}>Hairstyle Laboratory</p><h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.35rem", margin: 0 }}>{c.title}</h2></div>
@@ -191,13 +196,14 @@ export default function AddToHomeScreen({ autoPopup = false }: { autoPopup?: boo
       </article>
     </div>
     <p style={{ color: "hsl(var(--muted-foreground))", fontSize: "0.68rem", lineHeight: 1.45, margin: "1rem 0 0", display: "flex", gap: "0.35rem", alignItems: "flex-start" }}><Check size={13} color="var(--gold-mid)" style={{ flex: "0 0 auto", marginTop: "0.08rem" }} />{c.note}</p>
+    {autoPopup && <button type="button" onClick={dismiss} style={{ width: "100%", marginTop: "1rem", minHeight: "2.75rem", border: "1px solid hsl(var(--border))", background: "transparent", color: "hsl(var(--foreground))", cursor: "pointer", fontSize: "0.72rem", letterSpacing: "0.08em", textTransform: "uppercase" }}>{c.close}</button>}
   </section>;
 
   if (!autoPopup) return guide;
   if (!showPopup || installed) return null;
-  return <div role="dialog" aria-modal="true" aria-label={c.title} style={{ position: "fixed", inset: 0, zIndex: 120, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem", background: "hsl(var(--foreground) / 0.58)", overflowY: "auto" }}>
-    <div style={{ width: "min(100%, 38rem)", position: "relative" }}>
-      <button type="button" aria-label={c.close} onClick={() => { setShowPopup(false); try { localStorage.setItem(INSTALL_SEEN_KEY, String(Date.now())); } catch { /* localStorage unavailable */ } }} style={{ position: "absolute", top: "0.7rem", right: "0.7rem", zIndex: 2, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))", color: "hsl(var(--foreground))", width: "2rem", height: "2rem", display: "grid", placeItems: "center", cursor: "pointer", fontSize: "1.1rem" }}>×</button>
+  return <div role="dialog" aria-modal="true" aria-label={c.title} style={{ position: "fixed", inset: 0, zIndex: 120, display: "flex", alignItems: "center", justifyContent: "center", padding: "max(0.75rem, env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right)) max(0.75rem, env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left))", background: "hsl(var(--foreground) / 0.58)", overflow: "hidden" }}>
+    <div style={{ width: "min(100%, 38rem)", maxHeight: "calc(100dvh - 1.5rem)", overflowY: "auto", overscrollBehavior: "contain", position: "relative", boxSizing: "border-box" }}>
+      <button type="button" aria-label="Close" onClick={dismiss} style={{ position: "absolute", top: "0.7rem", right: "0.7rem", zIndex: 2, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))", color: "hsl(var(--foreground))", width: "2rem", height: "2rem", display: "grid", placeItems: "center", cursor: "pointer", fontSize: "1.1rem" }}>×</button>
       {guide}
     </div>
   </div>;
