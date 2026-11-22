@@ -12,6 +12,7 @@ import AdminDashboard from "@/pages/AdminDashboard";
 import ReviewForm from "@/pages/ReviewForm";
 import Loyalty from "@/pages/Loyalty";
 import AddToHomeScreen from "@/components/AddToHomeScreen";
+import ClientSoundControl from "@/components/ClientSoundControl";
 
 function InstallPromptGate() {
   const [location] = useLocation();
@@ -52,6 +53,7 @@ function App() {
           <TooltipProvider>
             <Toaster />
             <Router />
+            <ClientSoundControl />
             <InstallPromptGate />
           </TooltipProvider>
         </LanguageProvider>

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { getLoginUrl } from '@/const';
@@ -31,8 +31,6 @@ type CampaignCopy = {
   loyaltyCta: string;
   noticeLabel: string;
   footer: string;
-  soundOn: string;
-  soundOff: string;
 };
 
 const copy: Record<Lang, CampaignCopy> = {
@@ -56,7 +54,6 @@ const copy: Record<Lang, CampaignCopy> = {
     loyaltyCta: 'Join for free',
     noticeLabel: 'Live from the studio',
     footer: '© Hairstyle Laboratory / Isaac Hakobian',
-    soundOn: 'Sound on', soundOff: 'Sound off',
   },
   ru: {
     eyebrow: 'ISAAC HAKOBIAN / PERSONAL GROOMING',
@@ -78,7 +75,6 @@ const copy: Record<Lang, CampaignCopy> = {
     loyaltyCta: 'Участвовать бесплатно',
     noticeLabel: 'Из студии',
     footer: '© Hairstyle Laboratory / Isaac Hakobian',
-    soundOn: 'Включить звук', soundOff: 'Выключить звук',
   },
   hy: {
     eyebrow: 'ISAAC HAKOBIAN / PERSONAL GROOMING',
@@ -100,7 +96,6 @@ const copy: Record<Lang, CampaignCopy> = {
     loyaltyCta: 'Միանալ անվճար',
     noticeLabel: 'Ստուդիայից',
     footer: '© Hairstyle Laboratory / Isaac Hakobian',
-    soundOn: 'Միացնել ձայնը', soundOff: 'Անջատել ձայնը',
   },
 };
 
@@ -112,34 +107,9 @@ export default function GtaLaunchHome() {
   const [, setLocation] = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [soundEnabled, setSoundEnabled] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const { data: activeAnnouncements } = trpc.announcements.active.useQuery();
   const { data: publicServices, isLoading: servicesLoading, isError: servicesError } = trpc.services.list.useQuery();
   const c = copy[language] ?? copy.en;
-
-  const toggleSound = async () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    if (soundEnabled) {
-      audio.pause();
-      setSoundEnabled(false);
-      return;
-    }
-
-    audio.volume = 0.18;
-    try {
-      await audio.play();
-      setSoundEnabled(true);
-    } catch {
-      setSoundEnabled(false);
-    }
-  };
-
-  useEffect(() => () => {
-    audioRef.current?.pause();
-  }, []);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 32);
@@ -163,17 +133,6 @@ export default function GtaLaunchHome() {
 
   return (
     <div className="gta-home">
-      <audio ref={audioRef} loop preload="metadata" src="/manus-storage/hairstyle-lab-neon-night_9bcc33cf.mp3" />
-      <button
-        type="button"
-        className={`gta-sound-toggle ${soundEnabled ? 'is-playing' : ''}`}
-        onClick={toggleSound}
-        aria-pressed={soundEnabled}
-        aria-label={soundEnabled ? c.soundOff : c.soundOn}
-      >
-        <span className="gta-sound-icon" aria-hidden="true"><i /><i /><i /></span>
-        <span>{soundEnabled ? c.soundOff : c.soundOn}</span>
-      </button>
       <header className={`gta-nav ${scrolled ? 'is-scrolled' : ''}`}>
         <div className="gta-shell gta-nav-inner">
           <button className="gta-wordmark" onClick={() => setLocation('/')} aria-label="Hairstyle Laboratory home">

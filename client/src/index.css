@@ -657,7 +657,7 @@ html[lang="hy"] .btn-ghost {
   font-family: 'Inter', system-ui, sans-serif;
 }
 .gta-home button { font: inherit; }
-.gta-sound-toggle { position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 110; display: inline-flex; align-items: center; gap: 0.55rem; min-height: 2.6rem; padding: 0.65rem 0.8rem; color: var(--gta-ink); background: rgba(16, 17, 26, 0.78); border: 1px solid var(--gta-line); backdrop-filter: blur(14px); cursor: pointer; font-size: 0.56rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; transition: border-color 180ms ease, color 180ms ease, background-color 180ms ease, transform 160ms ease; }
+.gta-sound-toggle { --gta-ink: #f8f5f1; --gta-line: rgba(248, 245, 241, 0.16); --gta-night: #10111a; --gta-teal: #4ce0d0; position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 110; display: inline-flex; align-items: center; gap: 0.55rem; min-height: 2.6rem; padding: 0.65rem 0.8rem; color: var(--gta-ink); background: rgba(16, 17, 26, 0.78); border: 1px solid var(--gta-line); backdrop-filter: blur(14px); cursor: pointer; font-family: 'Inter', system-ui, sans-serif; font-size: 0.56rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; transition: border-color 180ms ease, color 180ms ease, background-color 180ms ease, transform 160ms ease; }
 .gta-sound-toggle:hover, .gta-sound-toggle.is-playing { color: var(--gta-night); background: var(--gta-teal); border-color: var(--gta-teal); }
 .gta-sound-toggle:active { transform: scale(0.97); }
 .gta-sound-icon { display: inline-flex; align-items: center; gap: 2px; height: 0.8rem; }
