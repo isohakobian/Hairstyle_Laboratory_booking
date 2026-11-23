@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, gte, inArray, isNotNull, isNull, like, lt, lte, ne, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, InsertBooking, InsertBookingService, users, services, bookings, bookingServices, reviewTokens, bookingStatusRecoveryTokens, bookingEvents, visitMedia, reviewRequestHistory, clientEmailDeliveries, reviews, clients, emailTemplates, availabilityWindows, manualDepositSettings, automationEmailDeliveries, bookingReminderDeliveries, bookingReminderSettings, crmCampaigns, clientCrmPreferences, crmCampaignDeliveries, manualVisits, manualVisitAuditLog, loyaltyRegistrations, loyaltyRedemptions, CrmCampaign, ClientCrmPreference } from "../drizzle/schema";
+import { InsertUser, InsertBooking, InsertBookingService, users, services, bookings, bookingServices, reviewTokens, bookingStatusRecoveryTokens, bookingEvents, visitMedia, reviewRequestHistory, clientEmailDeliveries, reviews, clients, emailTemplates, availabilityWindows, manualDepositSettings, automationEmailDeliveries, bookingReminderDeliveries, bookingReminderSettings, crmCampaigns, clientCrmPreferences, crmCampaignDeliveries, manualVisits, manualVisitAuditLog, loyaltyRegistrations, loyaltyRedemptions, siteSettings, CrmCampaign, ClientCrmPreference } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -16,6 +16,24 @@ export async function getDb() {
     }
   }
   return _db;
+}
+
+export type HomepageTheme = "original" | "gta" | "new-year" | "new-york";
+const defaultHomepageTheme: HomepageTheme = "gta";
+
+export async function getHomepageTheme(): Promise<HomepageTheme> {
+  const db = await getDb();
+  if (!db) return defaultHomepageTheme;
+  const rows = await db.select({ homepageTheme: siteSettings.homepageTheme })
+    .from(siteSettings).where(eq(siteSettings.id, 1)).limit(1);
+  return (rows[0]?.homepageTheme as HomepageTheme | undefined) ?? defaultHomepageTheme;
+}
+
+export async function saveHomepageTheme(homepageTheme: HomepageTheme) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(siteSettings).values({ id: 1, homepageTheme }).onDuplicateKeyUpdate({ set: { homepageTheme } });
+  return getHomepageTheme();
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {

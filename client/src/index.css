@@ -887,6 +887,9 @@ html[lang="hy"] .btn-ghost {
   animation: new-year-original-drift 18s linear infinite alternate;
 }
 .new-year-original-home > * { position: relative; z-index: 1; }
+.new-york-original-home { background: linear-gradient(145deg, #f4f1eb 0%, #ffffff 52%, #dfe6ea 100%) !important; }
+.new-york-original-home::before { position: absolute; inset: 0; pointer-events: none; content: ''; opacity: 0.2; background: repeating-linear-gradient(90deg, transparent 0 22vw, rgba(33, 48, 58, 0.08) 22.1vw 22.25vw); }
+.new-york-original-home > * { position: relative; z-index: 1; }
 .new-year-original-home header { color: #f5f0e7 !important; }
 .new-year-original-home .noise-overlay { background: linear-gradient(180deg, rgba(13, 21, 18, 0.9), rgba(13, 21, 18, 0.52)) !important; }
 .new-year-original-home .noise-overlay > div:first-child { background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(217, 184, 115, 0.18) 0%, transparent 70%) !important; }

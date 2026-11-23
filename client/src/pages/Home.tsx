@@ -121,7 +121,7 @@ const copy: Record<Lang, {
 
 const langs: Lang[] = ['hy', 'ru', 'en'];
 
-function OriginalHome({ seasonal = false }: { seasonal?: boolean }) {
+function OriginalHome({ seasonal = false, newYork = false }: { seasonal?: boolean; newYork?: boolean }) {
   const { language, setLanguage } = useLanguage() as { language: Lang; setLanguage: (l: Lang) => void };
   const { user, isAuthenticated, logout } = useAuth();
   const [, setLocation] = useLocation();
@@ -184,7 +184,7 @@ function OriginalHome({ seasonal = false }: { seasonal?: boolean }) {
   };
 
   return (
-    <div className={`typography-modern ${seasonal ? 'new-year-original-home' : ''}`} style={{ minHeight: '100vh', backgroundColor: 'hsl(var(--background))' }}>
+    <div className={`typography-modern ${seasonal ? 'new-year-original-home' : ''} ${newYork ? 'new-york-original-home' : ''}`} style={{ minHeight: '100vh', backgroundColor: 'hsl(var(--background))' }}>
 
       {/* ── Navigation ── */}
       <header style={navStyle}>
@@ -643,7 +643,10 @@ function OriginalHome({ seasonal = false }: { seasonal?: boolean }) {
 }
 
 export default function Home() {
-  const theme = getHomeTheme();
+  const previewTheme = getHomeTheme();
+  const { data: serverTheme } = trpc.homepage.theme.useQuery(undefined, { staleTime: 30_000 });
+  const theme = previewTheme ?? serverTheme ?? 'gta';
   if (theme === 'new-year') return <OriginalHome seasonal />;
+  if (theme === 'new-york') return <OriginalHome newYork />;
   return theme === 'gta' ? <GtaLaunchHome /> : <OriginalHome />;
 }

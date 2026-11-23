@@ -8,6 +8,7 @@ vi.mock('@/const', () => ({ getLoginUrl: () => '/login' }));
 vi.mock('wouter', () => ({ useLocation: () => ['/', vi.fn()] }));
 vi.mock('@/lib/trpc', () => ({
   trpc: {
+    homepage: { theme: { useQuery: () => ({ data: 'original' }) } },
     announcements: { active: { useQuery: () => ({ data: [
       { id: 101, titleRu: 'Первая новость', titleEn: 'First notice', bodyRu: 'Первый текст', bodyEn: 'First text', imageUrl: 'https://example.com/notice-image.webp', startDate: '2026-08-01', endDate: '2026-08-31' },
       { id: 102, titleRu: 'Вторая новость', titleEn: 'Second notice', bodyRu: 'Второй текст', bodyEn: 'Second text', startDate: '2026-08-01', endDate: '2026-08-31' },

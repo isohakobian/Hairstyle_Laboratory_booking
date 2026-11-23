@@ -4,7 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import {
-  getAllServices, getServiceById, createBookingWithServices, createAdminBooking, getBookingByReference, getBookingById, BookingIntervalConflictError,
+  getAllServices, getServiceById, createBookingWithServices, createAdminBooking, getBookingByReference, getBookingById, BookingIntervalConflictError, getHomepageTheme, saveHomepageTheme,
   getBookingsByEmail, getAllBookings, updateBookingStatus, cancelBookingByClient, isTimeSlotAvailable,
   getBlockedDates, blockDate, unblockDate, createReview, getReviewByBookingId, createReviewToken,
   getReviewTokenByHash, markReviewTokenUsed,
@@ -197,6 +197,10 @@ export const appRouter = router({
 
   announcements: router({
     active: publicProcedure.query(() => getActiveAnnouncements(2)),
+  }),
+
+  homepage: router({
+    theme: publicProcedure.query(() => getHomepageTheme()),
   }),
 
   services: router({
@@ -520,6 +524,10 @@ export const appRouter = router({
   }),
 
   admin: router({
+    homepageTheme: adminMiddleware.query(() => getHomepageTheme()),
+    saveHomepageTheme: adminMiddleware
+      .input(z.object({ theme: z.enum(["original", "gta", "new-year", "new-york"]) }))
+      .mutation(({ input }) => saveHomepageTheme(input.theme)),
     bookings: adminMiddleware.query(() => getAllBookings()),
     createBooking: adminMiddleware
       .input(z.object({

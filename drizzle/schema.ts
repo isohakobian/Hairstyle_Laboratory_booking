@@ -25,6 +25,16 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
+// One-row project settings store. The homepage theme is server-side so an
+// admin change is visible to every visitor, not only the admin browser.
+export const siteSettings = mysqlTable("siteSettings", {
+  id: int("id").primaryKey().default(1),
+  homepageTheme: mysqlEnum("homepageTheme", ["original", "gta", "new-year", "new-york"]).notNull().default("gta"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type SiteSettings = typeof siteSettings.$inferSelect;
+
 export const services = mysqlTable("services", {
   id: int("id").autoincrement().primaryKey(),
   nameEn: varchar("nameEn", { length: 255 }).notNull(),

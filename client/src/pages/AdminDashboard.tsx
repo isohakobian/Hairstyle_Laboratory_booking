@@ -151,6 +151,17 @@ export default function AdminDashboard() {
   const { data: emailDeliveryErrors } = trpc.admin.emailDeliveryErrors.useQuery(undefined, {
     enabled: isAuthenticated && user?.role === 'admin',
   });
+  const { data: homepageTheme } = trpc.admin.homepageTheme.useQuery(undefined, {
+    enabled: isAuthenticated && user?.role === 'admin',
+  });
+  const saveHomepageThemeMutation = trpc.admin.saveHomepageTheme.useMutation({
+    onSuccess: async () => {
+      await utils.admin.homepageTheme.invalidate();
+      await utils.homepage.theme.invalidate();
+      toast.success(language === 'ru' ? 'Главная тема сохранена для всех посетителей' : 'Homepage theme saved for all visitors');
+    },
+    onError: () => toast.error(language === 'ru' ? 'Не удалось сохранить тему' : 'Could not save homepage theme'),
+  });
   const { data: bookingPageData, isLoading: bookingPageLoading, isError: bookingPageError } = trpc.admin.bookingPage.useQuery({
     page: bookingPage,
     pageSize: 15,
@@ -1076,6 +1087,27 @@ export default function AdminDashboard() {
 
         {activeTab === 'settings' && (
           <div>
+            <section style={{ ...cardStyle, marginBottom: '2rem', borderColor: 'var(--gold-mid)' }}>
+              <p style={{ ...labelStyle, margin: '0 0 0.4rem', color: 'var(--gold-mid)' }}>Homepage Inspired Mode</p>
+              <h3 style={{ margin: 0, fontStyle: 'italic' }}>{language === 'ru' ? 'Главная тема сайта' : 'Homepage visual theme'}</h3>
+              <p style={{ margin: '0.75rem 0 1.25rem', maxWidth: '42rem', color: 'hsl(var(--muted-foreground))', fontSize: '0.8125rem', lineHeight: 1.6 }}>
+                {language === 'ru' ? 'Выбери один режим. Изменение сохраняется в базе и сразу применяется для всех посетителей. URL-превью ?theme=... остаётся доступным для тестирования.' : 'Choose one mode. The selection is stored in the database and applies to every visitor. The ?theme=... URL preview remains available for testing.'}
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(12rem, 1fr))', gap: '0.75rem' }}>
+                {[
+                  { id: 'original' as const, title: 'Original', description: language === 'ru' ? 'Спокойная базовая версия' : 'The original clean layout', accent: 'hsl(220 12% 45%)' },
+                  { id: 'new-year' as const, title: 'New Year Inspired', description: language === 'ru' ? 'Midnight green и champagne gold' : 'Midnight green and champagne gold', accent: 'hsl(42 55% 52%)' },
+                  { id: 'gta' as const, title: 'GTA / Vice City Inspired', description: language === 'ru' ? 'Неон, coral и teal' : 'Neon, coral, and teal', accent: 'hsl(174 72% 42%)' },
+                  { id: 'new-york' as const, title: 'New York Inspired', description: language === 'ru' ? 'Светлый editorial preset' : 'Light editorial preset', accent: 'hsl(207 35% 42%)' },
+                ].map(option => {
+                  const checked = homepageTheme === option.id;
+                  return <label key={option.id} style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', padding: '1rem', cursor: saveHomepageThemeMutation.isPending ? 'wait' : 'pointer', background: checked ? 'hsl(var(--secondary))' : 'transparent', border: checked ? `1px solid ${option.accent}` : '1px solid hsl(var(--border))', transition: 'background-color 180ms ease, border-color 180ms ease' }}>
+                    <input type="checkbox" checked={checked} disabled={saveHomepageThemeMutation.isPending} onChange={() => { if (!checked) saveHomepageThemeMutation.mutate({ theme: option.id }); }} style={{ width: '1.05rem', height: '1.05rem', marginTop: '0.12rem', accentColor: option.accent }} aria-label={option.title} />
+                    <span><strong style={{ display: 'block', fontFamily: "'Playfair Display', serif", fontSize: '1rem' }}>{option.title}</strong><span style={{ display: 'block', marginTop: '0.3rem', color: 'hsl(var(--muted-foreground))', fontSize: '0.7rem', lineHeight: 1.4 }}>{option.description}</span>{checked && <span style={{ display: 'block', marginTop: '0.55rem', color: option.accent, fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}>{language === 'ru' ? 'Активна для сайта' : 'Active on website'}</span>}</span>
+                  </label>;
+                })}
+              </div>
+            </section>
             <div style={{ marginBottom: '1.25rem' }}>
               <p style={{ ...labelStyle, margin: '0 0 0.4rem', color: 'var(--gold-mid)' }}>{language === 'ru' ? 'Автоматизация' : 'Automation'}</p>
               <h3 style={{ margin: 0, fontStyle: 'italic' }}>{language === 'ru' ? 'Настройки напоминаний' : 'Reminder settings'}</h3>

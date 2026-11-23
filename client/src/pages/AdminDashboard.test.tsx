@@ -18,6 +18,8 @@ vi.mock("@/components/BookingEmailHistory", () => ({ default: () => <div>Client 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
     admin: {
+      homepageTheme: { useQuery: () => ({ data: 'original' }) },
+      saveHomepageTheme: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       bookings: { useQuery: () => ({ data: [{ id: 1, status: "confirmed", clientName: "Alex", referenceNumber: "REF001", serviceName: "Haircut", serviceSummary: "Haircut", totalDurationMinutes: 45, totalPriceSummary: "15,000 ֏", bookingDate: "2099-12-30", bookingTime: "14:00", clientPhone: "+37455000000", clientEmail: "alex@example.com", clientInstagram: "alex.style", comment: null, createdAt: new Date(), completedAt: new Date() }], isLoading: false, isError: false, refetch: vi.fn() }) },
       today: { useQuery: () => ({ data: { date: '2099-12-30', bookings: [{ id: 1, status: 'confirmed', clientName: 'Alex', bookingTime: '14:00' }], pendingCount: 0, confirmedCount: 1, completedCount: 2, todayRevenueAmd: 27000, prevRevenueAmd: 24000, revenueChangePercent: 13, dailyTrend: [{ date: '2099-12-29', revenueAmd: 24000, completedCount: 2 }, { date: '2099-12-30', revenueAmd: 27000, completedCount: 2 }], freeWindows: [{ startTime: '09:00', endTime: '14:00' }] } }) },
       weeklyBookingStats: { useQuery: () => ({ data: { newBookings: 8, cancelledBookings: 2, pendingBookings: 1, confirmedBookings: 4, completedBookings: 6, emailDeliveryErrors: 1 } }) },
@@ -58,6 +60,7 @@ vi.mock("@/lib/trpc", () => ({
     },
     useUtils: () => ({
       admin: {
+        homepageTheme: { invalidate: vi.fn() },
         bookingPage: { invalidate: vi.fn() },
         today: { invalidate: vi.fn() },
         weeklyBookingStats: { invalidate: vi.fn() },
@@ -67,6 +70,7 @@ vi.mock("@/lib/trpc", () => ({
         clientDirectory: { invalidate: vi.fn() },
         clientStats: { invalidate: vi.fn() },
       },
+      homepage: { theme: { invalidate: vi.fn() } },
     }),
   },
 }));

@@ -253,6 +253,13 @@
       "when": 1795108200242,
       "tag": "0035_dusty_joshua_kane",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "5",
+      "when": 1795435143185,
+      "tag": "0036_mushy_rockslide",
+      "breakpoints": true
     }
   ]
 }
