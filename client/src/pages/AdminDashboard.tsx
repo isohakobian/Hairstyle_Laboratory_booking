@@ -1098,7 +1098,6 @@ export default function AdminDashboard() {
                   { id: 'original' as const, title: 'Original', description: language === 'ru' ? 'Спокойная базовая версия' : 'The original clean layout', accent: 'hsl(220 12% 45%)' },
                   { id: 'new-year' as const, title: 'New Year Inspired', description: language === 'ru' ? 'Midnight green и champagne gold' : 'Midnight green and champagne gold', accent: 'hsl(42 55% 52%)' },
                   { id: 'gta' as const, title: 'GTA / Vice City Inspired', description: language === 'ru' ? 'Неон, coral и teal' : 'Neon, coral, and teal', accent: 'hsl(174 72% 42%)' },
-                  { id: 'new-york' as const, title: 'New York Inspired', description: language === 'ru' ? 'Светлый editorial preset' : 'Light editorial preset', accent: 'hsl(207 35% 42%)' },
                 ].map(option => {
                   const checked = homepageTheme === option.id;
                   return <label key={option.id} style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', padding: '1rem', cursor: saveHomepageThemeMutation.isPending ? 'wait' : 'pointer', background: checked ? 'hsl(var(--secondary))' : 'transparent', border: checked ? `1px solid ${option.accent}` : '1px solid hsl(var(--border))', transition: 'background-color 180ms ease, border-color 180ms ease' }}>

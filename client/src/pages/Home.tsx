@@ -138,7 +138,7 @@ function getCountdown(target: Date): Countdown {
 function padCountdown(value: number) {
   return String(value).padStart(2, '0');
 }
-function OriginalHome({ seasonal = false, newYork = false }: { seasonal?: boolean; newYork?: boolean }) {
+function OriginalHome({ seasonal = false }: { seasonal?: boolean }) {
   const { language, setLanguage } = useLanguage() as { language: Lang; setLanguage: (l: Lang) => void };
   const { user, isAuthenticated, logout } = useAuth();
   const [, setLocation] = useLocation();
@@ -208,7 +208,7 @@ function OriginalHome({ seasonal = false, newYork = false }: { seasonal?: boolea
   };
 
   return (
-    <div className={`typography-modern ${seasonal ? 'new-year-original-home' : ''} ${newYork ? 'new-york-original-home' : ''}`} style={{ minHeight: '100vh', backgroundColor: 'hsl(var(--background))' }}>
+    <div className={`typography-modern ${seasonal ? 'new-year-original-home' : ''}`} style={{ minHeight: '100vh', backgroundColor: 'hsl(var(--background))' }}>
 
       {/* ── Navigation ── */}
       <header style={navStyle}>
@@ -411,7 +411,10 @@ function OriginalHome({ seasonal = false, newYork = false }: { seasonal?: boolea
             </p>
 
             <h1 className="fade-up" style={{ marginBottom: 0, lineHeight: 1.0 }}>
-              <span className="text-shimmer" style={{ display: 'block' }}>{c.hero.line1}</span>
+              <span className="text-shimmer new-year-hero-line" style={{ display: 'block' }}>
+                {c.hero.line1}
+                {seasonal && <span className="new-year-santa-hat" aria-hidden="true"><span className="new-year-santa-hat-trim" /><span className="new-year-santa-hat-pom" /></span>}
+              </span>
             </h1>
             <h1 className="fade-up fade-up-delay-1" style={{ marginBottom: 0, lineHeight: 1.0 }}>
               <span style={{ display: 'block', color: 'hsl(var(--foreground))', opacity: 0.85 }}>{c.hero.line2}</span>
@@ -683,6 +686,5 @@ export default function Home() {
   const { data: serverTheme } = trpc.homepage.theme.useQuery(undefined, { staleTime: 30_000 });
   const theme = previewTheme ?? serverTheme ?? 'gta';
   if (theme === 'new-year') return <OriginalHome seasonal />;
-  if (theme === 'new-york') return <OriginalHome newYork />;
   return theme === 'gta' ? <GtaLaunchHome /> : <OriginalHome />;
 }

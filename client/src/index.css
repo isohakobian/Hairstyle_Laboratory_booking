@@ -897,9 +897,12 @@ html[lang="hy"] .btn-ghost {
 .new-year-countdown-unit span { overflow: hidden; color: rgba(245, 240, 231, 0.66); font-size: 0.5rem; letter-spacing: 0.08em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
 @keyframes new-year-snowfall { 0% { opacity: 0; transform: translate3d(0, -1.5rem, 0) rotate(0deg); } 12% { opacity: 0.85; } 50% { transform: translate3d(2.5rem, 50vh, 0) rotate(160deg); } 100% { opacity: 0.08; transform: translate3d(-1.5rem, 108vh, 0) rotate(320deg); } }
 @media (max-width: 480px) { .new-year-countdown { margin-top: -1.5rem; } .new-year-countdown-unit strong { font-size: 1.25rem; } .new-year-countdown-unit span { font-size: 0.44rem; } }
-.new-york-original-home { background: linear-gradient(145deg, #f4f1eb 0%, #ffffff 52%, #dfe6ea 100%) !important; }
-.new-york-original-home::before { position: absolute; inset: 0; pointer-events: none; content: ''; opacity: 0.2; background: repeating-linear-gradient(90deg, transparent 0 22vw, rgba(33, 48, 58, 0.08) 22.1vw 22.25vw); }
-.new-york-original-home > * { position: relative; z-index: 1; }
+.new-year-hero-line { position: relative; }
+.new-year-santa-hat { position: absolute; z-index: 2; top: -0.38em; right: 7%; width: clamp(3.3rem, 8vw, 6.2rem); height: clamp(2.7rem, 6vw, 5rem); transform: rotate(-16deg); filter: drop-shadow(0 0.25rem 0.35rem rgba(0, 0, 0, 0.28)); pointer-events: none; }
+.new-year-santa-hat::before { position: absolute; right: 0.12em; bottom: 0.18em; width: 0; height: 0; content: ''; border-right: 0.38em solid transparent; border-bottom: 2.1em solid #a82b2f; border-left: 1.65em solid transparent; transform: rotate(9deg); transform-origin: bottom right; }
+.new-year-santa-hat::after { position: absolute; right: -0.02em; bottom: 0; width: 2.15em; height: 0.45em; content: ''; border-radius: 999px; background: #fff8ed; box-shadow: inset 0 -0.08em 0 rgba(191, 168, 137, 0.35); transform: rotate(4deg); }
+.new-year-santa-hat-trim { position: absolute; right: 0.43em; bottom: 0.63em; width: 1.3em; height: 0.18em; border-radius: 999px; background: #f7e8d5; transform: rotate(-22deg); }
+.new-year-santa-hat-pom { position: absolute; top: 0.05em; right: 0.08em; width: 0.62em; height: 0.62em; border-radius: 50%; background: #fff8ed; box-shadow: 0 0 0.18em rgba(255, 248, 237, 0.65); }
 .new-year-original-home header { color: #f5f0e7 !important; }
 .new-year-original-home .noise-overlay { background: linear-gradient(180deg, rgba(13, 21, 18, 0.9), rgba(13, 21, 18, 0.52)) !important; }
 .new-year-original-home .noise-overlay > div:first-child { background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(217, 184, 115, 0.18) 0%, transparent 70%) !important; }
