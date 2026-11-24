@@ -120,7 +120,24 @@ const copy: Record<Lang, {
 };
 
 const langs: Lang[] = ['hy', 'ru', 'en'];
-
+type Countdown = { days: number; hours: number; minutes: number; seconds: number };
+function getNextNewYear() {
+  const now = new Date();
+  return new Date(now.getFullYear() + 1, 0, 1, 0, 0, 0, 0);
+}
+function getCountdown(target: Date): Countdown {
+  const remaining = Math.max(0, target.getTime() - Date.now());
+  const totalSeconds = Math.floor(remaining / 1000);
+  return {
+    days: Math.floor(totalSeconds / 86400),
+    hours: Math.floor((totalSeconds % 86400) / 3600),
+    minutes: Math.floor((totalSeconds % 3600) / 60),
+    seconds: totalSeconds % 60,
+  };
+}
+function padCountdown(value: number) {
+  return String(value).padStart(2, '0');
+}
 function OriginalHome({ seasonal = false, newYork = false }: { seasonal?: boolean; newYork?: boolean }) {
   const { language, setLanguage } = useLanguage() as { language: Lang; setLanguage: (l: Lang) => void };
   const { user, isAuthenticated, logout } = useAuth();
@@ -128,6 +145,7 @@ function OriginalHome({ seasonal = false, newYork = false }: { seasonal?: boolea
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [hoveredService, setHoveredService] = useState<number | null>(null);
+  const [countdown, setCountdown] = useState<Countdown>(() => getCountdown(getNextNewYear()));
   const { data: activeAnnouncements } = trpc.announcements.active.useQuery();
   const { data: publicServices, isLoading: servicesLoading, isError: servicesError } = trpc.services.list.useQuery();
 
@@ -138,6 +156,12 @@ function OriginalHome({ seasonal = false, newYork = false }: { seasonal?: boolea
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+  useEffect(() => {
+    if (!seasonal) return;
+    const target = getNextNewYear();
+    const timer = window.setInterval(() => setCountdown(getCountdown(target)), 1000);
+    return () => window.clearInterval(timer);
+  }, [seasonal]);
 
   const formatPrice = (svc: NonNullable<typeof publicServices>[number]) => {
     if (svc.priceMinAmd !== null && svc.priceMaxAmd !== null) {
@@ -355,6 +379,7 @@ function OriginalHome({ seasonal = false, newYork = false }: { seasonal?: boolea
         position: 'relative',
         overflow: 'hidden',
       }}>
+        {seasonal && <div className="new-year-snow" aria-hidden="true">{Array.from({ length: 22 }, (_, index) => <span key={index} style={{ '--snow-left': `${(index * 47) % 100}%`, '--snow-delay': `${(index * -0.73).toFixed(2)}s`, '--snow-duration': `${8 + (index % 6)}s`, '--snow-size': `${3 + (index % 4)}px` } as React.CSSProperties} />)}</div>}
         {/* Background metallic gradient */}
         <div style={{
           position: 'absolute',
@@ -405,6 +430,17 @@ function OriginalHome({ seasonal = false, newYork = false }: { seasonal?: boolea
             }}>
               {c.hero.sub}
             </p>
+            {seasonal && <div className="new-year-countdown fade-up fade-up-delay-3" aria-label={language === 'ru' ? 'Обратный отсчёт до Нового года' : language === 'en' ? 'Countdown to New Year' : 'Հետհաշվարկ մինչև Նոր տարի'}>
+              <p className="label-caps" style={{ margin: '0 0 0.65rem', color: 'var(--gold-mid)', fontSize: '0.5625rem' }}>{language === 'ru' ? 'До Нового года' : language === 'en' ? 'Until New Year' : 'Մինչև Նոր տարի'}</p>
+              <div className="new-year-countdown-grid">
+                {[
+                  { value: countdown.days, label: language === 'ru' ? 'дней' : language === 'en' ? 'days' : 'օր' },
+                  { value: countdown.hours, label: language === 'ru' ? 'часов' : language === 'en' ? 'hours' : 'ժամ' },
+                  { value: countdown.minutes, label: language === 'ru' ? 'минут' : language === 'en' ? 'minutes' : 'րոպե' },
+                  { value: countdown.seconds, label: language === 'ru' ? 'секунд' : language === 'en' ? 'seconds' : 'վրկ' },
+                ].map(item => <div key={item.label} className="new-year-countdown-unit"><strong>{padCountdown(item.value)}</strong><span>{item.label}</span></div>)}
+              </div>
+            </div>}
 
             <div className="fade-up fade-up-delay-4" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
               <button className="btn-primary" onClick={() => setLocation('/booking')}>

@@ -887,6 +887,16 @@ html[lang="hy"] .btn-ghost {
   animation: new-year-original-drift 18s linear infinite alternate;
 }
 .new-year-original-home > * { position: relative; z-index: 1; }
+.new-year-snow { position: absolute; inset: 0; z-index: 2; pointer-events: none; overflow: hidden; opacity: 0.72; }
+.new-year-snow span { position: absolute; top: -1rem; left: var(--snow-left); width: var(--snow-size); height: var(--snow-size); border-radius: 999px; background: rgba(255, 248, 226, 0.9); box-shadow: 0 0 8px rgba(255, 236, 183, 0.55); animation: new-year-snowfall var(--snow-duration) linear var(--snow-delay) infinite; }
+.new-year-countdown { width: min(100%, 28rem); margin: -1.25rem 0 2rem; padding: 0.9rem 1rem 1rem; border: 1px solid rgba(217, 184, 115, 0.34); background: linear-gradient(120deg, rgba(217, 184, 115, 0.12), rgba(13, 21, 18, 0.28)); backdrop-filter: blur(8px); }
+.new-year-countdown-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.45rem; }
+.new-year-countdown-unit { display: grid; gap: 0.2rem; min-width: 0; padding: 0.45rem 0.3rem; border-left: 1px solid rgba(217, 184, 115, 0.28); text-align: center; }
+.new-year-countdown-unit:first-child { border-left: 0; }
+.new-year-countdown-unit strong { color: #f5f0e7; font-family: 'Playfair Display', Georgia, serif; font-size: clamp(1.3rem, 4vw, 1.8rem); line-height: 1; font-variant-numeric: tabular-nums; }
+.new-year-countdown-unit span { overflow: hidden; color: rgba(245, 240, 231, 0.66); font-size: 0.5rem; letter-spacing: 0.08em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+@keyframes new-year-snowfall { 0% { opacity: 0; transform: translate3d(0, -1.5rem, 0) rotate(0deg); } 12% { opacity: 0.85; } 50% { transform: translate3d(2.5rem, 50vh, 0) rotate(160deg); } 100% { opacity: 0.08; transform: translate3d(-1.5rem, 108vh, 0) rotate(320deg); } }
+@media (max-width: 480px) { .new-year-countdown { margin-top: -1.5rem; } .new-year-countdown-unit strong { font-size: 1.25rem; } .new-year-countdown-unit span { font-size: 0.44rem; } }
 .new-york-original-home { background: linear-gradient(145deg, #f4f1eb 0%, #ffffff 52%, #dfe6ea 100%) !important; }
 .new-york-original-home::before { position: absolute; inset: 0; pointer-events: none; content: ''; opacity: 0.2; background: repeating-linear-gradient(90deg, transparent 0 22vw, rgba(33, 48, 58, 0.08) 22.1vw 22.25vw); }
 .new-york-original-home > * { position: relative; z-index: 1; }
@@ -900,3 +910,4 @@ html[lang="hy"] .btn-ghost {
 .new-year-original-home section, .new-year-original-home footer { border-color: rgba(217, 184, 115, 0.2) !important; }
 @keyframes new-year-original-drift { from { transform: translateY(-0.35rem); } to { transform: translateY(0.35rem); } }
 @media (prefers-reduced-motion: reduce) { .new-year-original-home::before { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .new-year-snow span { animation: none; opacity: 0.35; } }
