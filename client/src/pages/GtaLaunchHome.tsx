@@ -170,6 +170,18 @@ export default function GtaLaunchHome() {
           <div className="gta-sun" aria-hidden="true" />
           <div className="gta-route gta-route-one" aria-hidden="true" />
           <div className="gta-route gta-route-two" aria-hidden="true" />
+          <div className="gta-car-entry" aria-hidden="true">
+            <div className="gta-car">
+              <span className="gta-car-roof" />
+              <span className="gta-car-window gta-car-window-front" />
+              <span className="gta-car-window gta-car-window-back" />
+              <span className="gta-car-body" />
+              <span className="gta-car-light gta-car-light-front" />
+              <span className="gta-car-light gta-car-light-back" />
+              <span className="gta-car-wheel gta-car-wheel-front" />
+              <span className="gta-car-wheel gta-car-wheel-back" />
+            </div>
+          </div>
           <div className="gta-coordinates" aria-hidden="true"><span>40°11'14.0"N</span><span>44°30'54.7"E</span></div>
           <div className="gta-shell gta-hero-content">
             <div className="gta-hero-copy">

@@ -692,6 +692,21 @@ html[lang="hy"] .btn-ghost {
 .gta-route { position: absolute; z-index: -1; width: 52vw; height: 20rem; opacity: 0.34; border: 1px solid var(--gta-teal); border-left: 0; border-bottom: 0; transform: rotate(-13deg); pointer-events: none; }
 .gta-route-one { right: -17%; bottom: 7%; border-radius: 0 100% 0 0; }
 .gta-route-two { left: -26%; bottom: -5%; border-color: var(--gta-coral); border-right: 0; border-top: 0; transform: rotate(12deg); border-radius: 0 0 0 100%; }
+.gta-car-entry { position: absolute; z-index: 0; left: 0; bottom: 11%; width: 15rem; height: 7rem; opacity: 0; pointer-events: none; transform: translate3d(-22rem, 0, 0); animation: gta-car-drive-in 1.8s cubic-bezier(0.18, 0.82, 0.24, 1) 420ms forwards; }
+.gta-car-entry::after { position: absolute; left: 7%; right: 2%; bottom: 0.6rem; height: 0.7rem; content: ''; border-radius: 50%; background: rgba(255, 111, 180, 0.38); filter: blur(0.8rem); transform: skewX(-18deg); }
+.gta-car { position: absolute; right: 0; bottom: 1rem; width: 100%; height: 4rem; filter: drop-shadow(0 0.8rem 0.6rem rgba(0, 0, 0, 0.45)); }
+.gta-car-body { position: absolute; right: 0; bottom: 0.65rem; width: 90%; height: 2.15rem; border-radius: 1.1rem 2.2rem 0.55rem 0.7rem; background: linear-gradient(160deg, #ffbdd7 0%, #ff72b1 26%, #e92f82 62%, #a5105b 100%); box-shadow: inset -0.8rem -0.3rem 0 rgba(89, 9, 58, 0.32), inset 0 0.15rem 0 rgba(255, 255, 255, 0.55); }
+.gta-car-body::before { position: absolute; left: 8%; right: 7%; top: 0.42rem; height: 0.12rem; content: ''; border-radius: 999px; background: rgba(255, 225, 239, 0.6); }
+.gta-car-roof { position: absolute; right: 25%; bottom: 2.05rem; width: 45%; height: 2rem; border-radius: 3.5rem 4rem 0 0; background: linear-gradient(145deg, #ffb4d3, #db377f 72%); transform: skewX(-15deg); }
+.gta-car-window { position: absolute; z-index: 1; bottom: 2.25rem; height: 1.25rem; background: linear-gradient(145deg, rgba(114, 240, 255, 0.78), rgba(20, 42, 78, 0.92)); border: 1px solid rgba(255, 236, 248, 0.58); transform: skewX(-15deg); }
+.gta-car-window-front { right: 29%; width: 16%; border-radius: 0.1rem 1rem 0.1rem 0.1rem; }
+.gta-car-window-back { right: 47%; width: 20%; border-radius: 1rem 0.1rem 0.1rem 0.1rem; }
+.gta-car-light { position: absolute; z-index: 2; bottom: 1.55rem; width: 0.55rem; height: 0.38rem; border-radius: 0.12rem; box-shadow: 0 0 0.7rem 0.15rem currentColor; }
+.gta-car-light-front { right: 1.5%; color: #fff2b8; background: #fff8dc; }
+.gta-car-light-back { left: 4%; color: #ff4e91; background: #ff396f; }
+.gta-car-wheel { position: absolute; z-index: 3; bottom: 0; width: 1.45rem; height: 1.45rem; border: 0.36rem solid #171522; border-radius: 50%; background: radial-gradient(circle, #c5f6fa 0 16%, #536b7d 18% 34%, #171522 36% 100%); box-shadow: 0 0 0 0.08rem rgba(255, 159, 195, 0.55); }
+.gta-car-wheel-front { right: 15%; }
+.gta-car-wheel-back { left: 16%; }
 .gta-coordinates { position: absolute; right: 1.25rem; bottom: 4.8rem; display: grid; gap: 0.25rem; color: rgba(248,245,241,0.48); font-size: 0.54rem; font-weight: 700; letter-spacing: 0.12em; writing-mode: vertical-rl; }
 .gta-hero-content { position: relative; z-index: 1; display: grid; gap: 3rem; align-items: end; }
 .gta-hero-copy { max-width: 48rem; }
@@ -761,11 +776,13 @@ html[lang="hy"] .btn-ghost {
 @keyframes gta-reveal { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes gta-pulse { 0% { box-shadow: 0 0 0 0 rgba(255,111,117,0.62); } 75%, 100% { box-shadow: 0 0 0 0.65rem rgba(255,111,117,0); } }
 @keyframes gta-sound-wave { from { transform: scaleY(0.55); } to { transform: scaleY(1.35); } }
+@keyframes gta-car-drive-in { 0% { opacity: 0; transform: translate3d(-22rem, 0, 0) rotate(-2deg); } 18% { opacity: 1; } 72% { opacity: 1; transform: translate3d(34vw, 0, 0) rotate(0deg); } 100% { opacity: 0.78; transform: translate3d(41vw, 0, 0) rotate(0deg); } }
 @media (min-width: 640px) {
   .gta-shell { padding-left: 2rem; padding-right: 2rem; }
   .gta-hero { padding-top: 8rem; }
   .gta-scroll-cue { left: 2rem; }
   .gta-service-row { grid-template-columns: 3rem 1fr auto; gap: 1rem; }
+  .gta-car-entry { width: 19rem; height: 8rem; bottom: 12%; }
 }
 @media (min-width: 768px) {
   .gta-desktop-nav { display: flex; }
@@ -774,6 +791,7 @@ html[lang="hy"] .btn-ghost {
   .gta-hero { padding: 8rem 0 5rem; }
   .gta-title { font-size: clamp(3.8rem, 8vw, 7.2rem); }
   .gta-hero-content { grid-template-columns: minmax(0, 1fr) minmax(18rem, 25rem); gap: 4rem; }
+  .gta-car-entry { width: 22rem; height: 9rem; bottom: 10%; }
   .gta-hero-panel { display: block; align-self: end; padding: 0.85rem; background: var(--gta-panel); border: 1px solid var(--gta-line); backdrop-filter: blur(10px); transform: rotate(2deg); }
   .gta-panel-top, .gta-panel-bottom { display: flex; justify-content: space-between; gap: 1rem; color: var(--gta-muted); font-size: 0.54rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
   .gta-live { color: var(--gta-coral); }
@@ -796,7 +814,8 @@ html[lang="hy"] .btn-ghost {
   .gta-hero-content { grid-template-columns: minmax(0, 1fr) minmax(20rem, 27rem); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .gta-reveal, .gta-pulse-dot { animation: none; }
+  .gta-reveal, .gta-pulse-dot, .gta-car-entry { animation: none; }
+  .gta-car-entry { opacity: 0.72; transform: translate3d(38vw, 0, 0); }
   .gta-service-row, .gta-primary-button, .gta-secondary-button, .gta-outline-button, .gta-sound-toggle { transition: none; }
   .gta-sound-toggle.is-playing .gta-sound-icon i { animation: none; }
 }
