@@ -4,6 +4,7 @@ import { useAuth } from '@/_core/hooks/useAuth';
 import { getLoginUrl } from '@/const';
 import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
+import PublishedReviewsMarquee from '@/components/PublishedReviewsMarquee';
 
 type Lang = 'hy' | 'ru' | 'en';
 
@@ -592,6 +593,8 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      <PublishedReviewsMarquee language={language as 'ru' | 'en' | 'hy'} />
 
       {/* ── Footer ── */}
       <footer style={{

@@ -28,6 +28,7 @@ vi.mock('@/lib/trpc', () => ({
       updateClientMemory: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       deleteClient: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       redeemLoyaltyReward: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+      requestReview: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       uploadVisitMedia: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       visitMediaUrl: { useQuery: () => ({ data: null }) },
     },

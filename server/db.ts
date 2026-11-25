@@ -483,7 +483,9 @@ export async function getClientDirectory() {
     updatedAt: clients.updatedAt,
   }).from(clients).orderBy(desc(clients.updatedAt)), db.select({ clientId: loyaltyRegistrations.clientId }).from(loyaltyRegistrations)]);
   const registeredIds = new Set(registrations.map(row => row.clientId));
-  return directory.map(client => ({ ...client, loyaltyRegistered: registeredIds.has(client.id) }));
+  // The Clients workspace is intentionally loyalty-only; non-registered contacts
+  // remain available through bookings without cluttering this CRM view.
+  return directory.filter(client => registeredIds.has(client.id)).map(client => ({ ...client, loyaltyRegistered: true }));
 }
 
 async function recordManualVisitAudit(input: { visitId: number; action: "created" | "updated" | "deleted"; visitDate: string; serviceName: string; priceAmd: number; paidAmd: number; note?: string | null }) {

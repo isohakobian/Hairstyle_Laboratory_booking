@@ -933,3 +933,20 @@ html[lang="hy"] .btn-ghost {
 @keyframes new-year-original-drift { from { transform: translateY(-0.35rem); } to { transform: translateY(0.35rem); } }
 @media (prefers-reduced-motion: reduce) { .new-year-original-home::before { animation: none; } }
 @media (prefers-reduced-motion: reduce) { .new-year-snow span { animation: none; opacity: 0.35; } }
+
+
+/* Published review rail */
+.reviews-marquee { padding: 4.5rem 0; overflow: hidden; border-top: 1px solid hsl(var(--border)); border-bottom: 1px solid hsl(var(--border)); background: linear-gradient(120deg, hsl(var(--secondary)), hsl(var(--card))); }
+.reviews-marquee-heading { width: min(92%, 72rem); margin: 0 auto 1.5rem; padding: 0 1rem; }
+.reviews-marquee-heading span { display: block; color: var(--gold-mid); font: 600 .62rem/1.2 Inter,sans-serif; letter-spacing: .16em; text-transform: uppercase; }
+.reviews-marquee-heading h2 { margin: .55rem 0 0; font: italic 700 clamp(1.8rem,4vw,3.25rem)/1.05 'Playfair Display',serif; }
+.reviews-marquee-viewport { overflow: hidden; mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent); }
+.reviews-marquee-track { display: flex; width: max-content; gap: 1rem; animation: reviews-marquee-scroll 42s linear infinite; }
+.reviews-marquee-card { width: min(20rem, 78vw); min-height: 10.5rem; padding: 1.25rem; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 1rem 2.5rem hsl(var(--foreground) / .06); }
+.reviews-marquee-card p { margin: .8rem 0 1.25rem; color: hsl(var(--muted-foreground)); font: italic .95rem/1.5 Inter,sans-serif; }
+.reviews-marquee-card strong { font: 600 .65rem/1 Inter,sans-serif; letter-spacing: .12em; text-transform: uppercase; }
+.reviews-marquee-stars { color: var(--gold-mid); letter-spacing: .12em; font-size: .8rem; }
+.reviews-marquee-stars span { color: hsl(var(--muted-foreground) / .28); }
+@keyframes reviews-marquee-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .reviews-marquee-track { animation: none; } }
+@media (max-width: 640px) { .reviews-marquee { padding: 3.25rem 0; } .reviews-marquee-heading { margin-bottom: 1rem; } .reviews-marquee-track { gap: .75rem; } .reviews-marquee-card { width: min(17rem, 78vw); min-height: 9.5rem; } }

@@ -110,6 +110,10 @@ export default function ClientMemoryPanel({ clientId, language, onClose, onDelet
     onSuccess: () => { toast.success(ru ? 'Бонус списан и записан в историю' : 'Reward redeemed and added to history'); refetch(); },
     onError: error => toast.error(error.message),
   });
+  const reviewRequestMutation = trpc.admin.requestReview.useMutation({
+    onSuccess: () => { toast.success(ru ? 'Ссылка на отзыв отправлена клиенту' : 'Review link sent to the client'); refetch(); },
+    onError: error => toast.error(error.message),
+  });
   const crmPreferenceMutation = trpc.admin.saveClientCrmPreference.useMutation({
     onSuccess: () => { toast.success(ru ? 'Согласие на новости обновлено' : 'News consent updated'); void refetchCrmPreference(); },
     onError: error => toast.error(error.message),
@@ -302,6 +306,7 @@ export default function ClientMemoryPanel({ clientId, language, onClose, onDelet
               </div>
               {cancellationEvents.length > 0 && <div style={{ marginTop: '0.85rem', padding: '0.7rem 0.75rem', borderLeft: '2px solid hsl(0 0% 48%)', background: 'hsl(var(--secondary))' }}><p style={{ ...labelStyle, margin: 0, color: 'hsl(0 0% 48%)' }}>{ru ? 'Отмена клиентом' : 'Client cancellation'}</p>{cancellationEvents.map(event => <p key={event.id} style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', lineHeight: 1.45, color: 'hsl(var(--foreground))' }}>{event.note || (ru ? 'Причина не указана' : 'No reason provided')}</p>)}</div>}
               {visit.completedAt && visit.serviceIds.length > 0 && <button type="button" className="btn-outline" onClick={() => repeatBooking(visit)} style={{ marginTop: '0.85rem', padding: '0.55rem 0.8rem', fontSize: '0.625rem' }}>{ru ? 'Запланировать повтор' : 'Plan a repeat visit'}</button>}
+              {visit.completedAt && <button type="button" className="btn-outline" disabled={reviewRequestMutation.isPending || !profile.email} onClick={() => reviewRequestMutation.mutate({ id: visit.id })} style={{ marginTop: '0.85rem', marginLeft: '0.55rem', padding: '0.55rem 0.8rem', fontSize: '0.625rem' }}>{reviewRequestMutation.isPending ? '…' : (ru ? 'Отправить ссылку на отзыв' : 'Send review link')}{!profile.email ? (ru ? ' · нет email' : ' · no email') : ''}</button>}
               <p style={{ margin: '0.85rem 0 0', padding: '0.65rem 0.75rem', background: 'hsl(var(--secondary))', color: 'hsl(var(--muted-foreground))', fontSize: '0.75rem', lineHeight: 1.45 }}>{repeatStatus}</p>
               {visitNotes.length > 0 && <div style={{ marginTop: '0.85rem' }}><p style={{ ...labelStyle, margin: '0 0 0.35rem' }}>{ru ? 'Заметки визита' : 'Visit notes'}</p>{visitNotes.map(note => <p key={note.id} style={{ margin: '0.35rem 0', fontSize: '0.8125rem', color: 'hsl(var(--foreground))' }}>{note.note}</p>)}</div>}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(7rem, 1fr))', gap: '0.75rem', marginTop: '1rem' }}>

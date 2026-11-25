@@ -4,6 +4,7 @@ import { useAuth } from '@/_core/hooks/useAuth';
 import { getLoginUrl } from '@/const';
 import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
+import PublishedReviewsMarquee from '@/components/PublishedReviewsMarquee';
 
 type Lang = 'hy' | 'ru' | 'en';
 
@@ -218,7 +219,8 @@ export default function NewYearHome() {
           <div className="gta-shell gta-loyalty-card"><div><p className="gta-kicker">03 / {c.loyaltyLabel}</p><h2>{c.loyaltyTitle}</h2><p>{c.loyaltyText}</p></div><button className="gta-primary-button" onClick={() => setLocation('/loyalty')}>{c.loyaltyCta}<span>↗</span></button></div>
         </section>
 
-        {(activeAnnouncements ?? []).length > 0 && <section className="gta-notices"><div className="gta-shell"><div className="gta-section-heading"><div><p className="gta-kicker">04 / {c.noticeLabel}</p><h2>{c.noticeLabel}</h2></div><p>{language === 'ru' ? 'Новости и обновления студии.' : language === 'hy' ? 'Ստուդիայի նորություններ և թարմացումներ։' : 'Studio news and updates.'}</p></div><div className="gta-notice-grid">{(activeAnnouncements ?? []).slice(0, 2).map((notice) => <article key={notice.id} className="gta-notice-card">{notice.imageUrl ? <img src={notice.imageUrl} alt="" /> : <div className="gta-notice-copy"><span>{c.campaign}</span><strong>{language === 'ru' ? notice.titleRu : language === 'hy' ? notice.titleHy || notice.titleEn : notice.titleEn}</strong><p>{language === 'ru' ? notice.bodyRu : language === 'hy' ? notice.bodyHy || notice.bodyEn : notice.bodyEn}</p></div>}</article>)}</div></div></section>}
+        <PublishedReviewsMarquee language={language} />
+                {(activeAnnouncements ?? []).length > 0 && <section className="gta-notices"><div className="gta-shell"><div className="gta-section-heading"><div><p className="gta-kicker">04 / {c.noticeLabel}</p><h2>{c.noticeLabel}</h2></div><p>{language === 'ru' ? 'Новости и обновления студии.' : language === 'hy' ? 'Ստուդիայի նորություններ և թարմացումներ։' : 'Studio news and updates.'}</p></div><div className="gta-notice-grid">{(activeAnnouncements ?? []).slice(0, 2).map((notice) => <article key={notice.id} className="gta-notice-card">{notice.imageUrl ? <img src={notice.imageUrl} alt="" /> : <div className="gta-notice-copy"><span>{c.campaign}</span><strong>{language === 'ru' ? notice.titleRu : language === 'hy' ? notice.titleHy || notice.titleEn : notice.titleEn}</strong><p>{language === 'ru' ? notice.bodyRu : language === 'hy' ? notice.bodyHy || notice.bodyEn : notice.bodyEn}</p></div>}</article>)}</div></div></section>}
       </main>
 
       <footer className="gta-footer"><div className="gta-shell"><span>{c.footer}</span><span>{c.campaign}</span></div></footer>
