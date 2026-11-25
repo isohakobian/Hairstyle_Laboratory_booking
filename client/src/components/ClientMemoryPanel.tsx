@@ -228,7 +228,7 @@ export default function ClientMemoryPanel({ clientId, language, onClose, onDelet
       </div>
       {metrics.popularServices.length > 0 && <p style={{ margin: '-0.9rem 0 1.5rem', fontSize: '0.8125rem', color: 'hsl(var(--muted-foreground))' }}>{ru ? 'Чаще всего: ' : 'Most frequent: '}{metrics.popularServices.join(' · ')}</p>}
 
-      <div style={{ marginBottom: '1.75rem', padding: '1.1rem 1.2rem', border: '1px solid var(--gold-mid)', background: 'linear-gradient(135deg, hsl(var(--secondary)), hsl(var(--card)))' }}>
+      {memory.loyaltyRegistered && <div style={{ marginBottom: '1.75rem', padding: '1.1rem 1.2rem', border: '1px solid var(--gold-mid)', background: 'linear-gradient(135deg, hsl(var(--secondary)), hsl(var(--card)))' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
           <div>
             <p style={{ ...labelStyle, margin: '0 0 0.35rem', color: 'var(--gold-mid)' }}>{ru ? 'Карта лояльности' : 'Loyalty card'}</p>
@@ -241,7 +241,7 @@ export default function ClientMemoryPanel({ clientId, language, onClose, onDelet
         </div>
         <p style={{ margin: 0, color: 'hsl(var(--muted-foreground))', fontSize: '0.75rem', lineHeight: 1.45 }}>{metrics.loyalty.rewardsAvailable > 0 ? (ru ? 'Бонус можно применить к следующей стрижке или моделированию бороды.' : 'Apply the reward to the next haircut or beard modeling.') : (ru ? `До следующего бонуса: ${5 - metrics.loyalty.stamps} визит(а).` : `${5 - metrics.loyalty.stamps} visit(s) until the next reward.`)}</p>
         {metrics.loyalty.rewardsAvailable > 0 && <button type="button" className="btn-primary" disabled={redeemLoyaltyMutation.isPending} onClick={() => { if (window.confirm(ru ? 'Списать один бонус 10 000 ֏? Это действие попадёт в историю клиента.' : 'Redeem one 10,000 ֏ reward? This will be added to the client history.')) redeemLoyaltyMutation.mutate({ clientId }); }} style={{ marginTop: '0.8rem', fontSize: '0.6rem', padding: '0.6rem 0.8rem' }}>{redeemLoyaltyMutation.isPending ? '...' : (ru ? 'Списать бонус' : 'Redeem reward')}</button>}
-      </div>
+      </div>}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(13rem, 1fr))', gap: '1.25rem', marginBottom: '1.5rem' }}>
         {([
