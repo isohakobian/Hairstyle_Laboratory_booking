@@ -11,7 +11,7 @@ export type DeliveryErrorDetails = {
 const GMAIL_DAILY_LIMIT_PATTERN = /(?:550[- ]?5\.4\.5|daily user sending limit exceeded|sending limit exceeded)/i;
 const INVALID_ADDRESS_PATTERN = /(?:5\.1\.1|user unknown|mailbox unavailable|recipient address rejected|invalid recipient|address not found|no such user)/i;
 const MAILBOX_FULL_PATTERN = /(?:5\.2\.2|mailbox full|mailbox is full|quota exceeded|over quota)/i;
-const AUTHENTICATION_PATTERN = /(?:535|authentication failed|invalid login|username and password not accepted)/i;
+const AUTHENTICATION_PATTERN = /(?:535|authentication failed|invalid login|username and password not accepted|could not log in|login failed|auth(?:entication)?\s+(?:error|failure))/i;
 const CONNECTION_PATTERN = /(?:econnreset|etimedout|enotfound|connection (?:reset|timeout|refused)|network error)/i;
 
 export function getDeliveryErrorDetails(errorMessage: string | null | undefined, language: SupportedLanguage): DeliveryErrorDetails {
@@ -26,8 +26,8 @@ export function getDeliveryErrorDetails(errorMessage: string | null | undefined,
     ? { category: 'sending-limit', title: 'Временный лимит Gmail', description: 'Gmail временно ограничил исходящие письма. Повторите отправку позже.' }
     : { category: 'sending-limit', title: 'Temporary Gmail limit', description: 'Gmail has temporarily limited outgoing email. Try resending later.' };
   if (AUTHENTICATION_PATTERN.test(message)) return language === 'ru'
-    ? { category: 'authentication', title: 'Ошибка доступа к Gmail', description: 'Сервис не смог войти в почтовый аккаунт. Проверьте настройки Gmail App Password.' }
-    : { category: 'authentication', title: 'Gmail authentication error', description: 'The service could not sign in to the mailbox. Check the Gmail App Password settings.' };
+    ? { category: 'authentication', title: 'Ошибка доступа к Gmail', description: 'Сервис не смог войти в ваш Gmail-аккаунт. Это настройка SMTP владельца, а не ошибка email клиента: обновите Gmail App Password и затем повторите отправку.' }
+    : { category: 'authentication', title: 'Gmail authentication error', description: 'The service could not sign in to the owner Gmail mailbox. This is an SMTP owner setting, not a client email error: update the Gmail App Password, then retry delivery.' };
   if (CONNECTION_PATTERN.test(message)) return language === 'ru'
     ? { category: 'connection', title: 'Временная ошибка соединения', description: 'Соединение с почтовым сервером было прервано. Можно безопасно повторить отправку.' }
     : { category: 'connection', title: 'Temporary connection error', description: 'The connection to the mail server was interrupted. It is safe to retry delivery.' };

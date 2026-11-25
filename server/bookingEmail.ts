@@ -368,8 +368,8 @@ export function buildWeeklyBookingSummaryEmail(summary: WeeklyBookingSummary): E
 }
 
 function getMailTransport() {
-  const user = process.env.GMAIL_SMTP_USER;
-  const pass = process.env.GMAIL_SMTP_APP_PASSWORD;
+  const user = process.env.GMAIL_SMTP_USER?.trim();
+  const pass = process.env.GMAIL_SMTP_APP_PASSWORD?.replace(/\s/g, '');
 
   if (!user || !pass) return null;
 

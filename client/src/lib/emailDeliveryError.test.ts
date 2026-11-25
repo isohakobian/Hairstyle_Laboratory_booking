@@ -19,4 +19,11 @@ describe('getReviewRequestErrorMessage', () => {
     expect(getDeliveryErrorDetails('550 5.1.1 User unknown', 'ru')).toMatchObject({ category: 'invalid-address', title: 'Неверный или недоступный адрес' });
     expect(getDeliveryErrorDetails('552 5.2.2 Mailbox full', 'en')).toMatchObject({ category: 'mailbox-full', title: 'Client mailbox is full' });
   });
+
+  it('classifies Gmail login failures as an owner SMTP configuration issue', () => {
+    expect(getDeliveryErrorDetails('Gmail service could not log in to the mailbox', 'ru')).toMatchObject({
+      category: 'authentication',
+      title: 'Ошибка доступа к Gmail',
+    });
+  });
 });
