@@ -475,21 +475,27 @@ export async function getUnresolvedEmailDeliveryErrors() {
 export async function getClientDirectory() {
   const db = await getDb();
   if (!db) return [];
-  const [directory, registrations, completedBookings, historicalVisits] = await Promise.all([db.select({
+  const [directory, registrations, completedBookings, historicalVisits, redemptions] = await Promise.all([db.select({
     id: clients.id,
     name: clients.name,
     phone: clients.phone,
     email: clients.email,
     updatedAt: clients.updatedAt,
-  }).from(clients).orderBy(desc(clients.updatedAt)), db.select({ clientId: loyaltyRegistrations.clientId }).from(loyaltyRegistrations), db.select({ clientId: bookings.clientId }).from(bookings).where(isNotNull(bookings.completedAt)), db.select({ clientId: manualVisits.clientId }).from(manualVisits)]);
+  }).from(clients).orderBy(desc(clients.updatedAt)), db.select({ clientId: loyaltyRegistrations.clientId }).from(loyaltyRegistrations), db.select({ clientId: bookings.clientId }).from(bookings).where(isNotNull(bookings.completedAt)), db.select({ clientId: manualVisits.clientId }).from(manualVisits), db.select({ clientId: loyaltyRedemptions.clientId }).from(loyaltyRedemptions)]);
   const registeredIds = new Set(registrations.map(row => row.clientId));
   const visitCounts = new Map<number, number>();
   [...completedBookings, ...historicalVisits].forEach(row => {
     if (row.clientId) visitCounts.set(row.clientId, (visitCounts.get(row.clientId) ?? 0) + 1);
   });
+  const redemptionCounts = new Map<number, number>();
+  redemptions.forEach(row => redemptionCounts.set(row.clientId, (redemptionCounts.get(row.clientId) ?? 0) + 1));
   // Keep the complete CRM directory visible; the card uses this flag to decide
   // whether the loyalty progress and reward UI should be shown.
-  return directory.map(client => ({ ...client, loyaltyRegistered: registeredIds.has(client.id), loyaltyVisitCount: visitCounts.get(client.id) ?? 0 }));
+  return directory.map(client => {
+    const loyaltyVisitCount = visitCounts.get(client.id) ?? 0;
+    const loyaltyRewardAvailable = Math.max(0, Math.floor(loyaltyVisitCount / 5) - (redemptionCounts.get(client.id) ?? 0));
+    return { ...client, loyaltyRegistered: registeredIds.has(client.id), loyaltyVisitCount, loyaltyRewardAvailable };
+  });
 }
 
 async function recordManualVisitAudit(input: { visitId: number; action: "created" | "updated" | "deleted"; visitDate: string; serviceName: string; priceAmd: number; paidAmd: number; note?: string | null }) {
